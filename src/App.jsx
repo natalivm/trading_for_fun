@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Header from './components/Header'
 import CardList from './components/CardList'
+import PositionTabs from './components/PositionTabs'
 import BottomNav from './components/BottomNav'
 import NotificationBanner from './components/NotificationBanner'
 import InstallPrompt from './components/InstallPrompt'
@@ -30,7 +31,10 @@ function App() {
         onEnableNotifications={handleEnableNotifications}
       />
       <main className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-20 pt-4 sm:px-6 lg:px-8">
-        <CardList />
+        <PositionTabs />
+        <div className="mt-6">
+          <CardList />
+        </div>
       </main>
       <BottomNav />
     </div>
