@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-const TODAY = '2026-03-05'
+const TODAY = new Date().toISOString().slice(0, 10)
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
@@ -15,7 +15,9 @@ function daysBetween(startDate, endDate) {
   return Math.floor((end - start) / (1000 * 60 * 60 * 24))
 }
 
-const longPositions = [
+// ── Hardcoded fallback data ─────────────────────────────────────────────
+
+const defaultLongPositions = [
   { ticker: 'FTNT', status: 'open', entryPrice: 84.46, quantity: 10, openDate: '2026-01-12' },
   { ticker: 'ANET', status: 'open', entryPrice: 148.83, quantity: 20, openDate: '2026-01-29' },
   { ticker: 'SOFI', status: 'open', entryPrice: 23.17, quantity: 100, openDate: '2026-01-30' },
@@ -57,7 +59,7 @@ const longPositions = [
   { ticker: 'OKLO', status: 'open', entryPrice: 63.03, quantity: 10, openDate: '2026-03-05' },
 ]
 
-const shortPositions = [
+const defaultShortPositions = [
   { ticker: 'LITE', status: 'open', entryPrice: 716.95, quantity: 3, exitPrice: 500 },
   { ticker: 'APP', status: 'open', entryPrice: 447.75, quantity: 6, openDate: '2026-02-26' },
   { ticker: 'HYMC', status: 'open', entryPrice: 54.95, quantity: 5, openDate: '2026-03-02' },
@@ -71,9 +73,9 @@ const shortPositions = [
   { ticker: 'CRWD', status: 'open', entryPrice: 398.61, quantity: 10, openDate: '2026-03-05' },
 ]
 
-const closedLongPositions = []
+const defaultClosedLongPositions = []
 
-const closedShortPositions = [
+const defaultClosedShortPositions = [
   {
     ticker: 'HYMC',
     status: 'closed',
@@ -87,16 +89,25 @@ const closedShortPositions = [
   },
 ]
 
-// Calculate currently invested (open long positions only)
-export function calcCurrentlyInvested() {
-  return longPositions.reduce((sum, p) => sum + p.entryPrice * p.quantity, 0)
+// ── Calculation helpers (used by Header) ────────────────────────────────
+
+let _longPositions = defaultLongPositions
+let _closedPositions = [...defaultClosedLongPositions, ...defaultClosedShortPositions]
+
+export function setPositionData({ longPositions, closedLongPositions, closedShortPositions }) {
+  _longPositions = longPositions
+  _closedPositions = [...closedLongPositions, ...closedShortPositions]
 }
 
-// Calculate total profit from all closed positions
-export function calcProfit() {
-  const closedAll = [...closedLongPositions, ...closedShortPositions]
-  return closedAll.reduce((sum, p) => sum + p.profitDollar, 0)
+export function calcCurrentlyInvested() {
+  return _longPositions.reduce((sum, p) => sum + p.entryPrice * p.quantity, 0)
 }
+
+export function calcProfit() {
+  return _closedPositions.reduce((sum, p) => sum + (p.profitDollar || 0), 0)
+}
+
+// ── Components ──────────────────────────────────────────────────────────
 
 function GlowDot({ color }) {
   const colors = {
@@ -256,8 +267,16 @@ function PositionList({ longs, shorts }) {
   )
 }
 
-function Positions() {
+function Positions({ ibkrData }) {
   const [activeTab, setActiveTab] = useState('open')
+
+  const longPositions = ibkrData?.longPositions || defaultLongPositions
+  const shortPositions = ibkrData?.shortPositions || defaultShortPositions
+  const closedLongPositions = ibkrData?.closedLongPositions || defaultClosedLongPositions
+  const closedShortPositions = ibkrData?.closedShortPositions || defaultClosedShortPositions
+
+  // Keep the calculation helpers in sync
+  setPositionData({ longPositions, closedLongPositions, closedShortPositions })
 
   return (
     <div className="mx-auto max-w-3xl">
