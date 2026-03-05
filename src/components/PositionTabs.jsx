@@ -1,3 +1,5 @@
+import { useState, useEffect, useRef } from 'react'
+
 const TODAY = new Date().toISOString().slice(0, 10)
 
 function formatDate(dateStr) {
@@ -149,16 +151,19 @@ function DaysHolding({ position }) {
   )
 }
 
-function PositionCard({ position, type }) {
+function PositionCard({ position, type, onClick, selected, hidden }) {
   const isLong = type === 'long'
   const isClosed = position.status === 'closed'
-  const borderColor = isLong
-    ? 'border-blue-500/20 hover:border-blue-500/40'
-    : 'border-orange-500/20 hover:border-orange-500/40'
+  const borderColor = selected
+    ? isLong ? 'border-blue-400/60 shadow-lg shadow-blue-500/10' : 'border-orange-400/60 shadow-lg shadow-orange-500/10'
+    : isLong ? 'border-blue-500/20 hover:border-blue-500/40' : 'border-orange-500/20 hover:border-orange-500/40'
   const accentColor = isLong ? 'text-blue-400' : 'text-orange-400'
 
   return (
-    <div className={`rounded-2xl border bg-slate-900/60 p-4 transition ${borderColor}`}>
+    <div
+      onClick={onClick}
+      className={`rounded-2xl border bg-slate-900/60 p-4 cursor-pointer transition-all duration-300 ease-in-out ${borderColor} ${hidden ? 'scale-95 opacity-0 max-h-0 !m-0 !p-0 overflow-hidden border-0' : 'scale-100 opacity-100 max-h-[500px]'} ${selected ? 'ring-1 ring-white/10' : ''}`}
+    >
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <StatusTag status={position.status} />
@@ -207,7 +212,7 @@ function PositionCard({ position, type }) {
   )
 }
 
-function PositionList({ longs, shorts }) {
+function PositionList({ longs, shorts, selectedTicker, onSelectTicker }) {
   const allDates = [...new Set([
     ...longs.map((p) => p.openDate || ''),
     ...shorts.map((p) => p.openDate || ''),
@@ -227,22 +232,41 @@ function PositionList({ longs, shorts }) {
         const hasBoth = hasLongs && hasShorts
         const displayDate = date ? formatDate(date) : 'No date'
 
+        const dateHasMatch = !selectedTicker || longsForDate.some((p) => p.ticker === selectedTicker) || shortsForDate.some((p) => p.ticker === selectedTicker)
+
         return (
-          <div key={date || 'no-date'} className="relative">
+          <div
+            key={date || 'no-date'}
+            className={`relative transition-all duration-300 ease-in-out ${selectedTicker && !dateHasMatch ? 'opacity-0 max-h-0 overflow-hidden !my-0' : 'opacity-100'}`}
+          >
             <div className="mb-3 px-1 text-center">
-              <span className="text-[11px] font-medium tracking-wide text-slate-600">{displayDate}</span>
+              <span className={`text-[11px] font-medium tracking-wide transition-colors duration-300 ${selectedTicker && dateHasMatch ? 'text-slate-400' : 'text-slate-600'}`}>{displayDate}</span>
             </div>
 
             {hasBoth ? (
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-3">
                   {longsForDate.map((position, i) => (
-                    <PositionCard key={`${position.ticker}-${i}`} position={position} type="long" />
+                    <PositionCard
+                      key={`${position.ticker}-${i}`}
+                      position={position}
+                      type="long"
+                      selected={selectedTicker === position.ticker}
+                      hidden={!!selectedTicker && position.ticker !== selectedTicker}
+                      onClick={() => onSelectTicker(position.ticker)}
+                    />
                   ))}
                 </div>
                 <div className="space-y-3">
                   {shortsForDate.map((position, i) => (
-                    <PositionCard key={`${position.ticker}-${i}`} position={position} type="short" />
+                    <PositionCard
+                      key={`${position.ticker}-${i}`}
+                      position={position}
+                      type="short"
+                      selected={selectedTicker === position.ticker}
+                      hidden={!!selectedTicker && position.ticker !== selectedTicker}
+                      onClick={() => onSelectTicker(position.ticker)}
+                    />
                   ))}
                 </div>
               </div>
@@ -250,10 +274,24 @@ function PositionList({ longs, shorts }) {
               <div className="mx-auto max-w-xl">
                 <div className="space-y-3">
                   {longsForDate.map((position, i) => (
-                    <PositionCard key={`${position.ticker}-${i}`} position={position} type="long" />
+                    <PositionCard
+                      key={`${position.ticker}-${i}`}
+                      position={position}
+                      type="long"
+                      selected={selectedTicker === position.ticker}
+                      hidden={!!selectedTicker && position.ticker !== selectedTicker}
+                      onClick={() => onSelectTicker(position.ticker)}
+                    />
                   ))}
                   {shortsForDate.map((position, i) => (
-                    <PositionCard key={`${position.ticker}-${i}`} position={position} type="short" />
+                    <PositionCard
+                      key={`${position.ticker}-${i}`}
+                      position={position}
+                      type="short"
+                      selected={selectedTicker === position.ticker}
+                      hidden={!!selectedTicker && position.ticker !== selectedTicker}
+                      onClick={() => onSelectTicker(position.ticker)}
+                    />
                   ))}
                 </div>
               </div>
@@ -274,19 +312,39 @@ function Positions({ ibkrData }) {
   // Keep the calculation helpers in sync
   setPositionData({ longPositions, closedLongPositions, closedShortPositions })
 
-  const hasClosedPositions = closedLongPositions.length > 0 || closedShortPositions.length > 0
+  const allLongs = [...longPositions, ...closedLongPositions]
+  const allShorts = [...shortPositions, ...closedShortPositions]
+
+  const [selectedTicker, setSelectedTicker] = useState(null)
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    if (!selectedTicker) return
+    function handleClick(e) {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setSelectedTicker(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    document.addEventListener('touchstart', handleClick)
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('touchstart', handleClick)
+    }
+  }, [selectedTicker])
+
+  function handleSelectTicker(ticker) {
+    setSelectedTicker((prev) => (prev === ticker ? null : ticker))
+  }
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-emerald-400">Open Positions</h2>
-      <PositionList longs={longPositions} shorts={shortPositions} />
-
-      {hasClosedPositions && (
-        <>
-          <h2 className="mb-4 mt-10 text-sm font-semibold uppercase tracking-wider text-red-400">Closed Positions</h2>
-          <PositionList longs={closedLongPositions} shorts={closedShortPositions} />
-        </>
-      )}
+    <div className="mx-auto max-w-3xl" ref={containerRef}>
+      <PositionList
+        longs={allLongs}
+        shorts={allShorts}
+        selectedTicker={selectedTicker}
+        onSelectTicker={handleSelectTicker}
+      />
     </div>
   )
 }
