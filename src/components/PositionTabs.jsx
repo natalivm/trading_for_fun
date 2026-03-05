@@ -1,5 +1,3 @@
-import { useState } from 'react'
-
 const longPositions = [
   {
     ticker: 'ASML',
@@ -87,60 +85,59 @@ function PositionCard({ position, type }) {
   )
 }
 
-function PositionTabs() {
-  const [activeTab, setActiveTab] = useState('long')
-
-  const positions = activeTab === 'long' ? longPositions : shortPositions
-  const dates = [...new Set(positions.map((p) => p.date))]
+function Positions() {
+  const allDates = [...new Set([
+    ...longPositions.map((p) => p.date),
+    ...shortPositions.map((p) => p.date),
+  ])]
 
   return (
-    <div className="mx-auto max-w-xl">
-      {/* Tabs */}
-      <div className="mb-5 flex gap-2">
-        <button
-          onClick={() => setActiveTab('long')}
-          className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition ${
-            activeTab === 'long'
-              ? 'bg-blue-500/15 text-blue-400 ring-1 ring-blue-500/30'
-              : 'bg-slate-800/40 text-slate-500 hover:text-slate-400'
-          }`}
-        >
-          Long
-        </button>
-        <button
-          onClick={() => setActiveTab('short')}
-          className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition ${
-            activeTab === 'short'
-              ? 'bg-orange-500/15 text-orange-400 ring-1 ring-orange-500/30'
-              : 'bg-slate-800/40 text-slate-500 hover:text-slate-400'
-          }`}
-        >
-          Short
-        </button>
-      </div>
-
-      {/* Positions grouped by date */}
+    <div className="mx-auto max-w-3xl">
       <div className="space-y-6">
-        {dates.map((date) => (
-          <div key={date} className="relative">
-            {/* Background date */}
-            <div className="mb-3 px-1">
-              <span className="text-[11px] font-medium tracking-wide text-slate-600">{date}</span>
-            </div>
+        {allDates.map((date) => {
+          const longsForDate = longPositions.filter((p) => p.date === date)
+          const shortsForDate = shortPositions.filter((p) => p.date === date)
+          const hasLongs = longsForDate.length > 0
+          const hasShorts = shortsForDate.length > 0
+          const hasBoth = hasLongs && hasShorts
 
-            {/* Position cards */}
-            <div className="space-y-3">
-              {positions
-                .filter((p) => p.date === date)
-                .map((position) => (
-                  <PositionCard key={position.ticker} position={position} type={activeTab} />
-                ))}
+          return (
+            <div key={date} className="relative">
+              <div className="mb-3 px-1">
+                <span className="text-[11px] font-medium tracking-wide text-slate-600">{date}</span>
+              </div>
+
+              {hasBoth ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    {longsForDate.map((position) => (
+                      <PositionCard key={position.ticker} position={position} type="long" />
+                    ))}
+                  </div>
+                  <div className="space-y-3">
+                    {shortsForDate.map((position) => (
+                      <PositionCard key={position.ticker} position={position} type="short" />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="mx-auto max-w-xl">
+                  <div className="space-y-3">
+                    {longsForDate.map((position) => (
+                      <PositionCard key={position.ticker} position={position} type="long" />
+                    ))}
+                    {shortsForDate.map((position) => (
+                      <PositionCard key={position.ticker} position={position} type="short" />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
 }
 
-export default PositionTabs
+export default Positions
