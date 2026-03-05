@@ -274,19 +274,12 @@ function Positions({ ibkrData }) {
   // Keep the calculation helpers in sync
   setPositionData({ longPositions, closedLongPositions, closedShortPositions })
 
-  const hasClosedPositions = closedLongPositions.length > 0 || closedShortPositions.length > 0
+  const allLongs = [...longPositions, ...closedLongPositions]
+  const allShorts = [...shortPositions, ...closedShortPositions]
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-emerald-400">Open Positions</h2>
-      <PositionList longs={longPositions} shorts={shortPositions} />
-
-      {hasClosedPositions && (
-        <>
-          <h2 className="mb-4 mt-10 text-sm font-semibold uppercase tracking-wider text-red-400">Closed Positions</h2>
-          <PositionList longs={closedLongPositions} shorts={closedShortPositions} />
-        </>
-      )}
+      <PositionList longs={allLongs} shorts={allShorts} />
     </div>
   )
 }
