@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+html, body, #root {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Smooth scrolling for the card list */
+.scroll-smooth {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
