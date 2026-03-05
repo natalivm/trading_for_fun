@@ -3,6 +3,20 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      notify:
+        description: 'Send push notification to users'
+        type: boolean
+        default: false
+      notify_title:
+        description: 'Notification title'
+        type: string
+        default: 'TradingFun Updated!'
+      notify_body:
+        description: 'Notification message body'
+        type: string
+        default: 'A new version is available with improvements.'
 
 permissions:
   contents: read
@@ -18,6 +32,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Configure notification (from commit message)
+        if: github.event_name == 'push'
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          if echo "$COMMIT_MSG" | grep -q '\[notify\]'; then
+            # Extract custom title/body from commit: [notify] Title | Body
+            NOTIFY_PART=$(echo "$COMMIT_MSG" | grep -oP '\[notify\]\s*\K.*' || echo "")
+            TITLE=$(echo "$NOTIFY_PART" | cut -d'|' -f1 | xargs)
+            BODY=$(echo "$NOTIFY_PART" | cut -s -d'|' -f2 | xargs)
+            [ -z "$TITLE" ] && TITLE="TradingFun Updated!"
+            [ -z "$BODY" ] && BODY="A new version is available."
+            VERSION="$(date +%Y%m%d%H%M%S)"
+            echo '{"enabled":true,"title":"'"$TITLE"'","body":"'"$BODY"'","version":"'"$VERSION"'"}' > public/notification.json
+          fi
+
+      - name: Configure notification (from manual trigger)
+        if: github.event_name == 'workflow_dispatch' && inputs.notify
+        run: |
+          VERSION="$(date +%Y%m%d%H%M%S)"
+          echo '{"enabled":true,"title":"${{ inputs.notify_title }}","body":"${{ inputs.notify_body }}","version":"'"$VERSION"'"}' > public/notification.json
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
