@@ -1,38 +1,19 @@
-import { useState } from 'react'
 import Header from './components/Header'
 import Positions from './components/PositionTabs'
 import IBKRStatus from './components/IBKRStatus'
-import BottomNav from './components/BottomNav'
 import NotificationBanner from './components/NotificationBanner'
-import InstallPrompt from './components/InstallPrompt'
 import { useServiceWorker } from './hooks/useServiceWorker'
-import { useInstallPrompt } from './hooks/useInstallPrompt'
 import { useIBKR } from './hooks/useIBKR'
 
 function App() {
-  const { updateAvailable, dismissUpdate, requestNotificationPermission } = useServiceWorker()
-  const { canInstall, install } = useInstallPrompt()
+  const { updateAvailable, dismissUpdate } = useServiceWorker()
   const { portfolio, loading, error, connected, refresh } = useIBKR()
-  const [notificationPermission, setNotificationPermission] = useState(
-    typeof Notification !== 'undefined' ? Notification.permission : 'denied'
-  )
-
-  const handleEnableNotifications = async () => {
-    const result = await requestNotificationPermission()
-    setNotificationPermission(result)
-  }
 
   return (
     <div className="flex min-h-screen min-h-dvh flex-col bg-slate-950">
       <Header />
       <NotificationBanner update={updateAvailable} onDismiss={dismissUpdate} />
-      <InstallPrompt
-        canInstall={canInstall}
-        onInstall={install}
-        notificationPermission={notificationPermission}
-        onEnableNotifications={handleEnableNotifications}
-      />
-      <main className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-20 pt-4 sm:px-6 lg:px-8">
+      <main className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-4 pt-4 sm:px-6 lg:px-8">
         <IBKRStatus
           connected={connected}
           loading={loading}
@@ -41,7 +22,6 @@ function App() {
         />
         <Positions ibkrData={portfolio} />
       </main>
-      <BottomNav />
     </div>
   )
 }

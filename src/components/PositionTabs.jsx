@@ -1,5 +1,3 @@
-import { useState } from 'react'
-
 const TODAY = new Date().toISOString().slice(0, 10)
 
 function formatDate(dateStr) {
@@ -231,7 +229,7 @@ function PositionList({ longs, shorts }) {
 
         return (
           <div key={date || 'no-date'} className="relative">
-            <div className="mb-3 px-1">
+            <div className="mb-3 px-1 text-center">
               <span className="text-[11px] font-medium tracking-wide text-slate-600">{displayDate}</span>
             </div>
 
@@ -268,8 +266,6 @@ function PositionList({ longs, shorts }) {
 }
 
 function Positions({ ibkrData }) {
-  const [activeTab, setActiveTab] = useState('open')
-
   const longPositions = ibkrData?.longPositions || defaultLongPositions
   const shortPositions = ibkrData?.shortPositions || defaultShortPositions
   const closedLongPositions = ibkrData?.closedLongPositions || defaultClosedLongPositions
@@ -278,35 +274,18 @@ function Positions({ ibkrData }) {
   // Keep the calculation helpers in sync
   setPositionData({ longPositions, closedLongPositions, closedShortPositions })
 
+  const hasClosedPositions = closedLongPositions.length > 0 || closedShortPositions.length > 0
+
   return (
     <div className="mx-auto max-w-3xl">
-      <div className="mb-6 flex gap-2">
-        <button
-          onClick={() => setActiveTab('open')}
-          className={`rounded-full px-4 py-1.5 text-xs font-semibold tracking-wide transition ${
-            activeTab === 'open'
-              ? 'bg-emerald-500/20 text-emerald-400'
-              : 'bg-slate-800/60 text-slate-500 hover:text-slate-300'
-          }`}
-        >
-          Open
-        </button>
-        <button
-          onClick={() => setActiveTab('closed')}
-          className={`rounded-full px-4 py-1.5 text-xs font-semibold tracking-wide transition ${
-            activeTab === 'closed'
-              ? 'bg-red-500/20 text-red-400'
-              : 'bg-slate-800/60 text-slate-500 hover:text-slate-300'
-          }`}
-        >
-          Closed
-        </button>
-      </div>
+      <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-emerald-400">Open Positions</h2>
+      <PositionList longs={longPositions} shorts={shortPositions} />
 
-      {activeTab === 'open' ? (
-        <PositionList longs={longPositions} shorts={shortPositions} />
-      ) : (
-        <PositionList longs={closedLongPositions} shorts={closedShortPositions} />
+      {hasClosedPositions && (
+        <>
+          <h2 className="mb-4 mt-10 text-sm font-semibold uppercase tracking-wider text-red-400">Closed Positions</h2>
+          <PositionList longs={closedLongPositions} shorts={closedShortPositions} />
+        </>
       )}
     </div>
   )
