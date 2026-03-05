@@ -1,68 +1,66 @@
 import { useState } from 'react'
 
+const TODAY = '2026-03-05'
+
+function formatDate(dateStr) {
+  if (!dateStr) return ''
+  const d = new Date(dateStr + 'T00:00:00')
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function daysBetween(startDate, endDate) {
+  if (!startDate) return null
+  const start = new Date(startDate + 'T00:00:00')
+  const end = new Date(endDate + 'T00:00:00')
+  return Math.floor((end - start) / (1000 * 60 * 60 * 24))
+}
+
 const longPositions = [
-  {
-    ticker: 'ASML',
-    status: 'open',
-    entryPrice: 1250,
-    quantity: 5,
-    target: '+20%',
-    date: 'Mar 5, 2026',
-  },
-  {
-    ticker: 'NVDA',
-    status: 'open',
-    entryPrice: 850,
-    quantity: 4,
-    target: '+15%',
-    date: 'Mar 3, 2026',
-  },
+  { ticker: 'FTNT', status: 'open', entryPrice: 84.46, quantity: 10, openDate: '2026-01-12' },
+  { ticker: 'CEG', status: 'open', entryPrice: 280.17, quantity: 2, openDate: '2026-02-12' },
+  { ticker: 'CEG', status: 'open', entryPrice: 310.77, quantity: 2, openDate: '2026-02-12' },
+  { ticker: 'THM', status: 'open', entryPrice: 2.29, quantity: 100, openDate: '2026-02-17' },
+  { ticker: 'RIG', status: 'open', entryPrice: 6.15, quantity: 100, openDate: '2026-02-17' },
+  { ticker: 'RIG', status: 'open', entryPrice: 6.14, quantity: 100, openDate: '2026-02-20' },
+  { ticker: 'DASH', status: 'open', entryPrice: 164.14, quantity: 2, openDate: '2026-02-24' },
+  { ticker: 'DASH', status: 'open', entryPrice: 174.35, quantity: 2, openDate: '2026-02-25' },
+  { ticker: 'THM', status: 'open', entryPrice: 2.93, quantity: 100, openDate: '2026-02-25' },
+  { ticker: 'CEG', status: 'open', entryPrice: 319.18, quantity: 2, openDate: '2026-03-03' },
+  { ticker: 'NOW', status: 'open', entryPrice: 108.53, quantity: 10, openDate: '2026-03-03' },
+  { ticker: 'MELI', status: 'open', entryPrice: 1652, quantity: 1, openDate: '2026-03-03' },
+  { ticker: 'THM', status: 'open', entryPrice: 3.32, quantity: 100, openDate: '2026-03-03' },
+  { ticker: 'PINS', status: 'open', entryPrice: 19.10, quantity: 30, openDate: '2026-03-03' },
+  { ticker: 'LRMR', status: 'open', entryPrice: 5.30, quantity: 100, openDate: '2026-03-03' },
+  { ticker: 'ARRY', status: 'open', entryPrice: 7.29, quantity: 100, openDate: '2026-03-03' },
+  { ticker: 'OKTA', status: 'open', entryPrice: 71.73, quantity: 10, openDate: '2026-03-04' },
+  { ticker: 'COHR', status: 'open', entryPrice: 265.20, quantity: 1, openDate: '2026-03-04' },
+  { ticker: 'IREN', status: 'open', entryPrice: 38.87, quantity: 15, openDate: '2026-03-05' },
+  { ticker: 'GE', status: 'open', entryPrice: 325.78, quantity: 1, openDate: '2026-03-05' },
+  { ticker: 'OKLO', status: 'open', entryPrice: 63.03, quantity: 10, openDate: '2026-03-05' },
 ]
 
 const shortPositions = [
-  {
-    ticker: 'LITE',
-    status: 'open',
-    entryPrice: 730,
-    quantity: 5,
-    exitPrice: 500,
-    date: 'Mar 5, 2026',
-  },
+  { ticker: 'LITE', status: 'open', entryPrice: 716.95, quantity: 3, exitPrice: 500 },
+  { ticker: 'HYMC', status: 'open', entryPrice: 54.95, quantity: 5, openDate: '2026-03-02' },
+  { ticker: 'HYMC', status: 'open', entryPrice: 47.60, quantity: 5, openDate: '2026-03-03' },
+  { ticker: 'CAT', status: 'open', entryPrice: 742, quantity: 1, openDate: '2026-03-02' },
+  { ticker: 'POWL', status: 'open', entryPrice: 521, quantity: 2, openDate: '2026-03-04' },
+  { ticker: 'CRDO', status: 'open', entryPrice: 113.93, quantity: 5, openDate: '2026-03-05' },
 ]
 
-const closedLongPositions = [
-  {
-    ticker: 'MSFT',
-    status: 'closed',
-    entryPrice: 400,
-    quantity: 8,
-    exitPrice: 460,
-    profitPercent: 15,
-    profitDollar: 480,
-    date: 'Mar 1, 2026',
-  },
-]
+const closedLongPositions = []
 
 const closedShortPositions = [
   {
-    ticker: 'TSLA',
+    ticker: 'HYMC',
     status: 'closed',
-    entryPrice: 320,
-    quantity: 6,
-    exitPrice: 290,
-    profitPercent: 9.38,
-    profitDollar: 180,
-    date: 'Feb 28, 2026',
-  },
-  {
-    ticker: 'ROKU',
-    status: 'closed',
-    entryPrice: 95,
-    quantity: 20,
-    exitPrice: 113,
-    profitPercent: -18.95,
-    profitDollar: -360,
-    date: 'Feb 25, 2026',
+    entryPrice: 47.87,
+    quantity: 10,
+    exitPrice: 47.87,
+    profitPercent: 0,
+    profitDollar: 0,
+    openDate: '2026-03-05',
+    closeDate: '2026-03-05',
   },
 ]
 
@@ -102,6 +100,23 @@ function StatusTag({ status }) {
   )
 }
 
+function DaysHolding({ position }) {
+  const isClosed = position.status === 'closed'
+  const days = isClosed
+    ? daysBetween(position.openDate, position.closeDate)
+    : daysBetween(position.openDate, TODAY)
+
+  if (days === null) return null
+
+  const label = days === 0 ? 'Today' : days === 1 ? '1 day' : `${days} days`
+
+  return (
+    <span className="text-[10px] font-medium text-slate-500">
+      {label}
+    </span>
+  )
+}
+
 function PositionCard({ position, type }) {
   const isLong = type === 'long'
   const isClosed = position.status === 'closed'
@@ -113,7 +128,10 @@ function PositionCard({ position, type }) {
   return (
     <div className={`rounded-2xl border bg-slate-900/60 p-4 transition ${borderColor}`}>
       <div className="mb-3 flex items-center justify-between">
-        <StatusTag status={position.status} />
+        <div className="flex items-center gap-2">
+          <StatusTag status={position.status} />
+          <DaysHolding position={position} />
+        </div>
         <span className={`text-[10px] font-bold uppercase tracking-widest ${accentColor}`}>
           {isLong ? 'Long' : 'Short'}
         </span>
@@ -143,12 +161,14 @@ function PositionCard({ position, type }) {
             <span className="text-sm font-semibold text-slate-200">${position.exitPrice.toLocaleString()}</span>
           </div>
         ) : (
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500">{position.exitPrice != null ? 'Exit Target' : 'Target'}</span>
-            <span className={`text-sm font-bold ${isLong ? 'text-emerald-400' : 'text-amber-400'}`}>
-              {position.exitPrice != null ? `$${position.exitPrice.toLocaleString()}` : position.target}
-            </span>
-          </div>
+          position.exitPrice != null && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-500">Exit Target</span>
+              <span className={`text-sm font-bold ${isLong ? 'text-emerald-400' : 'text-amber-400'}`}>
+                ${position.exitPrice.toLocaleString()}
+              </span>
+            </div>
+          )
         )}
       </div>
     </div>
@@ -157,46 +177,51 @@ function PositionCard({ position, type }) {
 
 function PositionList({ longs, shorts }) {
   const allDates = [...new Set([
-    ...longs.map((p) => p.date),
-    ...shorts.map((p) => p.date),
-  ])]
+    ...longs.map((p) => p.openDate || ''),
+    ...shorts.map((p) => p.openDate || ''),
+  ])].sort((a, b) => {
+    if (!a) return 1
+    if (!b) return -1
+    return new Date(b) - new Date(a)
+  })
 
   return (
     <div className="space-y-6">
       {allDates.map((date) => {
-        const longsForDate = longs.filter((p) => p.date === date)
-        const shortsForDate = shorts.filter((p) => p.date === date)
+        const longsForDate = longs.filter((p) => (p.openDate || '') === date)
+        const shortsForDate = shorts.filter((p) => (p.openDate || '') === date)
         const hasLongs = longsForDate.length > 0
         const hasShorts = shortsForDate.length > 0
         const hasBoth = hasLongs && hasShorts
+        const displayDate = date ? formatDate(date) : 'No date'
 
         return (
-          <div key={date} className="relative">
+          <div key={date || 'no-date'} className="relative">
             <div className="mb-3 px-1">
-              <span className="text-[11px] font-medium tracking-wide text-slate-600">{date}</span>
+              <span className="text-[11px] font-medium tracking-wide text-slate-600">{displayDate}</span>
             </div>
 
             {hasBoth ? (
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-3">
-                  {longsForDate.map((position) => (
-                    <PositionCard key={position.ticker} position={position} type="long" />
+                  {longsForDate.map((position, i) => (
+                    <PositionCard key={`${position.ticker}-${i}`} position={position} type="long" />
                   ))}
                 </div>
                 <div className="space-y-3">
-                  {shortsForDate.map((position) => (
-                    <PositionCard key={position.ticker} position={position} type="short" />
+                  {shortsForDate.map((position, i) => (
+                    <PositionCard key={`${position.ticker}-${i}`} position={position} type="short" />
                   ))}
                 </div>
               </div>
             ) : (
               <div className="mx-auto max-w-xl">
                 <div className="space-y-3">
-                  {longsForDate.map((position) => (
-                    <PositionCard key={position.ticker} position={position} type="long" />
+                  {longsForDate.map((position, i) => (
+                    <PositionCard key={`${position.ticker}-${i}`} position={position} type="long" />
                   ))}
-                  {shortsForDate.map((position) => (
-                    <PositionCard key={position.ticker} position={position} type="short" />
+                  {shortsForDate.map((position, i) => (
+                    <PositionCard key={`${position.ticker}-${i}`} position={position} type="short" />
                   ))}
                 </div>
               </div>
