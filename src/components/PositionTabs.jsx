@@ -376,11 +376,82 @@ function filterClosed2026(positions) {
   })
 }
 
+/**
+ * Merge hardcoded defaults with live IB data.
+ * - Live positions override hardcoded ones (matched by ticker)
+ * - Hardcoded positions not in live are kept (IB might not show old ones)
+ * - New live positions not in hardcoded are added
+ * - Live closed positions (executions) are merged with hardcoded closed
+ */
+function mergePositions(defaults, livePositions) {
+  if (!livePositions || livePositions.length === 0) return defaults
+
+  // Build a map of live positions by ticker (there can be multiple per ticker)
+  const liveByTicker = {}
+  for (const pos of livePositions) {
+    if (!liveByTicker[pos.ticker]) liveByTicker[pos.ticker] = []
+    liveByTicker[pos.ticker].push(pos)
+  }
+
+  const merged = []
+  const usedLiveTickers = new Set()
+
+  for (const def of defaults) {
+    const liveEntries = liveByTicker[def.ticker]
+    if (liveEntries && liveEntries.length > 0) {
+      // Live overrides this ticker — find best match by quantity or take first
+      if (!usedLiveTickers.has(def.ticker)) {
+        // First time seeing this ticker: add all live entries for it
+        for (const live of liveEntries) {
+          merged.push({
+            ...def,
+            ...live,
+            openDate: def.openDate || live.openDate || '',
+          })
+        }
+        usedLiveTickers.add(def.ticker)
+      }
+      // Skip additional hardcoded entries for same ticker (live has the truth)
+    } else {
+      // No live data for this ticker — keep hardcoded
+      merged.push(def)
+    }
+  }
+
+  // Add any live positions for tickers not in hardcoded defaults
+  for (const [ticker, entries] of Object.entries(liveByTicker)) {
+    if (!usedLiveTickers.has(ticker)) {
+      merged.push(...entries)
+    }
+  }
+
+  return merged
+}
+
 function Positions({ ibkrData }) {
-  const longPositions = ibkrData?.longPositions || defaultLongPositions
-  const shortPositions = ibkrData?.shortPositions || defaultShortPositions
-  const closedLongPositions = filterClosed2026(ibkrData?.closedLongPositions || defaultClosedLongPositions)
-  const closedShortPositions = filterClosed2026(ibkrData?.closedShortPositions || defaultClosedShortPositions)
+  const hasLive = ibkrData && (ibkrData.longPositions || ibkrData.shortPositions)
+
+  // Merge: live data updates hardcoded, hardcoded fills in what live doesn't have
+  const longPositions = hasLive
+    ? mergePositions(defaultLongPositions, ibkrData.longPositions)
+    : defaultLongPositions
+  const shortPositions = hasLive
+    ? mergePositions(defaultShortPositions, ibkrData.shortPositions)
+    : defaultShortPositions
+
+  // Closed positions: merge live executions with hardcoded closed, deduplicate
+  const liveClosedLong = filterClosed2026(ibkrData?.closedLongPositions || [])
+  const liveClosedShort = filterClosed2026(ibkrData?.closedShortPositions || [])
+  const closedLongKeys = new Set(liveClosedLong.map(p => `${p.ticker}|${p.openDate}`))
+  const closedShortKeys = new Set(liveClosedShort.map(p => `${p.ticker}|${p.openDate}`))
+  const closedLongPositions = [
+    ...liveClosedLong,
+    ...filterClosed2026(defaultClosedLongPositions).filter(p => !closedLongKeys.has(`${p.ticker}|${p.openDate}`)),
+  ]
+  const closedShortPositions = [
+    ...liveClosedShort,
+    ...filterClosed2026(defaultClosedShortPositions).filter(p => !closedShortKeys.has(`${p.ticker}|${p.openDate}`)),
+  ]
 
   // Keep the calculation helpers in sync
   setPositionData({ longPositions, closedLongPositions, closedShortPositions })
