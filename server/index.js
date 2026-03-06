@@ -285,14 +285,25 @@ function parseCSV(text) {
   const lines = text.trim().split(/\r?\n/)
   if (lines.length < 2) return []
 
-  // Find the header line — IB Transaction History prefixes with "Transaction History,Header,..."
-  let headerIdx = 0
+  // Find the Transaction History header line specifically
+  // IB CSVs have multiple sections (Statement, Summary, Transaction History) each with ",Header,"
+  let headerIdx = -1
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i].includes(',Header,') || lines[i].includes(',header,')) {
+    if (lines[i].startsWith('Transaction History,Header,') || lines[i].startsWith('Trades,Header,')) {
       headerIdx = i
       break
     }
   }
+  // Fallback: if no IB section header found, look for any line with ",Header," or use first line
+  if (headerIdx === -1) {
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].includes(',Header,') || lines[i].includes(',header,')) {
+        headerIdx = i
+        break
+      }
+    }
+  }
+  if (headerIdx === -1) headerIdx = 0
 
   const rawHeaders = splitCSVLine(lines[headerIdx]).map(h => h.replace(/"/g, ''))
 
@@ -360,7 +371,11 @@ function mapTradeRow(row) {
   const execId = get(['ExecID', 'exec_id', 'ExecutionID', 'IBExecID'])
   const orderId = get(['OrderID', 'order_id', 'IBOrderID'])
 
-  if (!symbol || !dateTime) return null
+  if (!symbol || !dateTime || symbol === '-') return null
+
+  // Skip non-trade rows (dividends, interest, forex, adjustments)
+  const skipTypes = ['adjustment', 'debit interest', 'credit interest', 'dividend', 'withholding tax', 'forex trade component']
+  if (transType && skipTypes.includes(transType.toLowerCase())) return null
 
   // Normalize date to YYYY-MM-DD
   let tradeDate = dateTime
