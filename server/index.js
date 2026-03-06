@@ -1,8 +1,14 @@
 import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
+import { writeFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
 import * as ibkr from './ibkr.js'
 import * as db from './db.js'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const PORTFOLIO_JSON = join(__dirname, '..', 'public', 'data', 'portfolio.json')
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -208,6 +214,65 @@ app.get('/api/portfolio', async (_req, res, next) => {
   }
 
   res.json(result)
+})
+
+// ── Export: save live portfolio to static JSON for GitHub Pages ─────────
+
+app.post('/api/export', async (_req, res) => {
+  let result = null
+
+  // Try live data first
+  if (ibkr.isConnected()) {
+    try {
+      const accountsData = await ibkr.getAccounts()
+      const acctId = accountsData.accounts?.[0]
+      if (!acctId) return res.status(400).json({ error: 'No IBKR account found.' })
+
+      const [positions, executions] = await Promise.all([
+        ibkr.getPositions(),
+        ibkr.getExecutions(),
+      ])
+
+      const pnlByConId = {}
+      await Promise.all(positions.map(async (pos) => {
+        try {
+          pnlByConId[pos.conId] = await ibkr.getPositionPnL(acctId, pos.conId)
+        } catch { /* skip */ }
+      }))
+
+      result = transformPortfolio(acctId, positions, executions, pnlByConId)
+    } catch (err) {
+      console.error('Live fetch failed for export:', err.message)
+    }
+  }
+
+  // Fall back to cached data
+  if (!result) {
+    const cached = db.getLatest()
+    if (cached) {
+      result = transformPortfolio(cached.accountId, cached.positions, cached.executions)
+    }
+  }
+
+  if (!result) {
+    return res.status(503).json({ error: 'No data available to export.' })
+  }
+
+  const payload = {
+    updatedAt: new Date().toISOString(),
+    longPositions: result.longPositions,
+    shortPositions: result.shortPositions,
+    closedLongPositions: result.closedLongPositions,
+    closedShortPositions: result.closedShortPositions,
+  }
+
+  try {
+    writeFileSync(PORTFOLIO_JSON, JSON.stringify(payload, null, 2) + '\n')
+    console.log(`Exported portfolio to ${PORTFOLIO_JSON}`)
+    res.json({ ok: true, updatedAt: payload.updatedAt, file: PORTFOLIO_JSON })
+  } catch (err) {
+    res.status(500).json({ error: `Failed to write file: ${err.message}` })
+  }
 })
 
 // ── History endpoint ────────────────────────────────────────────────────
