@@ -1,11 +1,13 @@
 import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
+import multer from 'multer'
 import * as ibkr from './ibkr.js'
 import * as db from './db.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
+const upload = multer({ storage: multer.memoryStorage() })
 
 app.use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' }))
 app.use(express.json())
@@ -20,7 +22,6 @@ app.get('/api/status', async (_req, res) => {
 })
 
 app.post('/api/tickle', async (_req, res) => {
-  // TWS socket connections don't need keepalive tickle, but keep the endpoint
   res.json({ session: 'active', ssoExpires: 0 })
 })
 
@@ -89,6 +90,38 @@ app.get('/api/trades', async (req, res, next) => {
 
 // ── Combined endpoint: builds the same shape the frontend already uses ──
 
+// Helper: transform trades from DB into closed positions format
+function tradesToClosedPositions(trades) {
+  const closedLong = []
+  const closedShort = []
+
+  for (const t of trades) {
+    const totalCost = t.price * t.quantity
+    const profitPct = totalCost > 0 ? (t.realized_pnl / totalCost) * 100 : 0
+
+    const closed = {
+      ticker: t.symbol,
+      status: 'closed',
+      entryPrice: t.price,
+      quantity: t.quantity,
+      exitPrice: t.price,
+      profitDollar: t.realized_pnl || 0,
+      profitPercent: profitPct,
+      openDate: t.trade_date,
+      closeDate: t.trade_date,
+    }
+
+    // SLD = sold long position, BOT = bought back short position
+    if (t.side === 'SLD' || t.side === 'S' || t.side === 'SELL') {
+      closedLong.push(closed)
+    } else if (t.side === 'BOT' || t.side === 'B' || t.side === 'BUY') {
+      closedShort.push(closed)
+    }
+  }
+
+  return { closedLong, closedShort }
+}
+
 // Helper: transform raw positions/executions into frontend format
 function transformPortfolio(acctId, positions, executions) {
   const longPositions = []
@@ -116,7 +149,7 @@ function transformPortfolio(acctId, positions, executions) {
   for (const exec of executions) {
     const pnl = exec.realized_pnl ?? exec.realizedPnL
     const entryPrice = Math.abs(exec.price || 0)
-    const exitPrice = Math.abs(exec.avg_price ?? exec.avgPrice ?? exec.price ?? 0)
+    const exitPrice = Math.abs(exec.avg_price ?? exec.avgPrice ?? exec.price || 0)
     const qty = Math.abs(exec.shares || 0)
     const totalCost = entryPrice * qty
     const profitPct = totalCost > 0 ? ((pnl || 0) / totalCost) * 100 : 0
@@ -144,6 +177,8 @@ function transformPortfolio(acctId, positions, executions) {
 }
 
 app.get('/api/portfolio', async (_req, res, next) => {
+  let result = null
+
   // Try live data from IB Gateway
   if (ibkr.isConnected()) {
     try {
@@ -158,31 +193,200 @@ app.get('/api/portfolio', async (_req, res, next) => {
         ibkr.getExecutions(),
       ])
 
-      // Save snapshot to database
+      // Save snapshot + live executions to DB
       try {
         db.saveSnapshot(acctId, positions, executions)
+        db.saveLiveExecutions(executions, acctId)
         console.log(`Saved portfolio snapshot for ${acctId}`)
       } catch (dbErr) {
         console.error('Failed to save snapshot:', dbErr.message)
       }
 
-      return res.json(transformPortfolio(acctId, positions, executions))
+      result = transformPortfolio(acctId, positions, executions)
     } catch (err) {
       console.error('Live fetch failed, falling back to cached data:', err.message)
     }
   }
 
-  // Fall back to cached data from SQLite
-  const cached = db.getLatest()
-  if (cached) {
-    console.log(`Serving cached data from ${cached.fetchedAt}`)
-    const result = transformPortfolio(cached.accountId, cached.positions, cached.executions)
-    result.cached = true
-    result.cachedAt = cached.fetchedAt
-    return res.json(result)
+  // Fall back to cached snapshot
+  if (!result) {
+    const cached = db.getLatest()
+    if (cached) {
+      console.log(`Serving cached data from ${cached.fetchedAt}`)
+      result = transformPortfolio(cached.accountId, cached.positions, cached.executions)
+      result.cached = true
+      result.cachedAt = cached.fetchedAt
+    }
   }
 
-  res.status(503).json({ error: 'IB Gateway is offline and no cached data available.' })
+  if (!result) {
+    return res.status(503).json({ error: 'IB Gateway is offline and no cached data available.' })
+  }
+
+  // Merge historical closed trades from the trades table
+  const historicalTrades = db.getTrades({ year: null, limit: 10000 })
+  if (historicalTrades.length > 0) {
+    const { closedLong, closedShort } = tradesToClosedPositions(historicalTrades)
+
+    // Deduplicate: remove trades already present from live executions (by matching symbol + date + side)
+    const liveKeys = new Set([
+      ...result.closedLongPositions.map(p => `${p.ticker}|${p.closeDate}|SLD`),
+      ...result.closedShortPositions.map(p => `${p.ticker}|${p.closeDate}|BOT`),
+    ])
+
+    for (const t of closedLong) {
+      const key = `${t.ticker}|${t.closeDate}|SLD`
+      if (!liveKeys.has(key)) {
+        result.closedLongPositions.push(t)
+        liveKeys.add(key)
+      }
+    }
+    for (const t of closedShort) {
+      const key = `${t.ticker}|${t.closeDate}|BOT`
+      if (!liveKeys.has(key)) {
+        result.closedShortPositions.push(t)
+        liveKeys.add(key)
+      }
+    }
+  }
+
+  res.json(result)
+})
+
+// ── CSV Import endpoint ─────────────────────────────────────────────────
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n')
+  if (lines.length < 2) return []
+
+  const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''))
+  const rows = []
+
+  for (let i = 1; i < lines.length; i++) {
+    const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''))
+    const row = {}
+    for (let j = 0; j < headers.length; j++) {
+      row[headers[j]] = values[j] || ''
+    }
+    rows.push(row)
+  }
+
+  return rows
+}
+
+// Map common IB Flex Query CSV column names to our schema
+function mapFlexRow(row) {
+  // Common Flex Query column names (case-insensitive matching)
+  const get = (keys) => {
+    for (const k of keys) {
+      const match = Object.keys(row).find(h => h.toLowerCase().replace(/[^a-z]/g, '') === k.toLowerCase().replace(/[^a-z]/g, ''))
+      if (match && row[match]) return row[match]
+    }
+    return ''
+  }
+
+  const symbol = get(['Symbol', 'symbol', 'UnderlyingSymbol'])
+  const dateTime = get(['DateTime', 'TradeDate', 'Date/Time', 'Trade Date', 'date', 'tradeDate', 'Date'])
+  const side = get(['Buy/Sell', 'Side', 'BuySell', 'side', 'Action'])
+  const qty = get(['Quantity', 'quantity', 'Shares', 'shares', 'Qty'])
+  const price = get(['TradePrice', 'Price', 'price', 'T. Price', 'Trade Price'])
+  const commission = get(['IBCommission', 'Commission', 'commission', 'Comm'])
+  const pnl = get(['RealizedPnL', 'Realized P/L', 'FifoPnlRealized', 'realized_pnl', 'Realized P&L', 'MTM P/L'])
+  const currency = get(['CurrencyPrimary', 'Currency', 'currency'])
+  const account = get(['AccountId', 'Account', 'account', 'account_id'])
+  const execId = get(['ExecID', 'exec_id', 'ExecutionID', 'IBExecID'])
+  const orderId = get(['OrderID', 'order_id', 'IBOrderID'])
+  const secType = get(['AssetClass', 'SecType', 'sec_type', 'Asset Class'])
+
+  if (!symbol || !dateTime) return null
+
+  // Normalize date to YYYY-MM-DD
+  let tradeDate = dateTime
+  if (dateTime.includes(',')) {
+    tradeDate = new Date(dateTime).toISOString().slice(0, 10)
+  } else if (dateTime.includes('/')) {
+    const parts = dateTime.split('/')
+    if (parts[2]?.length === 4) {
+      tradeDate = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`
+    }
+  } else if (dateTime.length === 8 && !dateTime.includes('-')) {
+    tradeDate = `${dateTime.slice(0, 4)}-${dateTime.slice(4, 6)}-${dateTime.slice(6, 8)}`
+  } else if (dateTime.length > 10) {
+    tradeDate = dateTime.slice(0, 10)
+  }
+
+  // Normalize side
+  let normalizedSide = side.toUpperCase()
+  if (normalizedSide === 'SELL' || normalizedSide === 'S') normalizedSide = 'SLD'
+  if (normalizedSide === 'BUY' || normalizedSide === 'B') normalizedSide = 'BOT'
+
+  return {
+    account_id: account || null,
+    symbol,
+    trade_date: tradeDate,
+    side: normalizedSide,
+    quantity: parseFloat(qty) || 0,
+    price: parseFloat(price) || 0,
+    commission: parseFloat(commission) || 0,
+    realized_pnl: parseFloat(pnl) || 0,
+    currency: currency || 'USD',
+    sec_type: secType || 'STK',
+    exchange: null,
+    order_id: orderId || null,
+    exec_id: execId || `import-${symbol}-${tradeDate}-${normalizedSide}-${qty}-${price}`,
+  }
+}
+
+app.post('/api/import', upload.single('file'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded. Send a CSV file as "file" field.' })
+    }
+
+    const text = req.file.buffer.toString('utf-8')
+    const rows = parseCSV(text)
+
+    if (rows.length === 0) {
+      return res.status(400).json({ error: 'CSV file is empty or has no data rows.' })
+    }
+
+    const trades = rows.map(mapFlexRow).filter(Boolean)
+
+    if (trades.length === 0) {
+      return res.status(400).json({
+        error: 'Could not parse any trades. Make sure the CSV has Symbol and Date columns.',
+        sampleHeaders: Object.keys(rows[0]),
+      })
+    }
+
+    const imported = db.importTrades(trades, 'flex-import')
+
+    res.json({
+      message: `Imported ${imported} new trades (${trades.length - imported} duplicates skipped)`,
+      imported,
+      total: trades.length,
+      skipped: trades.length - imported,
+    })
+  } catch (err) {
+    console.error('Import error:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ── Trades from DB ──────────────────────────────────────────────────────
+
+app.get('/api/db/trades', (req, res) => {
+  const year = req.query.year || null
+  const symbol = req.query.symbol || null
+  const limit = Number(req.query.limit) || 1000
+  const trades = db.getTrades({ year, symbol, limit })
+  res.json(trades)
+})
+
+app.get('/api/db/stats', (req, res) => {
+  const year = req.query.year || null
+  const stats = db.getTradeStats(year)
+  res.json(stats)
 })
 
 // ── History endpoint ────────────────────────────────────────────────────
