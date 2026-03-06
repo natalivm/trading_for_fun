@@ -115,14 +115,20 @@ function transformPortfolio(acctId, positions, executions) {
 
   for (const exec of executions) {
     const pnl = exec.realized_pnl ?? exec.realizedPnL
+    const entryPrice = Math.abs(exec.price || 0)
+    const exitPrice = Math.abs(exec.avg_price ?? exec.avgPrice ?? exec.price ?? 0)
+    const qty = Math.abs(exec.shares || 0)
+    const totalCost = entryPrice * qty
+    const profitPct = totalCost > 0 ? ((pnl || 0) / totalCost) * 100 : 0
+
     const closed = {
       ticker: exec.symbol,
       status: 'closed',
-      entryPrice: Math.abs(exec.price || 0),
-      quantity: Math.abs(exec.shares || 0),
-      exitPrice: Math.abs(exec.avg_price ?? exec.avgPrice ?? exec.price ?? 0),
+      entryPrice,
+      quantity: qty,
+      exitPrice,
       profitDollar: pnl || 0,
-      profitPercent: 0,
+      profitPercent: profitPct,
       openDate: exec.time || '',
       closeDate: exec.time || '',
     }
