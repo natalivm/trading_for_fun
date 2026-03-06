@@ -239,6 +239,68 @@ export function getExecutions() {
   })
 }
 
+// ── PnL per position ────────────────────────────────────────────────────
+
+/**
+ * Request PnL for a single position using reqPnLSingle.
+ * Returns { dailyPnL, unrealizedPnL, realizedPnL, value, position }.
+ */
+export function getPositionPnL(acctId, conId) {
+  ensureConnected()
+  const reqId = Math.floor(Math.random() * 100000) + 1000
+
+  return new Promise((resolve, reject) => {
+    const { timer, promise: timeout } = collectWithTimeout(5000)
+
+    const handler = (id, dailyPnL, unrealizedPnL, realizedPnL, value) => {
+      if (id !== reqId) return
+      clearTimeout(timer)
+      ib.removeListener(EventName.pnlSingle, handler)
+      ib.cancelPnLSingle(reqId)
+      resolve({ dailyPnL, unrealizedPnL, realizedPnL, value })
+    }
+
+    ib.on(EventName.pnlSingle, handler)
+    ib.reqPnLSingle(reqId, acctId, '', conId)
+
+    timeout.catch((err) => {
+      ib.removeListener(EventName.pnlSingle, handler)
+      ib.cancelPnLSingle(reqId)
+      reject(err)
+    })
+  })
+}
+
+/**
+ * Request account-level daily PnL.
+ * Returns { dailyPnL, unrealizedPnL, realizedPnL }.
+ */
+export function getAccountPnL(acctId) {
+  ensureConnected()
+  const reqId = Math.floor(Math.random() * 100000) + 1000
+
+  return new Promise((resolve, reject) => {
+    const { timer, promise: timeout } = collectWithTimeout(5000)
+
+    const handler = (id, dailyPnL, unrealizedPnL, realizedPnL) => {
+      if (id !== reqId) return
+      clearTimeout(timer)
+      ib.removeListener(EventName.pnl, handler)
+      ib.cancelPnL(reqId)
+      resolve({ dailyPnL, unrealizedPnL, realizedPnL })
+    }
+
+    ib.on(EventName.pnl, handler)
+    ib.reqPnL(reqId, acctId, '')
+
+    timeout.catch((err) => {
+      ib.removeListener(EventName.pnl, handler)
+      ib.cancelPnL(reqId)
+      reject(err)
+    })
+  })
+}
+
 // ── Open Orders ─────────────────────────────────────────────────────────
 
 export function getOpenOrders() {

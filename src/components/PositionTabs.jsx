@@ -17,6 +17,18 @@ function daysBetween(startDate, endDate) {
 
 // ── Hardcoded fallback data ─────────────────────────────────────────────
 
+// Currency symbol for display on individual cards (local price)
+const CCY_SYMBOLS = { USD: '$', EUR: '€', CAD: 'C$', GBP: '£', CHF: 'CHF ' }
+function ccySym(currency) {
+  return CCY_SYMBOLS[currency] || (currency ? currency + ' ' : '$')
+}
+
+// Approximate FX rates to USD for aggregating invested/profit totals
+const FX_TO_USD = { USD: 1, EUR: 1.08, CAD: 0.73, GBP: 1.27, CHF: 1.13 }
+function toUSD(amount, currency) {
+  return amount * (FX_TO_USD[currency] || 1)
+}
+
 const defaultLongPositions = [
   { ticker: 'FTNT', status: 'open', entryPrice: 84.46, quantity: 10, openDate: '2026-01-12' },
   { ticker: 'ANET', status: 'open', entryPrice: 148.83, quantity: 20, openDate: '2026-01-29' },
@@ -100,7 +112,7 @@ export function setPositionData({ longPositions, closedLongPositions, closedShor
 }
 
 export function calcCurrentlyInvested() {
-  return _longPositions.reduce((sum, p) => sum + p.entryPrice * p.quantity, 0)
+  return _longPositions.reduce((sum, p) => sum + toUSD(p.entryPrice * p.quantity, p.currency), 0)
 }
 
 export function calcProfit() {
@@ -181,6 +193,7 @@ function DaysHolding({ position }) {
 function PositionCard({ position, type, onClick, selected, hidden }) {
   const isLong = type === 'long'
   const isClosed = position.status === 'closed'
+  const sym = ccySym(position.currency)
   const borderColor = selected
     ? isLong ? 'border-blue-400/60 shadow-lg shadow-blue-500/10' : 'border-orange-400/60 shadow-lg shadow-orange-500/10'
     : isLong ? 'border-blue-500/20 hover:border-blue-500/40' : 'border-orange-500/20 hover:border-orange-500/40'
@@ -209,7 +222,7 @@ function PositionCard({ position, type, onClick, selected, hidden }) {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-xs text-slate-500">Entry Price</span>
-          <span className="text-sm font-semibold text-slate-200">${position.entryPrice.toLocaleString()}</span>
+          <span className="text-sm font-semibold text-slate-200">{sym}{position.entryPrice.toLocaleString()}</span>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-xs text-slate-500">Quantity</span>
@@ -219,7 +232,7 @@ function PositionCard({ position, type, onClick, selected, hidden }) {
           <>
             <div className="flex items-center justify-between">
               <span className="text-xs text-slate-500">Exit Price</span>
-              <span className="text-sm font-semibold text-slate-200">${position.exitPrice.toLocaleString()}</span>
+              <span className="text-sm font-semibold text-slate-200">{sym}{position.exitPrice.toLocaleString()}</span>
             </div>
             {position.profitDollar != null && (
               <div className="flex items-center justify-between">
@@ -231,14 +244,33 @@ function PositionCard({ position, type, onClick, selected, hidden }) {
             )}
           </>
         ) : (
-          position.exitPrice != null && (
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-500">Exit Target</span>
-              <span className={`text-sm font-bold ${isLong ? 'text-emerald-400' : 'text-amber-400'}`}>
-                ${position.exitPrice.toLocaleString()}
-              </span>
-            </div>
-          )
+          <>
+            {position.dailyPnL != null && position.dailyPnL !== 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500">Today</span>
+                <span className={`text-sm font-bold ${position.dailyPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {position.dailyPnL >= 0 ? '+' : ''}{((position.dailyPnL / (position.entryPrice * position.quantity)) * 100).toFixed(1)}%{' '}
+                  {position.dailyPnL >= 0 ? '+' : ''}${position.dailyPnL.toFixed(0)}
+                </span>
+              </div>
+            )}
+            {position.unrealizedPnL != null && position.unrealizedPnL !== 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500">Unrealized</span>
+                <span className={`text-sm font-bold ${position.unrealizedPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {position.unrealizedPnL >= 0 ? '+' : ''}${position.unrealizedPnL.toFixed(0)}
+                </span>
+              </div>
+            )}
+            {position.exitPrice != null && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500">Exit Target</span>
+                <span className={`text-sm font-bold ${isLong ? 'text-emerald-400' : 'text-amber-400'}`}>
+                  {sym}{position.exitPrice.toLocaleString()}
+                </span>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -344,11 +376,82 @@ function filterClosed2026(positions) {
   })
 }
 
+/**
+ * Merge hardcoded defaults with live IB data.
+ * - Live positions override hardcoded ones (matched by ticker)
+ * - Hardcoded positions not in live are kept (IB might not show old ones)
+ * - New live positions not in hardcoded are added
+ * - Live closed positions (executions) are merged with hardcoded closed
+ */
+function mergePositions(defaults, livePositions) {
+  if (!livePositions || livePositions.length === 0) return defaults
+
+  // Build a map of live positions by ticker (there can be multiple per ticker)
+  const liveByTicker = {}
+  for (const pos of livePositions) {
+    if (!liveByTicker[pos.ticker]) liveByTicker[pos.ticker] = []
+    liveByTicker[pos.ticker].push(pos)
+  }
+
+  const merged = []
+  const usedLiveTickers = new Set()
+
+  for (const def of defaults) {
+    const liveEntries = liveByTicker[def.ticker]
+    if (liveEntries && liveEntries.length > 0) {
+      // Live overrides this ticker — find best match by quantity or take first
+      if (!usedLiveTickers.has(def.ticker)) {
+        // First time seeing this ticker: add all live entries for it
+        for (const live of liveEntries) {
+          merged.push({
+            ...def,
+            ...live,
+            openDate: def.openDate || live.openDate || '',
+          })
+        }
+        usedLiveTickers.add(def.ticker)
+      }
+      // Skip additional hardcoded entries for same ticker (live has the truth)
+    } else {
+      // No live data for this ticker — keep hardcoded
+      merged.push(def)
+    }
+  }
+
+  // Add any live positions for tickers not in hardcoded defaults
+  for (const [ticker, entries] of Object.entries(liveByTicker)) {
+    if (!usedLiveTickers.has(ticker)) {
+      merged.push(...entries)
+    }
+  }
+
+  return merged
+}
+
 function Positions({ ibkrData }) {
-  const longPositions = ibkrData?.longPositions || defaultLongPositions
-  const shortPositions = ibkrData?.shortPositions || defaultShortPositions
-  const closedLongPositions = filterClosed2026(ibkrData?.closedLongPositions || defaultClosedLongPositions)
-  const closedShortPositions = filterClosed2026(ibkrData?.closedShortPositions || defaultClosedShortPositions)
+  const hasLive = ibkrData && (ibkrData.longPositions || ibkrData.shortPositions)
+
+  // Merge: live data updates hardcoded, hardcoded fills in what live doesn't have
+  const longPositions = hasLive
+    ? mergePositions(defaultLongPositions, ibkrData.longPositions)
+    : defaultLongPositions
+  const shortPositions = hasLive
+    ? mergePositions(defaultShortPositions, ibkrData.shortPositions)
+    : defaultShortPositions
+
+  // Closed positions: merge live executions with hardcoded closed, deduplicate
+  const liveClosedLong = filterClosed2026(ibkrData?.closedLongPositions || [])
+  const liveClosedShort = filterClosed2026(ibkrData?.closedShortPositions || [])
+  const closedLongKeys = new Set(liveClosedLong.map(p => `${p.ticker}|${p.openDate}`))
+  const closedShortKeys = new Set(liveClosedShort.map(p => `${p.ticker}|${p.openDate}`))
+  const closedLongPositions = [
+    ...liveClosedLong,
+    ...filterClosed2026(defaultClosedLongPositions).filter(p => !closedLongKeys.has(`${p.ticker}|${p.openDate}`)),
+  ]
+  const closedShortPositions = [
+    ...liveClosedShort,
+    ...filterClosed2026(defaultClosedShortPositions).filter(p => !closedShortKeys.has(`${p.ticker}|${p.openDate}`)),
+  ]
 
   // Keep the calculation helpers in sync
   setPositionData({ longPositions, closedLongPositions, closedShortPositions })
