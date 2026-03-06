@@ -298,6 +298,10 @@ export function getTradeStats(year) {
  * Updates trades in the DB that have realized_pnl = 0.
  */
 export function calculatePnL() {
+  // Reset all imported trade P&L to 0 first, then recalculate from scratch
+  // This avoids stale P&L values from partial previous runs
+  db.prepare("UPDATE trades SET realized_pnl = 0 WHERE source != 'live'").run()
+
   // Get all trades ordered by date for FIFO matching
   const allTrades = db.prepare(
     'SELECT * FROM trades ORDER BY trade_date ASC, id ASC'
@@ -316,26 +320,23 @@ export function calculatePnL() {
     let updated = 0
 
     for (const [symbol, trades] of Object.entries(bySymbol)) {
-      // FIFO queue: { qty, price } entries
+      // FIFO queues: { qty, price } entries
       const longQueue = []  // buys waiting to be sold
       const shortQueue = [] // shorts waiting to be covered
 
       for (const trade of trades) {
-        // Already has P&L calculated from IB — skip
-        if (trade.realized_pnl !== 0) continue
-
-        // Use local currency price for FIFO matching (mostly USD)
         const tradePrice = trade.price
 
         if (trade.side === 'BOT' || trade.side === 'BUY') {
-          // Check if this is covering a short
           if (shortQueue.length > 0) {
+            // Covering a short position
             let remaining = trade.quantity
             let pnl = 0
 
             while (remaining > 0 && shortQueue.length > 0) {
               const short = shortQueue[0]
               const matched = Math.min(remaining, short.qty)
+              // Short P&L: sold high, bought back low = profit
               pnl += matched * (short.price - tradePrice)
               remaining -= matched
               short.qty -= matched
@@ -348,21 +349,24 @@ export function calculatePnL() {
               updated++
             }
 
+            // Leftover becomes a new long
             if (remaining > 0) {
               longQueue.push({ qty: remaining, price: tradePrice })
             }
           } else {
+            // Opening a long
             longQueue.push({ qty: trade.quantity, price: tradePrice })
           }
         } else if (trade.side === 'SLD' || trade.side === 'SELL') {
-          // Check if this is closing a long
           if (longQueue.length > 0) {
+            // Closing a long position
             let remaining = trade.quantity
             let pnl = 0
 
             while (remaining > 0 && longQueue.length > 0) {
               const long = longQueue[0]
               const matched = Math.min(remaining, long.qty)
+              // Long P&L: sold high minus bought low = profit
               pnl += matched * (tradePrice - long.price)
               remaining -= matched
               long.qty -= matched
@@ -375,10 +379,12 @@ export function calculatePnL() {
               updated++
             }
 
+            // Leftover becomes a new short
             if (remaining > 0) {
               shortQueue.push({ qty: remaining, price: tradePrice })
             }
           } else {
+            // Opening a short
             shortQueue.push({ qty: trade.quantity, price: tradePrice })
           }
         }
