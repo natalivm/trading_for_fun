@@ -255,8 +255,34 @@ app.get('/api/portfolio', async (_req, res, next) => {
 
 // ── CSV Import endpoint ─────────────────────────────────────────────────
 
+// Parse a CSV line respecting quoted fields (handles commas inside quotes)
+function splitCSVLine(line) {
+  const fields = []
+  let current = ''
+  let inQuotes = false
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"'
+        i++ // skip escaped quote
+      } else {
+        inQuotes = !inQuotes
+      }
+    } else if (ch === ',' && !inQuotes) {
+      fields.push(current.trim())
+      current = ''
+    } else {
+      current += ch
+    }
+  }
+  fields.push(current.trim())
+  return fields
+}
+
 function parseCSV(text) {
-  const lines = text.trim().split('\n')
+  const lines = text.trim().split(/\r?\n/)
   if (lines.length < 2) return []
 
   // Find the header line — IB Transaction History prefixes with "Transaction History,Header,..."
@@ -268,7 +294,7 @@ function parseCSV(text) {
     }
   }
 
-  const rawHeaders = lines[headerIdx].split(',').map(h => h.trim().replace(/"/g, ''))
+  const rawHeaders = splitCSVLine(lines[headerIdx]).map(h => h.replace(/"/g, ''))
 
   // Check if this is IB Transaction History format (has "Transaction History,Header,..." prefix)
   const isIBTransactionHistory = rawHeaders[0] === 'Transaction History' && rawHeaders[1] === 'Header'
@@ -277,12 +303,15 @@ function parseCSV(text) {
   const fieldStart = isIBTransactionHistory ? 2 : 0
   const headers = rawHeaders.slice(fieldStart)
 
+  console.log(`CSV Parser: ${isIBTransactionHistory ? 'IB Transaction History' : 'Generic CSV'} format detected`)
+  console.log(`CSV Parser: Headers found: ${headers.join(', ')}`)
+
   const rows = []
   for (let i = headerIdx + 1; i < lines.length; i++) {
     const line = lines[i].trim()
     if (!line) continue
 
-    const allValues = line.split(',').map(v => v.trim().replace(/"/g, ''))
+    const allValues = splitCSVLine(line).map(v => v.replace(/"/g, ''))
 
     // For IB format, skip rows that aren't "Data" rows
     if (isIBTransactionHistory) {
@@ -295,6 +324,11 @@ function parseCSV(text) {
       row[headers[j]] = values[j] || ''
     }
     rows.push(row)
+  }
+
+  console.log(`CSV Parser: Parsed ${rows.length} data rows`)
+  if (rows.length > 0) {
+    console.log(`CSV Parser: Sample row:`, JSON.stringify(rows[0]))
   }
 
   return rows
@@ -385,12 +419,21 @@ app.post('/api/import', upload.single('file'), (req, res) => {
       return res.status(400).json({ error: 'CSV file is empty or has no data rows.' })
     }
 
-    const trades = rows.map(mapTradeRow).filter(Boolean)
+    const trades = rows.map((row, idx) => {
+      const result = mapTradeRow(row)
+      if (!result && idx < 3) {
+        console.log(`CSV Parser: Row ${idx} could not be mapped:`, JSON.stringify(row))
+      }
+      return result
+    }).filter(Boolean)
+
+    console.log(`CSV Parser: ${trades.length} of ${rows.length} rows mapped to trades`)
 
     if (trades.length === 0) {
       return res.status(400).json({
         error: 'Could not parse any trades. Make sure the CSV has Symbol and Date columns.',
         sampleHeaders: Object.keys(rows[0]),
+        sampleRow: rows[0],
       })
     }
 
