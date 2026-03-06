@@ -107,6 +107,22 @@ export function calcProfit() {
   return _closedPositions.reduce((sum, p) => sum + (p.profitDollar || 0), 0)
 }
 
+// ── Helper: calculate % gain/loss ───────────────────────────────────────
+
+function calcPnlPercent(position) {
+  if (position.status === 'closed' && position.exitPrice && position.entryPrice) {
+    return ((position.exitPrice - position.entryPrice) / position.entryPrice) * 100
+  }
+  if (position.profitPercent != null && position.profitPercent !== 0) {
+    return position.profitPercent
+  }
+  if (position.profitDollar != null && position.entryPrice && position.quantity) {
+    const totalCost = position.entryPrice * position.quantity
+    if (totalCost > 0) return (position.profitDollar / totalCost) * 100
+  }
+  return null
+}
+
 // ── Components ──────────────────────────────────────────────────────────
 
 function GlowDot({ color }) {
@@ -131,6 +147,17 @@ function StatusTag({ status }) {
         {status}
       </span>
     </div>
+  )
+}
+
+function PnlBadge({ position }) {
+  const pct = calcPnlPercent(position)
+  if (pct === null) return null
+  const isPositive = pct >= 0
+  return (
+    <span className={`rounded-md px-2 py-0.5 text-xs font-bold ${isPositive ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+      {isPositive ? '+' : ''}{pct.toFixed(1)}%
+    </span>
   )
 }
 
@@ -176,11 +203,7 @@ function PositionCard({ position, type, onClick, selected, hidden }) {
 
       <div className="mb-3 flex items-center justify-between">
         <span className="text-xl font-bold text-slate-100">{position.ticker}</span>
-        {isClosed && (
-          <span className={`text-sm font-bold ${position.profitDollar >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-            {position.profitPercent >= 0 ? '+' : ''}{position.profitPercent.toFixed(1)}% = {position.profitDollar >= 0 ? '+' : ''}${Math.abs(position.profitDollar).toLocaleString()}
-          </span>
-        )}
+        <PnlBadge position={position} />
       </div>
 
       <div className="space-y-2">
@@ -193,10 +216,20 @@ function PositionCard({ position, type, onClick, selected, hidden }) {
           <span className="text-sm font-semibold text-slate-200">{position.quantity} shares</span>
         </div>
         {isClosed ? (
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500">Exit Price</span>
-            <span className="text-sm font-semibold text-slate-200">${position.exitPrice.toLocaleString()}</span>
-          </div>
+          <>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-500">Exit Price</span>
+              <span className="text-sm font-semibold text-slate-200">${position.exitPrice.toLocaleString()}</span>
+            </div>
+            {position.profitDollar != null && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500">P&L</span>
+                <span className={`text-sm font-bold ${position.profitDollar >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {position.profitDollar >= 0 ? '+' : ''}${position.profitDollar.toLocaleString()}
+                </span>
+              </div>
+            )}
+          </>
         ) : (
           position.exitPrice != null && (
             <div className="flex items-center justify-between">
@@ -303,11 +336,19 @@ function PositionList({ longs, shorts, selectedTicker, onSelectTicker }) {
   )
 }
 
+// Filter to only include 2026 closed positions
+function filterClosed2026(positions) {
+  return positions.filter((p) => {
+    const date = p.closeDate || p.openDate || ''
+    return date.startsWith('2026')
+  })
+}
+
 function Positions({ ibkrData }) {
   const longPositions = ibkrData?.longPositions || defaultLongPositions
   const shortPositions = ibkrData?.shortPositions || defaultShortPositions
-  const closedLongPositions = ibkrData?.closedLongPositions || defaultClosedLongPositions
-  const closedShortPositions = ibkrData?.closedShortPositions || defaultClosedShortPositions
+  const closedLongPositions = filterClosed2026(ibkrData?.closedLongPositions || defaultClosedLongPositions)
+  const closedShortPositions = filterClosed2026(ibkrData?.closedShortPositions || defaultClosedShortPositions)
 
   // Keep the calculation helpers in sync
   setPositionData({ longPositions, closedLongPositions, closedShortPositions })
