@@ -17,6 +17,18 @@ function daysBetween(startDate, endDate) {
 
 // ── Hardcoded fallback data ─────────────────────────────────────────────
 
+// Currency symbol for display on individual cards (local price)
+const CCY_SYMBOLS = { USD: '$', EUR: '€', CAD: 'C$', GBP: '£', CHF: 'CHF ' }
+function ccySym(currency) {
+  return CCY_SYMBOLS[currency] || (currency ? currency + ' ' : '$')
+}
+
+// Approximate FX rates to USD for aggregating invested/profit totals
+const FX_TO_USD = { USD: 1, EUR: 1.08, CAD: 0.73, GBP: 1.27, CHF: 1.13 }
+function toUSD(amount, currency) {
+  return amount * (FX_TO_USD[currency] || 1)
+}
+
 const defaultLongPositions = [
   { ticker: 'FTNT', status: 'open', entryPrice: 84.46, quantity: 10, openDate: '2026-01-12' },
   { ticker: 'ANET', status: 'open', entryPrice: 148.83, quantity: 20, openDate: '2026-01-29' },
@@ -100,7 +112,7 @@ export function setPositionData({ longPositions, closedLongPositions, closedShor
 }
 
 export function calcCurrentlyInvested() {
-  return _longPositions.reduce((sum, p) => sum + p.entryPrice * p.quantity, 0)
+  return _longPositions.reduce((sum, p) => sum + toUSD(p.entryPrice * p.quantity, p.currency), 0)
 }
 
 export function calcProfit() {
@@ -181,6 +193,7 @@ function DaysHolding({ position }) {
 function PositionCard({ position, type, onClick, selected, hidden }) {
   const isLong = type === 'long'
   const isClosed = position.status === 'closed'
+  const sym = ccySym(position.currency)
   const borderColor = selected
     ? isLong ? 'border-blue-400/60 shadow-lg shadow-blue-500/10' : 'border-orange-400/60 shadow-lg shadow-orange-500/10'
     : isLong ? 'border-blue-500/20 hover:border-blue-500/40' : 'border-orange-500/20 hover:border-orange-500/40'
@@ -209,7 +222,7 @@ function PositionCard({ position, type, onClick, selected, hidden }) {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-xs text-slate-500">Entry Price</span>
-          <span className="text-sm font-semibold text-slate-200">${position.entryPrice.toLocaleString()}</span>
+          <span className="text-sm font-semibold text-slate-200">{sym}{position.entryPrice.toLocaleString()}</span>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-xs text-slate-500">Quantity</span>
@@ -219,7 +232,7 @@ function PositionCard({ position, type, onClick, selected, hidden }) {
           <>
             <div className="flex items-center justify-between">
               <span className="text-xs text-slate-500">Exit Price</span>
-              <span className="text-sm font-semibold text-slate-200">${position.exitPrice.toLocaleString()}</span>
+              <span className="text-sm font-semibold text-slate-200">{sym}{position.exitPrice.toLocaleString()}</span>
             </div>
             {position.profitDollar != null && (
               <div className="flex items-center justify-between">
@@ -253,7 +266,7 @@ function PositionCard({ position, type, onClick, selected, hidden }) {
               <div className="flex items-center justify-between">
                 <span className="text-xs text-slate-500">Exit Target</span>
                 <span className={`text-sm font-bold ${isLong ? 'text-emerald-400' : 'text-amber-400'}`}>
-                  ${position.exitPrice.toLocaleString()}
+                  {sym}{position.exitPrice.toLocaleString()}
                 </span>
               </div>
             )}
