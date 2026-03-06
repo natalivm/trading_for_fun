@@ -41,12 +41,12 @@ function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-10 border-t border-slate-800 bg-slate-950/90 backdrop-blur-lg safe-bottom">
-      <div className="mx-auto flex max-w-5xl items-center justify-around px-2 py-1">
+      <div className="mx-auto flex max-w-5xl items-center justify-start gap-1 px-2 py-1">
         {navItems.map((item, i) => (
           <button
             key={item.label}
             onClick={() => setActive(i)}
-            className={`flex flex-col items-center gap-0.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+            className={`flex w-16 flex-col items-center gap-0.5 rounded-lg py-1.5 text-xs font-medium transition ${
               i === active
                 ? 'text-emerald-400'
                 : 'text-slate-500 hover:text-slate-300'
