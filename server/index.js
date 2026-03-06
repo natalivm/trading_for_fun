@@ -397,12 +397,18 @@ function mapTradeRow(row) {
   if (normalizedSide === 'SELL' || normalizedSide === 'S') normalizedSide = 'SLD'
   if (normalizedSide === 'BUY' || normalizedSide === 'B') normalizedSide = 'BOT'
 
-  // For IB Transaction History: use Gross Amount as a proxy for P&L if no explicit P&L column
-  // Gross Amount is positive for sells, negative for buys
   const realizedPnl = parseFloat(pnl) || 0
-
   const parsedQty = Math.abs(parseFloat(qty) || 0)
   const parsedPrice = Math.abs(parseFloat(price) || 0)
+  const parsedGross = parseFloat(grossAmount) || 0
+  const parsedCommission = Math.abs(parseFloat(commission) || 0)
+
+  // The Gross Amount is in the account's base currency (EUR).
+  // For consistent USD-based P&L, store the local-currency price for USD trades,
+  // and for non-USD trades derive the USD-equivalent price from gross amount.
+  // IB base currency is EUR, so gross = qty * price_in_local * fx_to_eur
+  // We want everything in the trade's local currency (mostly USD).
+  // Just store the price as-is — it's already in the trade's currency.
 
   return {
     account_id: account || null,
@@ -411,7 +417,8 @@ function mapTradeRow(row) {
     side: normalizedSide,
     quantity: parsedQty,
     price: parsedPrice,
-    commission: Math.abs(parseFloat(commission) || 0),
+    gross_amount: parsedGross,
+    commission: parsedCommission,
     realized_pnl: realizedPnl,
     currency: currency || 'USD',
     sec_type: 'STK',

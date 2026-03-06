@@ -164,6 +164,7 @@ function AdminPanel() {
                 <th className="px-3 py-2 text-right text-slate-500">Side</th>
                 <th className="px-3 py-2 text-right text-slate-500">Qty</th>
                 <th className="px-3 py-2 text-right text-slate-500">Price</th>
+                <th className="px-3 py-2 text-center text-slate-500">Ccy</th>
                 <th className="px-3 py-2 text-right text-slate-500">P&L</th>
               </tr>
             </thead>
@@ -176,7 +177,8 @@ function AdminPanel() {
                     {t.side === 'SLD' || t.side === 'S' ? 'SELL' : 'BUY'}
                   </td>
                   <td className="px-3 py-2 text-right text-slate-300">{t.quantity}</td>
-                  <td className="px-3 py-2 text-right text-slate-300">${t.price?.toLocaleString()}</td>
+                  <td className="px-3 py-2 text-right text-slate-300">{t.price?.toLocaleString()}</td>
+                  <td className="px-3 py-2 text-center text-slate-500 text-[10px]">{t.currency || 'USD'}</td>
                   <td className={`px-3 py-2 text-right font-bold ${(t.realized_pnl || 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                     {(t.realized_pnl || 0) >= 0 ? '+' : ''}${(t.realized_pnl || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </td>

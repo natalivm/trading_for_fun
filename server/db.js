@@ -66,6 +66,7 @@ db.exec(`
     side TEXT NOT NULL,
     quantity REAL NOT NULL,
     price REAL NOT NULL,
+    gross_amount REAL DEFAULT 0,
     commission REAL DEFAULT 0,
     realized_pnl REAL DEFAULT 0,
     currency TEXT DEFAULT 'USD',
@@ -84,6 +85,12 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_trades_symbol ON trades(symbol);
   CREATE INDEX IF NOT EXISTS idx_trades_exec_id ON trades(exec_id);
 `)
+
+// ── Migrations ──────────────────────────────────────────────────────────
+// Add gross_amount column if missing (for existing DBs)
+try {
+  db.exec('ALTER TABLE trades ADD COLUMN gross_amount REAL DEFAULT 0')
+} catch { /* column already exists */ }
 
 // ── Prepared statements ─────────────────────────────────────────────────
 
@@ -114,8 +121,8 @@ const getExecutionsBySnapshot = db.prepare(
 )
 
 const insertTrade = db.prepare(`
-  INSERT OR IGNORE INTO trades (account_id, symbol, trade_date, side, quantity, price, commission, realized_pnl, currency, sec_type, exchange, order_id, exec_id, source)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT OR IGNORE INTO trades (account_id, symbol, trade_date, side, quantity, price, gross_amount, commission, realized_pnl, currency, sec_type, exchange, order_id, exec_id, source)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `)
 
 // ── Snapshot API ────────────────────────────────────────────────────────
@@ -200,6 +207,7 @@ export function importTrades(trades, source = 'import') {
         t.side,
         Math.abs(t.quantity || 0),
         Math.abs(t.price || 0),
+        t.gross_amount || 0,
         t.commission || 0,
         t.realized_pnl || 0,
         t.currency || 'USD',
@@ -228,6 +236,7 @@ export function saveLiveExecutions(executions, accountId) {
     side: exec.side,
     quantity: exec.shares,
     price: exec.price,
+    gross_amount: 0,
     commission: 0,
     realized_pnl: exec.realizedPnL || 0,
     currency: exec.currency || 'USD',
@@ -315,6 +324,9 @@ export function calculatePnL() {
         // Already has P&L calculated from IB — skip
         if (trade.realized_pnl !== 0) continue
 
+        // Use local currency price for FIFO matching (mostly USD)
+        const tradePrice = trade.price
+
         if (trade.side === 'BOT' || trade.side === 'BUY') {
           // Check if this is covering a short
           if (shortQueue.length > 0) {
@@ -324,26 +336,23 @@ export function calculatePnL() {
             while (remaining > 0 && shortQueue.length > 0) {
               const short = shortQueue[0]
               const matched = Math.min(remaining, short.qty)
-              // Short P&L: sold high, bought back low = profit
-              pnl += matched * (short.price - trade.price)
+              pnl += matched * (short.price - tradePrice)
               remaining -= matched
               short.qty -= matched
               if (short.qty <= 0) shortQueue.shift()
             }
 
             if (pnl !== 0) {
-              pnl -= trade.commission
+              pnl -= Math.abs(trade.commission)
               updatePnl.run(pnl, trade.id)
               updated++
             }
 
-            // Any leftover is a new long position
             if (remaining > 0) {
-              longQueue.push({ qty: remaining, price: trade.price })
+              longQueue.push({ qty: remaining, price: tradePrice })
             }
           } else {
-            // Opening a long
-            longQueue.push({ qty: trade.quantity, price: trade.price })
+            longQueue.push({ qty: trade.quantity, price: tradePrice })
           }
         } else if (trade.side === 'SLD' || trade.side === 'SELL') {
           // Check if this is closing a long
@@ -354,26 +363,23 @@ export function calculatePnL() {
             while (remaining > 0 && longQueue.length > 0) {
               const long = longQueue[0]
               const matched = Math.min(remaining, long.qty)
-              // Long P&L: sold high minus bought low = profit
-              pnl += matched * (trade.price - long.price)
+              pnl += matched * (tradePrice - long.price)
               remaining -= matched
               long.qty -= matched
               if (long.qty <= 0) longQueue.shift()
             }
 
             if (pnl !== 0) {
-              pnl -= trade.commission
+              pnl -= Math.abs(trade.commission)
               updatePnl.run(pnl, trade.id)
               updated++
             }
 
-            // Any leftover is a new short position
             if (remaining > 0) {
-              shortQueue.push({ qty: remaining, price: trade.price })
+              shortQueue.push({ qty: remaining, price: tradePrice })
             }
           } else {
-            // Opening a short
-            shortQueue.push({ qty: trade.quantity, price: trade.price })
+            shortQueue.push({ qty: trade.quantity, price: tradePrice })
           }
         }
       }
