@@ -49,6 +49,7 @@ function App() {
           loading={loading}
           error={error}
           onRefresh={refresh}
+          portfolio={portfolio}
         />
         {activeTab === 'client' ? (
           <Positions ibkrData={portfolio} />

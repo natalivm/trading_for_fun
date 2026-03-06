@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback } from 'react'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
+// Static JSON path — works on both dev (Vite serves public/) and GitHub Pages
+const STATIC_DATA_URL = `${import.meta.env.BASE_URL}data/portfolio.json`
+
 export function useIBKR() {
   const [portfolio, setPortfolio] = useState(null)
   const [authStatus, setAuthStatus] = useState(null)
@@ -45,6 +48,19 @@ export function useIBKR() {
     }
   }, [fetchJson])
 
+  // Fallback: load from static JSON file (for GitHub Pages / offline)
+  const loadStaticData = useCallback(async () => {
+    try {
+      const res = await fetch(STATIC_DATA_URL)
+      if (!res.ok) return false
+      const data = await res.json()
+      setPortfolio({ ...data, static: true })
+      return true
+    } catch {
+      return false
+    }
+  }, [])
+
   const refresh = useCallback(async () => {
     // Keep the session alive
     try {
@@ -62,13 +78,19 @@ export function useIBKR() {
       if (!cancelled && authed) {
         await fetchPortfolio()
       } else if (!cancelled) {
-        setLoading(false)
+        // Server offline or not authenticated — try static JSON
+        const loaded = await loadStaticData()
+        if (!loaded) {
+          setLoading(false)
+        } else {
+          setLoading(false)
+        }
       }
     }
 
     init()
     return () => { cancelled = true }
-  }, [checkAuth, fetchPortfolio])
+  }, [checkAuth, fetchPortfolio, loadStaticData])
 
   // Keep-alive every 55 seconds (gateway times out at 60s)
   useEffect(() => {
