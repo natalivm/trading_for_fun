@@ -231,14 +231,33 @@ function PositionCard({ position, type, onClick, selected, hidden }) {
             )}
           </>
         ) : (
-          position.exitPrice != null && (
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-500">Exit Target</span>
-              <span className={`text-sm font-bold ${isLong ? 'text-emerald-400' : 'text-amber-400'}`}>
-                ${position.exitPrice.toLocaleString()}
-              </span>
-            </div>
-          )
+          <>
+            {position.dailyPnL != null && position.dailyPnL !== 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500">Today</span>
+                <span className={`text-sm font-bold ${position.dailyPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {position.dailyPnL >= 0 ? '+' : ''}{((position.dailyPnL / (position.entryPrice * position.quantity)) * 100).toFixed(1)}%{' '}
+                  {position.dailyPnL >= 0 ? '+' : ''}${position.dailyPnL.toFixed(0)}
+                </span>
+              </div>
+            )}
+            {position.unrealizedPnL != null && position.unrealizedPnL !== 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500">Unrealized</span>
+                <span className={`text-sm font-bold ${position.unrealizedPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {position.unrealizedPnL >= 0 ? '+' : ''}${position.unrealizedPnL.toFixed(0)}
+                </span>
+              </div>
+            )}
+            {position.exitPrice != null && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-500">Exit Target</span>
+                <span className={`text-sm font-bold ${isLong ? 'text-emerald-400' : 'text-amber-400'}`}>
+                  ${position.exitPrice.toLocaleString()}
+                </span>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
