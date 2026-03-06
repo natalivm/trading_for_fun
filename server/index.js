@@ -2,6 +2,7 @@ import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
 import * as ibkr from './ibkr.js'
+import * as db from './db.js'
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -88,76 +89,110 @@ app.get('/api/trades', async (req, res, next) => {
 
 // ── Combined endpoint: builds the same shape the frontend already uses ──
 
-app.get('/api/portfolio', async (_req, res, next) => {
-  try {
-    // 1. Get accounts
-    const accountsData = await ibkr.getAccounts()
-    const acctId = accountsData.accounts?.[0]
-    if (!acctId) {
-      return res.status(400).json({ error: 'No IBKR account found. Make sure you are authenticated in the IB Gateway.' })
+// Helper: transform raw positions/executions into frontend format
+function transformPortfolio(acctId, positions, executions) {
+  const longPositions = []
+  const shortPositions = []
+
+  for (const pos of positions) {
+    const entry = {
+      ticker: pos.symbol,
+      status: 'open',
+      entryPrice: Math.abs(pos.avg_cost ?? pos.avgCost ?? 0),
+      quantity: Math.abs(pos.position || 0),
+      openDate: '',
     }
 
-    // 2. Fetch positions + executions in parallel
-    const [positions, executions] = await Promise.all([
-      ibkr.getPositions(),
-      ibkr.getExecutions(),
-    ])
-
-    // 3. Transform positions into the app's format
-    const longPositions = []
-    const shortPositions = []
-
-    for (const pos of positions) {
-      const entry = {
-        ticker: pos.symbol,
-        status: 'open',
-        entryPrice: Math.abs(pos.avgCost || 0),
-        quantity: Math.abs(pos.position || 0),
-        openDate: '',
-      }
-
-      if (pos.position > 0) {
-        longPositions.push(entry)
-      } else if (pos.position < 0) {
-        shortPositions.push(entry)
-      }
+    if (pos.position > 0) {
+      longPositions.push(entry)
+    } else if (pos.position < 0) {
+      shortPositions.push(entry)
     }
-
-    // 4. Transform executions into closed positions
-    const closedLongPositions = []
-    const closedShortPositions = []
-
-    for (const exec of executions) {
-      const closed = {
-        ticker: exec.symbol,
-        status: 'closed',
-        entryPrice: Math.abs(exec.price || 0),
-        quantity: Math.abs(exec.shares || 0),
-        exitPrice: Math.abs(exec.avgPrice || exec.price || 0),
-        profitDollar: exec.realizedPnL || 0,
-        profitPercent: 0,
-        openDate: exec.time || '',
-        closeDate: exec.time || '',
-      }
-
-      // SLD = sold (closing a long), BOT = bought (closing a short)
-      if (exec.side === 'SLD' && exec.realizedPnL) {
-        closedLongPositions.push(closed)
-      } else if (exec.side === 'BOT' && exec.realizedPnL) {
-        closedShortPositions.push(closed)
-      }
-    }
-
-    res.json({
-      accountId: acctId,
-      longPositions,
-      shortPositions,
-      closedLongPositions,
-      closedShortPositions,
-    })
-  } catch (err) {
-    next(err)
   }
+
+  const closedLongPositions = []
+  const closedShortPositions = []
+
+  for (const exec of executions) {
+    const pnl = exec.realized_pnl ?? exec.realizedPnL
+    const closed = {
+      ticker: exec.symbol,
+      status: 'closed',
+      entryPrice: Math.abs(exec.price || 0),
+      quantity: Math.abs(exec.shares || 0),
+      exitPrice: Math.abs(exec.avg_price ?? exec.avgPrice ?? exec.price ?? 0),
+      profitDollar: pnl || 0,
+      profitPercent: 0,
+      openDate: exec.time || '',
+      closeDate: exec.time || '',
+    }
+
+    if (exec.side === 'SLD' && pnl) {
+      closedLongPositions.push(closed)
+    } else if (exec.side === 'BOT' && pnl) {
+      closedShortPositions.push(closed)
+    }
+  }
+
+  return { accountId: acctId, longPositions, shortPositions, closedLongPositions, closedShortPositions }
+}
+
+app.get('/api/portfolio', async (_req, res, next) => {
+  // Try live data from IB Gateway
+  if (ibkr.isConnected()) {
+    try {
+      const accountsData = await ibkr.getAccounts()
+      const acctId = accountsData.accounts?.[0]
+      if (!acctId) {
+        return res.status(400).json({ error: 'No IBKR account found.' })
+      }
+
+      const [positions, executions] = await Promise.all([
+        ibkr.getPositions(),
+        ibkr.getExecutions(),
+      ])
+
+      // Save snapshot to database
+      try {
+        db.saveSnapshot(acctId, positions, executions)
+        console.log(`Saved portfolio snapshot for ${acctId}`)
+      } catch (dbErr) {
+        console.error('Failed to save snapshot:', dbErr.message)
+      }
+
+      return res.json(transformPortfolio(acctId, positions, executions))
+    } catch (err) {
+      console.error('Live fetch failed, falling back to cached data:', err.message)
+    }
+  }
+
+  // Fall back to cached data from SQLite
+  const cached = db.getLatest()
+  if (cached) {
+    console.log(`Serving cached data from ${cached.fetchedAt}`)
+    const result = transformPortfolio(cached.accountId, cached.positions, cached.executions)
+    result.cached = true
+    result.cachedAt = cached.fetchedAt
+    return res.json(result)
+  }
+
+  res.status(503).json({ error: 'IB Gateway is offline and no cached data available.' })
+})
+
+// ── History endpoint ────────────────────────────────────────────────────
+
+app.get('/api/history', async (req, res) => {
+  const limit = Number(req.query.limit) || 100
+  const snapshots = db.getSnapshotHistory(limit)
+  res.json(snapshots)
+})
+
+app.get('/api/history/:snapshotId', async (req, res) => {
+  const snapshot = db.getSnapshotById(Number(req.params.snapshotId))
+  if (!snapshot) {
+    return res.status(404).json({ error: 'Snapshot not found' })
+  }
+  res.json(transformPortfolio(snapshot.accountId, snapshot.positions, snapshot.executions))
 })
 
 // ── Error handler ───────────────────────────────────────────────────────
