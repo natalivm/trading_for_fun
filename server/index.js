@@ -259,11 +259,37 @@ function parseCSV(text) {
   const lines = text.trim().split('\n')
   if (lines.length < 2) return []
 
-  const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''))
-  const rows = []
+  // Find the header line — IB Transaction History prefixes with "Transaction History,Header,..."
+  let headerIdx = 0
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].includes(',Header,') || lines[i].includes(',header,')) {
+      headerIdx = i
+      break
+    }
+  }
 
-  for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''))
+  const rawHeaders = lines[headerIdx].split(',').map(h => h.trim().replace(/"/g, ''))
+
+  // Check if this is IB Transaction History format (has "Transaction History,Header,..." prefix)
+  const isIBTransactionHistory = rawHeaders[0] === 'Transaction History' && rawHeaders[1] === 'Header'
+
+  // Get actual field headers (skip the prefix columns for IB format)
+  const fieldStart = isIBTransactionHistory ? 2 : 0
+  const headers = rawHeaders.slice(fieldStart)
+
+  const rows = []
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    const line = lines[i].trim()
+    if (!line) continue
+
+    const allValues = line.split(',').map(v => v.trim().replace(/"/g, ''))
+
+    // For IB format, skip rows that aren't "Data" rows
+    if (isIBTransactionHistory) {
+      if (allValues[1] !== 'Data') continue
+    }
+
+    const values = allValues.slice(fieldStart)
     const row = {}
     for (let j = 0; j < headers.length; j++) {
       row[headers[j]] = values[j] || ''
@@ -274,29 +300,31 @@ function parseCSV(text) {
   return rows
 }
 
-// Map common IB Flex Query CSV column names to our schema
-function mapFlexRow(row) {
-  // Common Flex Query column names (case-insensitive matching)
+function mapTradeRow(row) {
+  // Flexible column name matching
   const get = (keys) => {
     for (const k of keys) {
-      const match = Object.keys(row).find(h => h.toLowerCase().replace(/[^a-z]/g, '') === k.toLowerCase().replace(/[^a-z]/g, ''))
-      if (match && row[match]) return row[match]
+      const kNorm = k.toLowerCase().replace(/[^a-z]/g, '')
+      const match = Object.keys(row).find(h => h.toLowerCase().replace(/[^a-z]/g, '') === kNorm)
+      if (match && row[match] !== '') return row[match]
     }
     return ''
   }
 
   const symbol = get(['Symbol', 'symbol', 'UnderlyingSymbol'])
-  const dateTime = get(['DateTime', 'TradeDate', 'Date/Time', 'Trade Date', 'date', 'tradeDate', 'Date'])
-  const side = get(['Buy/Sell', 'Side', 'BuySell', 'side', 'Action'])
-  const qty = get(['Quantity', 'quantity', 'Shares', 'shares', 'Qty'])
-  const price = get(['TradePrice', 'Price', 'price', 'T. Price', 'Trade Price'])
-  const commission = get(['IBCommission', 'Commission', 'commission', 'Comm'])
-  const pnl = get(['RealizedPnL', 'Realized P/L', 'FifoPnlRealized', 'realized_pnl', 'Realized P&L', 'MTM P/L'])
-  const currency = get(['CurrencyPrimary', 'Currency', 'currency'])
-  const account = get(['AccountId', 'Account', 'account', 'account_id'])
+  const dateTime = get(['Date', 'DateTime', 'TradeDate', 'Date/Time', 'Trade Date'])
+  const transType = get(['Transaction Type', 'TransactionType', 'Buy/Sell', 'Side', 'BuySell', 'Action'])
+  const qty = get(['Quantity', 'quantity', 'Shares', 'Qty'])
+  const price = get(['Price', 'TradePrice', 'Trade Price'])
+  const commission = get(['Commission', 'IBCommission', 'Comm'])
+  const grossAmount = get(['Gross Amount', 'GrossAmount', 'Gross'])
+  const netAmount = get(['Net Amount', 'NetAmount', 'Net'])
+  const pnl = get(['RealizedPnL', 'Realized P/L', 'Realized P&L', 'FifoPnlRealized', 'MTM P/L'])
+  const currency = get(['Price Currency', 'CurrencyPrimary', 'Currency'])
+  const account = get(['Account', 'AccountId', 'account_id'])
+  const description = get(['Description', 'description'])
   const execId = get(['ExecID', 'exec_id', 'ExecutionID', 'IBExecID'])
   const orderId = get(['OrderID', 'order_id', 'IBOrderID'])
-  const secType = get(['AssetClass', 'SecType', 'sec_type', 'Asset Class'])
 
   if (!symbol || !dateTime) return null
 
@@ -315,25 +343,32 @@ function mapFlexRow(row) {
     tradeDate = dateTime.slice(0, 10)
   }
 
-  // Normalize side
-  let normalizedSide = side.toUpperCase()
+  // Normalize side from Transaction Type
+  let normalizedSide = transType.toUpperCase()
   if (normalizedSide === 'SELL' || normalizedSide === 'S') normalizedSide = 'SLD'
   if (normalizedSide === 'BUY' || normalizedSide === 'B') normalizedSide = 'BOT'
+
+  // For IB Transaction History: use Gross Amount as a proxy for P&L if no explicit P&L column
+  // Gross Amount is positive for sells, negative for buys
+  const realizedPnl = parseFloat(pnl) || 0
+
+  const parsedQty = Math.abs(parseFloat(qty) || 0)
+  const parsedPrice = Math.abs(parseFloat(price) || 0)
 
   return {
     account_id: account || null,
     symbol,
     trade_date: tradeDate,
     side: normalizedSide,
-    quantity: parseFloat(qty) || 0,
-    price: parseFloat(price) || 0,
-    commission: parseFloat(commission) || 0,
-    realized_pnl: parseFloat(pnl) || 0,
+    quantity: parsedQty,
+    price: parsedPrice,
+    commission: Math.abs(parseFloat(commission) || 0),
+    realized_pnl: realizedPnl,
     currency: currency || 'USD',
-    sec_type: secType || 'STK',
+    sec_type: 'STK',
     exchange: null,
     order_id: orderId || null,
-    exec_id: execId || `import-${symbol}-${tradeDate}-${normalizedSide}-${qty}-${price}`,
+    exec_id: execId || `import-${symbol}-${tradeDate}-${normalizedSide}-${parsedQty}-${parsedPrice}`,
   }
 }
 
@@ -350,7 +385,7 @@ app.post('/api/import', upload.single('file'), (req, res) => {
       return res.status(400).json({ error: 'CSV file is empty or has no data rows.' })
     }
 
-    const trades = rows.map(mapFlexRow).filter(Boolean)
+    const trades = rows.map(mapTradeRow).filter(Boolean)
 
     if (trades.length === 0) {
       return res.status(400).json({
@@ -359,7 +394,7 @@ app.post('/api/import', upload.single('file'), (req, res) => {
       })
     }
 
-    const imported = db.importTrades(trades, 'flex-import')
+    const imported = db.importTrades(trades, 'ib-transaction-history')
 
     res.json({
       message: `Imported ${imported} new trades (${trades.length - imported} duplicates skipped)`,
