@@ -396,11 +396,15 @@ app.post('/api/import', upload.single('file'), (req, res) => {
 
     const imported = db.importTrades(trades, 'ib-transaction-history')
 
+    // Auto-calculate P&L using FIFO matching for trades missing it
+    const pnlUpdated = db.calculatePnL()
+
     res.json({
-      message: `Imported ${imported} new trades (${trades.length - imported} duplicates skipped)`,
+      message: `Imported ${imported} new trades (${trades.length - imported} duplicates skipped). Calculated P&L for ${pnlUpdated} trades.`,
       imported,
       total: trades.length,
       skipped: trades.length - imported,
+      pnlCalculated: pnlUpdated,
     })
   } catch (err) {
     console.error('Import error:', err)
@@ -416,6 +420,15 @@ app.get('/api/db/trades', (req, res) => {
   const limit = Number(req.query.limit) || 1000
   const trades = db.getTrades({ year, symbol, limit })
   res.json(trades)
+})
+
+app.post('/api/db/recalculate-pnl', (req, res) => {
+  try {
+    const updated = db.calculatePnL()
+    res.json({ message: `Recalculated P&L for ${updated} trades`, updated })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 app.get('/api/db/stats', (req, res) => {
