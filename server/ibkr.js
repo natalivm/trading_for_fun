@@ -1,82 +1,281 @@
 /**
- * IBKR Client Portal API service layer.
+ * IBKR TWS API service layer using @stoqey/ib.
  *
- * The Client Portal Gateway must be running locally (default https://localhost:5000).
- * Download it from: https://www.interactivebrokers.com/en/trading/ib-api.php
- *
- * All requests are proxied through this service so that the browser never
- * talks to the gateway directly (avoids CORS / self-signed cert issues).
+ * Connects to IB Gateway via the TWS socket protocol (default port 4001).
+ * Replaces the previous Client Portal REST approach.
  */
 
-const GATEWAY_URL = process.env.IBKR_GATEWAY_URL || 'https://localhost:5000'
+import { IBApi, EventName, SecType } from '@stoqey/ib'
 
-async function ibkrFetch(path, options = {}) {
-  const url = `${GATEWAY_URL}/v1/api${path}`
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    // The IB Gateway uses a self-signed certificate
-    ...(process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0'
-      ? {}
-      : {}),
+const TWS_HOST = process.env.TWS_HOST || '127.0.0.1'
+const TWS_PORT = Number(process.env.TWS_PORT) || 4001
+const CLIENT_ID = Number(process.env.TWS_CLIENT_ID) || 1
+
+let ib = null
+let connected = false
+let accountId = null
+
+// ── Connection ──────────────────────────────────────────────────────────
+
+export function connect() {
+  return new Promise((resolve, reject) => {
+    if (ib && connected) return resolve()
+
+    ib = new IBApi({ host: TWS_HOST, port: TWS_PORT, clientId: CLIENT_ID })
+
+    const timeout = setTimeout(() => {
+      reject(new Error(`Connection timeout — could not reach IB Gateway at ${TWS_HOST}:${TWS_PORT}`))
+    }, 10_000)
+
+    ib.on(EventName.connected, () => {
+      connected = true
+      clearTimeout(timeout)
+      console.log(`Connected to IB Gateway at ${TWS_HOST}:${TWS_PORT}`)
+      resolve()
+    })
+
+    ib.on(EventName.disconnected, () => {
+      connected = false
+      accountId = null
+      console.log('Disconnected from IB Gateway')
+    })
+
+    ib.on(EventName.error, (err, code, reqId) => {
+      // Non-fatal informational messages from IB (code 2104, 2106, 2158, etc.)
+      if (code >= 2100 && code < 2200) {
+        console.log(`[IB Info ${code}] ${err}`)
+        return
+      }
+      console.error(`[IB Error ${code}] reqId=${reqId}: ${err}`)
+    })
+
+    ib.connect()
   })
+}
 
-  if (!res.ok) {
-    const body = await res.text().catch(() => '')
-    const err = new Error(`IBKR API ${res.status}: ${body || res.statusText}`)
-    err.status = res.status
-    throw err
+export function disconnect() {
+  if (ib) {
+    ib.disconnect()
+    ib = null
+    connected = false
+    accountId = null
   }
-
-  return res.json()
 }
 
-// ── Authentication ──────────────────────────────────────────────────────
-
-export async function getAuthStatus() {
-  return ibkrFetch('/iserver/auth/status', { method: 'POST' })
+export function isConnected() {
+  return connected
 }
 
-export async function reauthenticate() {
-  return ibkrFetch('/iserver/reauthenticate', { method: 'POST' })
+function ensureConnected() {
+  if (!ib || !connected) {
+    throw Object.assign(new Error('Not connected to IB Gateway'), { status: 503 })
+  }
 }
 
-export async function tickle() {
-  return ibkrFetch('/tickle', { method: 'POST' })
+// ── Helper: collect event-driven results with a timeout ─────────────────
+
+function collectWithTimeout(ms = 8000) {
+  let timer
+  const promise = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error('IB Gateway request timed out')), ms)
+  })
+  return { timer, promise }
 }
 
-// ── Account ─────────────────────────────────────────────────────────────
+// ── Accounts ────────────────────────────────────────────────────────────
 
-export async function getAccounts() {
-  return ibkrFetch('/iserver/accounts')
+export function getAccounts() {
+  ensureConnected()
+  return new Promise((resolve, reject) => {
+    const { timer, promise: timeout } = collectWithTimeout()
+
+    const handler = (accounts) => {
+      clearTimeout(timer)
+      if (accounts && accounts.length > 0) {
+        accountId = accounts[0]
+      }
+      resolve({ accounts })
+    }
+
+    ib.once(EventName.managedAccounts, handler)
+    ib.reqManagedAccts()
+
+    timeout.catch((err) => {
+      ib.removeListener(EventName.managedAccounts, handler)
+      reject(err)
+    })
+  })
 }
 
-export async function getAccountSummary(accountId) {
-  return ibkrFetch(`/portfolio/${accountId}/summary`)
+// ── Account Summary ─────────────────────────────────────────────────────
+
+export function getAccountSummary(acctId) {
+  ensureConnected()
+  const reqId = Math.floor(Math.random() * 100000) + 1000
+
+  return new Promise((resolve, reject) => {
+    const { timer, promise: timeout } = collectWithTimeout()
+    const summary = {}
+
+    const dataHandler = (id, account, tag, value, currency) => {
+      if (id !== reqId) return
+      summary[tag] = { value, currency }
+    }
+
+    const endHandler = (id) => {
+      if (id !== reqId) return
+      clearTimeout(timer)
+      ib.removeListener(EventName.accountSummary, dataHandler)
+      ib.removeListener(EventName.accountSummaryEnd, endHandler)
+      resolve({ accountId: acctId, summary })
+    }
+
+    ib.on(EventName.accountSummary, dataHandler)
+    ib.on(EventName.accountSummaryEnd, endHandler)
+
+    const tags = 'NetLiquidation,TotalCashValue,GrossPositionValue,UnrealizedPnL,RealizedPnL,BuyingPower'
+    ib.reqAccountSummary(reqId, 'All', tags)
+
+    timeout.catch((err) => {
+      ib.cancelAccountSummary(reqId)
+      ib.removeListener(EventName.accountSummary, dataHandler)
+      ib.removeListener(EventName.accountSummaryEnd, endHandler)
+      reject(err)
+    })
+  })
 }
 
 // ── Positions ───────────────────────────────────────────────────────────
 
-export async function getPositions(accountId, pageId = 0) {
-  return ibkrFetch(`/portfolio/${accountId}/positions/${pageId}`)
+export function getPositions() {
+  ensureConnected()
+  return new Promise((resolve, reject) => {
+    const { timer, promise: timeout } = collectWithTimeout()
+    const positions = []
+
+    const dataHandler = (account, contract, pos, avgCost) => {
+      if (pos !== 0) {
+        positions.push({
+          account,
+          symbol: contract.symbol,
+          secType: contract.secType,
+          exchange: contract.exchange || contract.primaryExch,
+          currency: contract.currency,
+          conId: contract.conId,
+          position: pos,
+          avgCost,
+        })
+      }
+    }
+
+    const endHandler = () => {
+      clearTimeout(timer)
+      ib.removeListener(EventName.position, dataHandler)
+      ib.removeListener(EventName.positionEnd, endHandler)
+      resolve(positions)
+    }
+
+    ib.on(EventName.position, dataHandler)
+    ib.on(EventName.positionEnd, endHandler)
+    ib.reqPositions()
+
+    timeout.catch((err) => {
+      ib.cancelPositions()
+      ib.removeListener(EventName.position, dataHandler)
+      ib.removeListener(EventName.positionEnd, endHandler)
+      reject(err)
+    })
+  })
 }
 
-// ── Orders ──────────────────────────────────────────────────────────────
+// ── Executions (trades / filled orders) ─────────────────────────────────
 
-export async function getLiveOrders() {
-  return ibkrFetch('/iserver/account/orders')
+export function getExecutions() {
+  ensureConnected()
+  const reqId = Math.floor(Math.random() * 100000) + 1000
+
+  return new Promise((resolve, reject) => {
+    const { timer, promise: timeout } = collectWithTimeout()
+    const executions = []
+
+    const dataHandler = (id, contract, execution) => {
+      if (id !== reqId) return
+      executions.push({
+        symbol: contract.symbol,
+        secType: contract.secType,
+        currency: contract.currency,
+        conId: contract.conId,
+        execId: execution.execId,
+        time: execution.time,
+        side: execution.side,
+        shares: execution.shares,
+        price: execution.price,
+        avgPrice: execution.avgPrice,
+        account: execution.acctNumber,
+        realizedPnL: execution.realizedPNL,
+        orderId: execution.orderId,
+      })
+    }
+
+    const endHandler = (id) => {
+      if (id !== reqId) return
+      clearTimeout(timer)
+      ib.removeListener(EventName.execDetails, dataHandler)
+      ib.removeListener(EventName.execDetailsEnd, endHandler)
+      resolve(executions)
+    }
+
+    ib.on(EventName.execDetails, dataHandler)
+    ib.on(EventName.execDetailsEnd, endHandler)
+
+    // Empty filter = all recent executions
+    ib.reqExecutions(reqId, {})
+
+    timeout.catch((err) => {
+      ib.removeListener(EventName.execDetails, dataHandler)
+      ib.removeListener(EventName.execDetailsEnd, endHandler)
+      reject(err)
+    })
+  })
 }
 
-export async function getOrderHistory(accountId, { days = 7 } = {}) {
-  // Flex-style order history via the /pa endpoint
-  return ibkrFetch(`/iserver/account/orders?accountId=${accountId}&days=${days}`)
-}
+// ── Open Orders ─────────────────────────────────────────────────────────
 
-// ── Trades (filled orders) ──────────────────────────────────────────────
+export function getOpenOrders() {
+  ensureConnected()
+  return new Promise((resolve, reject) => {
+    const { timer, promise: timeout } = collectWithTimeout()
+    const orders = []
 
-export async function getTrades(days = 7) {
-  return ibkrFetch(`/iserver/account/trades?days=${days}`)
+    const dataHandler = (orderId, contract, order, orderState) => {
+      orders.push({
+        orderId,
+        symbol: contract.symbol,
+        secType: contract.secType,
+        action: order.action,
+        totalQuantity: order.totalQuantity,
+        orderType: order.orderType,
+        lmtPrice: order.lmtPrice,
+        auxPrice: order.auxPrice,
+        status: orderState.status,
+      })
+    }
+
+    const endHandler = () => {
+      clearTimeout(timer)
+      ib.removeListener(EventName.openOrder, dataHandler)
+      ib.removeListener(EventName.openOrderEnd, endHandler)
+      resolve(orders)
+    }
+
+    ib.on(EventName.openOrder, dataHandler)
+    ib.on(EventName.openOrderEnd, endHandler)
+    ib.reqAllOpenOrders()
+
+    timeout.catch((err) => {
+      ib.removeListener(EventName.openOrder, dataHandler)
+      ib.removeListener(EventName.openOrderEnd, endHandler)
+      reject(err)
+    })
+  })
 }
