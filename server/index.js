@@ -3,9 +3,6 @@ import express from 'express'
 import cors from 'cors'
 import * as ibkr from './ibkr.js'
 
-// IB Gateway uses a self-signed cert — allow it in development
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
-
 const app = express()
 const PORT = process.env.PORT || 3001
 
@@ -14,30 +11,25 @@ app.use(express.json())
 
 // ── Health / Auth ───────────────────────────────────────────────────────
 
-app.get('/api/status', async (_req, res, next) => {
-  try {
-    const status = await ibkr.getAuthStatus()
-    res.json(status)
-  } catch (err) {
-    next(err)
-  }
+app.get('/api/status', async (_req, res) => {
+  res.json({
+    authenticated: ibkr.isConnected(),
+    connected: ibkr.isConnected(),
+  })
 })
 
-app.post('/api/tickle', async (_req, res, next) => {
-  try {
-    const data = await ibkr.tickle()
-    res.json(data)
-  } catch (err) {
-    next(err)
-  }
+app.post('/api/tickle', async (_req, res) => {
+  // TWS socket connections don't need keepalive tickle, but keep the endpoint
+  res.json({ session: 'active', ssoExpires: 0 })
 })
 
-app.post('/api/reauthenticate', async (_req, res, next) => {
+app.post('/api/reauthenticate', async (_req, res) => {
   try {
-    const data = await ibkr.reauthenticate()
-    res.json(data)
+    ibkr.disconnect()
+    await ibkr.connect()
+    res.json({ authenticated: true })
   } catch (err) {
-    next(err)
+    res.status(502).json({ error: err.message })
   }
 })
 
@@ -65,8 +57,7 @@ app.get('/api/accounts/:accountId/summary', async (req, res, next) => {
 
 app.get('/api/accounts/:accountId/positions', async (req, res, next) => {
   try {
-    const page = Number(req.query.page) || 0
-    const data = await ibkr.getPositions(req.params.accountId, page)
+    const data = await ibkr.getPositions()
     res.json(data)
   } catch (err) {
     next(err)
@@ -77,7 +68,7 @@ app.get('/api/accounts/:accountId/positions', async (req, res, next) => {
 
 app.get('/api/orders', async (_req, res, next) => {
   try {
-    const data = await ibkr.getLiveOrders()
+    const data = await ibkr.getOpenOrders()
     res.json(data)
   } catch (err) {
     next(err)
@@ -88,8 +79,7 @@ app.get('/api/orders', async (_req, res, next) => {
 
 app.get('/api/trades', async (req, res, next) => {
   try {
-    const days = Number(req.query.days) || 7
-    const data = await ibkr.getTrades(days)
+    const data = await ibkr.getExecutions()
     res.json(data)
   } catch (err) {
     next(err)
@@ -102,15 +92,15 @@ app.get('/api/portfolio', async (_req, res, next) => {
   try {
     // 1. Get accounts
     const accountsData = await ibkr.getAccounts()
-    const accountId = accountsData.accounts?.[0] || accountsData[0]?.accountId
-    if (!accountId) {
+    const acctId = accountsData.accounts?.[0]
+    if (!acctId) {
       return res.status(400).json({ error: 'No IBKR account found. Make sure you are authenticated in the IB Gateway.' })
     }
 
-    // 2. Fetch positions + trades in parallel
-    const [positions, tradesData] = await Promise.all([
-      ibkr.getPositions(accountId),
-      ibkr.getTrades(30),
+    // 2. Fetch positions + executions in parallel
+    const [positions, executions] = await Promise.all([
+      ibkr.getPositions(),
+      ibkr.getExecutions(),
     ])
 
     // 3. Transform positions into the app's format
@@ -119,50 +109,47 @@ app.get('/api/portfolio', async (_req, res, next) => {
 
     for (const pos of positions) {
       const entry = {
-        ticker: pos.contractDesc || pos.ticker || pos.symbol || '',
+        ticker: pos.symbol,
         status: 'open',
-        entryPrice: Math.abs(pos.avgCost || pos.avgPrice || 0),
-        quantity: Math.abs(pos.position || pos.pos || 0),
-        openDate: '', // IBKR positions don't always include open date
+        entryPrice: Math.abs(pos.avgCost || 0),
+        quantity: Math.abs(pos.position || 0),
+        openDate: '',
       }
 
-      if ((pos.position || pos.pos || 0) > 0) {
+      if (pos.position > 0) {
         longPositions.push(entry)
-      } else if ((pos.position || pos.pos || 0) < 0) {
+      } else if (pos.position < 0) {
         shortPositions.push(entry)
       }
     }
 
-    // 4. Transform trades into closed positions
+    // 4. Transform executions into closed positions
     const closedLongPositions = []
     const closedShortPositions = []
 
-    const trades = Array.isArray(tradesData) ? tradesData : []
-    for (const trade of trades) {
-      // Only include closed/filled trades
-      if (!trade.realized_pnl && trade.realized_pnl !== 0) continue
-
+    for (const exec of executions) {
       const closed = {
-        ticker: trade.contractDesc || trade.symbol || '',
+        ticker: exec.symbol,
         status: 'closed',
-        entryPrice: Math.abs(trade.price || 0),
-        quantity: Math.abs(trade.size || trade.quantity || 0),
-        exitPrice: Math.abs(trade.price || 0),
-        profitDollar: trade.realized_pnl || 0,
+        entryPrice: Math.abs(exec.price || 0),
+        quantity: Math.abs(exec.shares || 0),
+        exitPrice: Math.abs(exec.avgPrice || exec.price || 0),
+        profitDollar: exec.realizedPnL || 0,
         profitPercent: 0,
-        openDate: trade.trade_time || trade.tradeTime || '',
-        closeDate: trade.trade_time || trade.tradeTime || '',
+        openDate: exec.time || '',
+        closeDate: exec.time || '',
       }
 
-      if ((trade.side === 'SLD' || trade.side === 'S') && trade.realized_pnl) {
+      // SLD = sold (closing a long), BOT = bought (closing a short)
+      if (exec.side === 'SLD' && exec.realizedPnL) {
         closedLongPositions.push(closed)
-      } else if ((trade.side === 'BOT' || trade.side === 'B') && trade.realized_pnl) {
+      } else if (exec.side === 'BOT' && exec.realizedPnL) {
         closedShortPositions.push(closed)
       }
     }
 
     res.json({
-      accountId,
+      accountId: acctId,
       longPositions,
       shortPositions,
       closedLongPositions,
@@ -180,13 +167,26 @@ app.use((err, _req, res, _next) => {
   const status = err.status || 502
   res.status(status).json({
     error: err.message,
-    hint: status === 502
-      ? 'Make sure the IB Client Portal Gateway is running on https://localhost:5000'
+    hint: status === 503
+      ? `Make sure the IB Gateway is running and the API is enabled on port ${process.env.TWS_PORT || 4001}`
       : undefined,
   })
 })
 
-app.listen(PORT, () => {
-  console.log(`Trading server running on http://localhost:${PORT}`)
-  console.log(`Proxying IBKR requests to ${process.env.IBKR_GATEWAY_URL || 'https://localhost:5000'}`)
-})
+// ── Start server & connect to IB Gateway ────────────────────────────────
+
+async function start() {
+  app.listen(PORT, () => {
+    console.log(`Trading server running on http://localhost:${PORT}`)
+  })
+
+  try {
+    await ibkr.connect()
+    console.log('Successfully connected to IB Gateway TWS API')
+  } catch (err) {
+    console.error(`Failed to connect to IB Gateway: ${err.message}`)
+    console.error(`Make sure IB Gateway is running with API enabled on port ${process.env.TWS_PORT || 4001}`)
+  }
+}
+
+start()
