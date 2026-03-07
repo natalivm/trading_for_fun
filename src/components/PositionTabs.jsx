@@ -71,9 +71,8 @@ const defaultLongPositions = [
 const defaultShortPositions = [
   { ticker: 'LITE', status: 'open', entryPrice: 716.95, quantity: 3, exitPrice: 500, openDate: '2026-02-26' },
   { ticker: 'APP', status: 'open', entryPrice: 447.75, quantity: 6, openDate: '2026-02-26' },
-  { ticker: 'HYMC', status: 'open', entryPrice: 54.95, quantity: 5, openDate: '2026-03-02' },
+  { ticker: 'HYMC', status: 'open', entryPrice: 40.20, quantity: 10, openDate: '2026-03-06', profitPercent: -2.32, unrealizedPnL: -9.34 },
   { ticker: 'CAT', status: 'open', entryPrice: 742, quantity: 1, openDate: '2026-03-02', profitPercent: 8.54, unrealizedPnL: 63.43 },
-  { ticker: 'HYMC', status: 'open', entryPrice: 47.60, quantity: 5, openDate: '2026-03-03' },
   { ticker: 'MDB', status: 'open', entryPrice: 239.80, quantity: 2, openDate: '2026-03-03' },
   { ticker: 'MDB', status: 'open', entryPrice: 239.18, quantity: 2, openDate: '2026-03-03' },
   { ticker: 'MDB', status: 'open', entryPrice: 253.35, quantity: 2, openDate: '2026-03-03' },
@@ -88,12 +87,25 @@ const defaultClosedShortPositions = [
   {
     ticker: 'HYMC',
     status: 'closed',
-    entryPrice: 47.87,
+    entryPrice: 51.28,
     quantity: 10,
     exitPrice: 47.87,
-    profitPercent: 0,
-    profitDollar: 0,
-    openDate: '2026-03-05',
+    profitPercent: 6.65,
+    profitDollar: 34.08,
+    fees: 1.40,
+    openDate: '2026-03-02',
+    closeDate: '2026-03-05',
+  },
+  {
+    ticker: 'CCJ',
+    status: 'closed',
+    entryPrice: 121.49,
+    quantity: 4,
+    exitPrice: 112.94,
+    profitPercent: 7.04,
+    profitDollar: 34.20,
+    fees: 0.70,
+    openDate: '2026-03-02',
     closeDate: '2026-03-05',
   },
 ]
@@ -115,7 +127,7 @@ export function calcCurrentlyInvested() {
 }
 
 export function calcProfit() {
-  return _closedPositions.reduce((sum, p) => sum + (p.profitDollar || 0), 0)
+  return _closedPositions.reduce((sum, p) => sum + (p.profitDollar || 0) - (p.fees || 0), 0)
 }
 
 export function calcDailyPnL() {
@@ -126,11 +138,11 @@ export function calcDailyPnL() {
 // ── Helper: calculate % gain/loss ───────────────────────────────────────
 
 function calcPnlPercent(position) {
-  if (position.status === 'closed' && position.exitPrice && position.entryPrice) {
-    return ((position.exitPrice - position.entryPrice) / position.entryPrice) * 100
-  }
   if (position.profitPercent != null && position.profitPercent !== 0) {
     return position.profitPercent
+  }
+  if (position.status === 'closed' && position.exitPrice && position.entryPrice) {
+    return ((position.exitPrice - position.entryPrice) / position.entryPrice) * 100
   }
   if (position.profitDollar != null && position.entryPrice && position.quantity) {
     const totalCost = position.entryPrice * position.quantity
@@ -144,7 +156,7 @@ function calcPnlPercent(position) {
 function aggregatePositions(positions) {
   const grouped = {}
   for (const p of positions) {
-    const key = p.ticker
+    const key = `${p.ticker}|${p.status}`
     if (!grouped[key]) {
       grouped[key] = {
         ...p,
@@ -154,6 +166,7 @@ function aggregatePositions(positions) {
         totalDailyPnL: p.dailyPnL || 0,
         totalUnrealizedPnL: p.unrealizedPnL || 0,
         totalProfitDollar: p.profitDollar || 0,
+        totalFees: p.fees || 0,
       }
     } else {
       const g = grouped[key]
@@ -163,6 +176,7 @@ function aggregatePositions(positions) {
       g.totalDailyPnL += p.dailyPnL || 0
       g.totalUnrealizedPnL += p.unrealizedPnL || 0
       g.totalProfitDollar += p.profitDollar || 0
+      g.totalFees += p.fees || 0
       if (p.exitPrice != null && g.exitPrice == null) g.exitPrice = p.exitPrice
     }
   }
@@ -175,6 +189,7 @@ function aggregatePositions(positions) {
     dailyPnL: g.totalDailyPnL || undefined,
     unrealizedPnL: g.totalUnrealizedPnL || undefined,
     profitDollar: g.totalProfitDollar || undefined,
+    fees: g.totalFees || undefined,
   }))
 }
 
@@ -349,6 +364,13 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
             {pct !== null && <>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</>}
             {pct !== null && pnlDollar !== null && ' '}
             {pnlDollar !== null && <>{pnlDollar >= 0 ? '+' : '-'}{sym}{Math.abs(pnlDollar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
+          </span>
+        )}
+
+        {/* Fees badge */}
+        {position.fees != null && position.fees > 0 && (
+          <span className="rounded-md px-2 py-0.5 text-xs font-bold shrink-0 bg-slate-500/15 text-slate-400">
+            fees -{sym}{position.fees.toFixed(2)}
           </span>
         )}
 
