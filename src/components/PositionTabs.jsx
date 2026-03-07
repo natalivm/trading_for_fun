@@ -425,7 +425,7 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
   const pct = calcPnlPercent(position, isShort)
 
   const borderColor = isClosed
-    ? 'border-blue-500/20 hover:border-blue-500/40'
+    ? (isShort ? 'border-pink-500/20 hover:border-pink-500/40' : 'border-blue-500/20 hover:border-blue-500/40')
     : isLong
       ? 'border-emerald-500/20 hover:border-emerald-500/40'
       : 'border-pink-500/20 hover:border-pink-500/40'
@@ -469,7 +469,7 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
       >
         {/* Status indicator */}
         {isClosed ? (
-          <svg className="h-3 w-3 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+          <svg className={`h-3 w-3 shrink-0 ${isShort ? 'text-pink-400' : 'text-blue-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         ) : (
@@ -478,9 +478,11 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
 
         {/* Trade label */}
         <span className={`text-xs font-bold uppercase tracking-wide shrink-0 w-14 ${
-          isClosed ? 'text-blue-400' : isLong ? 'text-emerald-400/70' : 'text-pink-400/70'
+          isClosed
+            ? (isShort ? 'text-pink-400' : 'text-blue-400')
+            : isLong ? 'text-emerald-400/70' : 'text-pink-400/70'
         }`}>
-          {isClosed ? 'Closed' : isLong ? 'Long' : 'Short'}
+          {isClosed ? (isShort ? 'Short' : 'Closed') : isLong ? 'Long' : 'Short'}
         </span>
 
         {/* Ticker + Shares */}
@@ -491,15 +493,22 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
           </span>
         </span>
 
-        {/* Avg Price + Current Price */}
+        {/* Avg Price + Current/Exit Price */}
         <span className="text-sm sm:text-base font-bold text-blue-400 shrink-0">
           {sym}{position.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
-        {currentPrice != null && (
+        {isClosed && position.exitPrice != null ? (
+          <>
+            <span className="text-xs text-slate-500 shrink-0">→</span>
+            <span className="text-sm sm:text-base font-bold text-amber-400 shrink-0">
+              {sym}{position.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+          </>
+        ) : currentPrice != null ? (
           <span className="text-sm sm:text-base font-bold text-amber-400 shrink-0">
             {sym}{currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
-        )}
+        ) : null}
 
         {/* PnL badge: % + $ — hide when both are 0 (no live data) */}
         {(pct || pnlDollar) && (
