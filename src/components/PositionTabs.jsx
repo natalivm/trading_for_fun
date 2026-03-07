@@ -97,6 +97,17 @@ const defaultShortPositions = [
 
 const defaultClosedLongPositions = [
   {
+    ticker: 'HY9H',
+    status: 'closed',
+    entryPrice: 510,
+    quantity: 1,
+    exitPrice: 650,
+    profitDollar: 140,
+    openDate: '2026-03-04',
+    closeDate: '2026-03-04',
+    currency: 'EUR',
+  },
+  {
     ticker: 'SAM',
     status: 'closed',
     entryPrice: 1.2136,
@@ -123,6 +134,16 @@ const defaultClosedLongPositions = [
 ]
 
 const defaultClosedShortPositions = [
+  {
+    ticker: 'COHR',
+    status: 'closed',
+    entryPrice: 298.71,
+    quantity: 1,
+    exitPrice: 264.85,
+    profitDollar: 33.86,
+    openDate: '2026-03-02',
+    closeDate: '2026-03-04',
+  },
   {
     ticker: 'FCX',
     status: 'closed',
