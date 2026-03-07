@@ -95,6 +95,17 @@ const defaultClosedShortPositions = [
     openDate: '2026-03-02',
     closeDate: '2026-03-05',
   },
+  {
+    ticker: 'CCJ',
+    status: 'closed',
+    entryPrice: 121.49,
+    quantity: 4,
+    exitPrice: 112.94,
+    profitPercent: 7.04,
+    profitDollar: 34.20,
+    openDate: '2026-03-02',
+    closeDate: '2026-03-05',
+  },
 ]
 
 // ── Calculation helpers (used by Header) ────────────────────────────────
