@@ -214,8 +214,16 @@ export function setPositionData({ longPositions, shortPositions, closedLongPosit
   _closedPositions = [...closedLongPositions, ...closedShortPositions]
 }
 
+export function calcMyCapital() {
+  // Sum of open long positions only (your own money)
+  const closedKeys = new Set(_closedPositions.map(c => `${c.ticker}|${c.openDate}`))
+  return _longPositions
+    .filter(p => !closedKeys.has(`${p.ticker}|${p.openDate}`))
+    .reduce((sum, p) => sum + toUSD(p.entryPrice * p.quantity, p.currency), 0)
+}
+
 export function calcCurrentlyInvested() {
-  // Exclude positions that appear in closed positions (sold stocks)
+  // Sum of all open positions — longs + shorts (total capital deployed)
   const closedKeys = new Set(_closedPositions.map(c => `${c.ticker}|${c.openDate}`))
   const allOpen = [..._longPositions, ..._shortPositions]
   return allOpen

@@ -1,6 +1,7 @@
-import { calcCurrentlyInvested, calcProfit, calcDailyPnL } from './PositionTabs'
+import { calcMyCapital, calcCurrentlyInvested, calcProfit, calcDailyPnL } from './PositionTabs'
 
 function Header({ portfolio }) {
+  const myCapital = calcMyCapital()
   const invested = calcCurrentlyInvested()
   const profit = calcProfit()
   const dailyPnL = calcDailyPnL()
@@ -39,6 +40,13 @@ function Header({ portfolio }) {
         {/* Stats row: Invested + Profit centered, Daily on right */}
         <div className="flex items-center justify-center border-t border-slate-800/40 py-3">
           <div className="flex items-center gap-5">
+            <div className="flex items-baseline gap-2">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-slate-600">My Capital</span>
+              <span className="text-lg font-bold text-slate-200 tabular-nums">
+                ${myCapital.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </span>
+            </div>
+
             <div className="flex items-baseline gap-2">
               <span className="text-[11px] font-medium uppercase tracking-wider text-slate-600">Invested</span>
               <span className="text-lg font-bold text-slate-200 tabular-nums">
