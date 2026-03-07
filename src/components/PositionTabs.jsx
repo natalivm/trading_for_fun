@@ -1,9 +1,17 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
+
+const TODAY = new Date().toISOString().slice(0, 10)
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr + 'T00:00:00')
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+function daysBetween(a, b) {
+  if (!a || !b) return null
+  return Math.floor((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000)
 }
 
 // ── Hardcoded fallback data ─────────────────────────────────────────────
@@ -24,7 +32,7 @@ const defaultLongPositions = [
   { ticker: 'SOFI', status: 'open', entryPrice: 23.17, quantity: 100, openDate: '2026-01-30' },
   { ticker: 'RDDT', status: 'open', entryPrice: 181.30, quantity: 3, openDate: '2026-02-03' },
   { ticker: 'ENVA', status: 'open', entryPrice: 156, quantity: 5, openDate: '2026-02-10' },
-  { ticker: 'CEG', status: 'open', entryPrice: 280.17, quantity: 2, openDate: '2026-02-12' },
+  { ticker: 'CEG', status: 'open', entryPrice: 280.17, quantity: 2, openDate: '2026-02-12', profitPercent: 5.04, unrealizedPnL: 91.79 },
   { ticker: 'CEG', status: 'open', entryPrice: 310.77, quantity: 2, openDate: '2026-02-12' },
   { ticker: 'THM', status: 'open', entryPrice: 2.29, quantity: 100, openDate: '2026-02-17' },
   { ticker: 'RIG', status: 'open', entryPrice: 6.15, quantity: 100, openDate: '2026-02-17' },
@@ -43,8 +51,8 @@ const defaultLongPositions = [
   { ticker: 'LRCX', status: 'open', entryPrice: 238.63, quantity: 2, openDate: '2026-02-26' },
   { ticker: 'SITM', status: 'open', entryPrice: 408.60, quantity: 1, openDate: '2026-03-02' },
   { ticker: 'CEG', status: 'open', entryPrice: 319.18, quantity: 2, openDate: '2026-03-03' },
-  { ticker: 'NOW', status: 'open', entryPrice: 108.53, quantity: 10, openDate: '2026-03-03' },
-  { ticker: 'MELI', status: 'open', entryPrice: 1652, quantity: 1, openDate: '2026-03-03' },
+  { ticker: 'NOW', status: 'open', entryPrice: 108.53, quantity: 10, openDate: '2026-03-03', profitPercent: 14.5, unrealizedPnL: 157.03 },
+  { ticker: 'MELI', status: 'open', entryPrice: 1652, quantity: 1, openDate: '2026-03-03', profitPercent: 7.94, unrealizedPnL: 131.25 },
   { ticker: 'THM', status: 'open', entryPrice: 3.32, quantity: 100, openDate: '2026-03-03' },
   { ticker: 'PINS', status: 'open', entryPrice: 19.10, quantity: 30, openDate: '2026-03-03' },
   { ticker: 'LRMR', status: 'open', entryPrice: 5.30, quantity: 100, openDate: '2026-03-03' },
@@ -52,7 +60,7 @@ const defaultLongPositions = [
   { ticker: 'AU', status: 'open', entryPrice: 115, quantity: 5, openDate: '2026-03-03' },
   { ticker: 'AU', status: 'open', entryPrice: 115.55, quantity: 5, openDate: '2026-03-03' },
   { ticker: 'SITM', status: 'open', entryPrice: 410, quantity: 1, openDate: '2026-03-03' },
-  { ticker: 'OKTA', status: 'open', entryPrice: 71.73, quantity: 10, openDate: '2026-03-04' },
+  { ticker: 'OKTA', status: 'open', entryPrice: 71.73, quantity: 10, openDate: '2026-03-04', profitPercent: 12.6, unrealizedPnL: 90.65 },
   { ticker: 'BTCE', status: 'open', entryPrice: 55.98, quantity: 100, openDate: '2026-03-04' },
   { ticker: 'COHR', status: 'open', entryPrice: 255.17, quantity: 2, openDate: '2026-03-05' },
   { ticker: 'IREN', status: 'open', entryPrice: 38.87, quantity: 15, openDate: '2026-03-05' },
@@ -186,7 +194,87 @@ function GlowDot({ color }) {
   )
 }
 
-function PositionRow({ position, type, onClick, selected, hidden }) {
+// ── Sparkline SVG ────────────────────────────────────────────────────────
+
+function Sparkline({ data, width = 200, height = 32 }) {
+  if (!data || data.length < 2) return null
+  const values = data.map(d => d.avg_cost)
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const range = max - min || 1
+  const points = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * width
+    const y = height - ((v - min) / range) * (height - 4) - 2
+    return `${x},${y}`
+  }).join(' ')
+
+  const lastVal = values[values.length - 1]
+  const firstVal = values[0]
+  const color = lastVal >= firstVal ? '#34d399' : '#f87171'
+
+  return (
+    <svg width={width} height={height} className="shrink-0">
+      <polyline
+        points={points}
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+// ── Expanded detail panel ────────────────────────────────────────────────
+
+function ExpandedDetail({ ticker, history }) {
+  if (!history) {
+    return (
+      <div className="px-4 pb-3 sm:px-5 sm:pb-4">
+        <span className="text-[11px] text-slate-600 italic">Loading history...</span>
+      </div>
+    )
+  }
+
+  if (history.length < 2) {
+    return (
+      <div className="px-4 pb-3 sm:px-5 sm:pb-4">
+        <span className="text-[11px] text-slate-600 italic">Not enough snapshots yet — history builds with each IBKR sync</span>
+      </div>
+    )
+  }
+
+  // Compute a fun stat: biggest single-day move
+  let biggestMove = 0
+  let biggestDate = ''
+  for (let i = 1; i < history.length; i++) {
+    const move = Math.abs(history[i].avg_cost - history[i - 1].avg_cost)
+    if (move > biggestMove) {
+      biggestMove = move
+      biggestDate = history[i].fetched_at?.slice(0, 10) || ''
+    }
+  }
+
+  const firstPrice = history[0].avg_cost
+  const lastPrice = history[history.length - 1].avg_cost
+  const totalChange = lastPrice - firstPrice
+  const totalPct = firstPrice ? ((totalChange / firstPrice) * 100).toFixed(1) : '0'
+
+  return (
+    <div className="flex items-center gap-4 px-4 pb-3 sm:px-5 sm:pb-4 border-t border-slate-800/40 mt-1 pt-2">
+      <Sparkline data={history} width={160} height={28} />
+      <span className="text-[11px] text-slate-500">
+        {history.length} syncs tracked · avg cost moved {totalChange >= 0 ? '+' : ''}{totalPct}%
+        {biggestDate && ` · biggest swing $${biggestMove.toFixed(2)} on ${formatDate(biggestDate)}`}
+      </span>
+    </div>
+  )
+}
+
+// ── Position card ────────────────────────────────────────────────────────
+
+function PositionRow({ position, type, expanded, onToggle, hidden }) {
   const isLong = type === 'long'
   const isClosed = position.status === 'closed'
   const sym = ccySym(position.currency)
@@ -199,21 +287,37 @@ function PositionRow({ position, type, onClick, selected, hidden }) {
       ? 'border-emerald-500/20 hover:border-emerald-500/40'
       : 'border-orange-500/20 hover:border-orange-500/40'
 
-  // Date label: opening date for open, closing date for closed
-  const dateLabel = isClosed && position.closeDate
-    ? formatDate(position.closeDate)
-    : position.openDate
-      ? formatDate(position.openDate)
-      : null
+  // PnL dollar amount
+  const pnlDollar = position.unrealizedPnL || position.profitDollar || null
+
+  // Days holding
+  const days = isClosed
+    ? daysBetween(position.openDate, position.closeDate)
+    : daysBetween(position.openDate, TODAY)
+
+  // History for expanded view
+  const [history, setHistory] = useState(null)
+
+  useEffect(() => {
+    if (!expanded) return
+    let cancelled = false
+    fetch(`${API_BASE}/api/history/ticker/${position.ticker}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (!cancelled) setHistory(data) })
+      .catch(() => { if (!cancelled) setHistory([]) })
+    return () => { cancelled = true }
+  }, [expanded, position.ticker])
 
   return (
     <div
-      onClick={onClick}
       className={`group cursor-pointer rounded-2xl border bg-slate-900/60 transition-all duration-300 ease-in-out ${borderColor} ${
-        hidden ? 'scale-95 opacity-0 max-h-0 overflow-hidden !p-0 !m-0' : 'scale-100 opacity-100 max-h-[200px]'
-      } ${selected ? 'bg-slate-800/60' : ''}`}
+        hidden ? 'scale-95 opacity-0 max-h-0 overflow-hidden !p-0 !m-0' : 'scale-100 opacity-100'
+      } ${expanded ? 'bg-slate-800/60 ring-1 ring-slate-700/50' : ''}`}
     >
-      <div className="flex items-center gap-3 sm:gap-4 px-4 py-3 sm:px-5 sm:py-4">
+      <div
+        className="flex items-center gap-3 sm:gap-4 px-4 py-3 sm:px-5 sm:py-4"
+        onClick={onToggle}
+      >
         {/* Status dot */}
         <GlowDot color={dotColor} />
 
@@ -239,36 +343,46 @@ function PositionRow({ position, type, onClick, selected, hidden }) {
           {position.quantity} shares
         </span>
 
-        {/* PnL badge */}
-        {pct !== null && (
-          <span className={`rounded-md px-2 py-0.5 text-xs font-bold shrink-0 ${pct >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
-            {pct >= 0 ? '+' : ''}{pct.toFixed(1)}%
+        {/* PnL badge: % + $ */}
+        {(pct !== null || pnlDollar !== null) && (
+          <span className={`rounded-md px-2 py-0.5 text-xs font-bold shrink-0 ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+            {pct !== null && <>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</>}
+            {pct !== null && pnlDollar !== null && ' '}
+            {pnlDollar !== null && <>{pnlDollar >= 0 ? '+' : '-'}{sym}{Math.abs(pnlDollar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
           </span>
         )}
 
-        {/* Spacer + Date right-aligned */}
+        {/* Spacer */}
         <div className="flex-1 min-w-0" />
-        {dateLabel && (
-          <span className="text-[11px] text-slate-500 shrink-0">
-            {isClosed ? `closed ${dateLabel}` : dateLabel}
-          </span>
-        )}
+
+        {/* Days holding / closing date — right aligned */}
+        <span className="text-[11px] text-slate-500 shrink-0 text-right">
+          {isClosed
+            ? `closed ${formatDate(position.closeDate || position.openDate)}`
+            : days !== null
+              ? `${days}d`
+              : position.openDate
+                ? formatDate(position.openDate)
+                : ''}
+        </span>
       </div>
+
+      {/* Expanded detail */}
+      {expanded && (
+        <ExpandedDetail ticker={position.ticker} history={history} />
+      )}
     </div>
   )
 }
 
-function PositionList({ longs, shorts, selectedTicker, onSelectTicker }) {
+function PositionList({ longs, shorts, expandedTicker, onToggleTicker }) {
   const allPositions = [
     ...longs.map(p => ({ ...p, _type: 'long' })),
     ...shorts.map(p => ({ ...p, _type: 'short' })),
   ].sort((a, b) => {
-    // Closed positions first
     const aClosed = a.status === 'closed' ? 0 : 1
     const bClosed = b.status === 'closed' ? 0 : 1
     if (aClosed !== bClosed) return aClosed - bClosed
-
-    // Then sort by PnL% descending (biggest gainer to biggest loser)
     const pctA = calcPnlPercent(a) ?? 0
     const pctB = calcPnlPercent(b) ?? 0
     return pctB - pctA
@@ -281,9 +395,9 @@ function PositionList({ longs, shorts, selectedTicker, onSelectTicker }) {
           key={`${position._type}-${position.ticker}-${i}`}
           position={position}
           type={position._type}
-          selected={selectedTicker === position.ticker}
-          hidden={!!selectedTicker && position.ticker !== selectedTicker}
-          onClick={() => onSelectTicker(position.ticker)}
+          expanded={expandedTicker === position.ticker}
+          hidden={false}
+          onToggle={() => onToggleTicker(position.ticker)}
         />
       ))}
     </div>
@@ -367,30 +481,14 @@ function Positions({ ibkrData }) {
   const aggregatedLongs = aggregatePositions([...longPositions, ...closedLongPositions])
   const aggregatedShorts = aggregatePositions([...shortPositions, ...closedShortPositions])
 
-  const [selectedTicker, setSelectedTicker] = useState(null)
-  const containerRef = useRef(null)
+  const [expandedTicker, setExpandedTicker] = useState(null)
 
-  useEffect(() => {
-    if (!selectedTicker) return
-    function handleClick(e) {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
-        setSelectedTicker(null)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    document.addEventListener('touchstart', handleClick)
-    return () => {
-      document.removeEventListener('mousedown', handleClick)
-      document.removeEventListener('touchstart', handleClick)
-    }
-  }, [selectedTicker])
-
-  function handleSelectTicker(ticker) {
-    setSelectedTicker((prev) => (prev === ticker ? null : ticker))
+  function handleToggleTicker(ticker) {
+    setExpandedTicker((prev) => (prev === ticker ? null : ticker))
   }
 
   return (
-    <div className="mx-auto max-w-5xl" ref={containerRef}>
+    <div className="mx-auto max-w-5xl">
       {/* Tab bar */}
       <div className="flex items-center gap-6 border-b border-slate-800 px-4 sm:px-8 mb-3">
         <button className="border-b-2 border-emerald-400 pb-3 pt-4 text-sm font-semibold text-emerald-400">
@@ -407,8 +505,8 @@ function Positions({ ibkrData }) {
       <PositionList
         longs={aggregatedLongs}
         shorts={aggregatedShorts}
-        selectedTicker={selectedTicker}
-        onSelectTicker={handleSelectTicker}
+        expandedTicker={expandedTicker}
+        onToggleTicker={handleToggleTicker}
       />
     </div>
   )

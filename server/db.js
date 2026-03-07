@@ -217,3 +217,20 @@ export function saveLiveExecutions(executions, accountId) {
 }
 
 export default db
+
+// ── Ticker history (for sparkline charts) ────────────────────────────────
+
+export function getTickerHistory(ticker, limit = 60) {
+  return db.prepare(`
+    SELECT
+      s.fetched_at,
+      p.position,
+      p.avg_cost,
+      p.side
+    FROM positions p
+    JOIN snapshots s ON s.id = p.snapshot_id
+    WHERE p.symbol = ?
+    ORDER BY s.fetched_at DESC
+    LIMIT ?
+  `).all(ticker, limit)
+}
