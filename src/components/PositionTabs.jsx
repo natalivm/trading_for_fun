@@ -360,7 +360,7 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
 
         {/* PnL badge: % + $ */}
         {(pct !== null || pnlDollar !== null) && (
-          <span className={`rounded-md px-2 py-0.5 text-xs font-bold shrink-0 ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+          <span className={`rounded-md px-2 py-0.5 text-sm font-bold shrink-0 ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
             {pct !== null && <>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</>}
             {pct !== null && pnlDollar !== null && ' '}
             {pnlDollar !== null && <>{pnlDollar >= 0 ? '+' : '-'}{sym}{Math.abs(pnlDollar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
