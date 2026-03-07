@@ -11,7 +11,7 @@ function App() {
 
   return (
     <div className="flex min-h-screen min-h-dvh flex-col bg-slate-950">
-      <Header />
+      <Header portfolio={portfolio} />
       <NotificationBanner update={updateAvailable} onDismiss={dismissUpdate} />
 
       <main className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-4 pt-4 sm:px-6 lg:px-8">
