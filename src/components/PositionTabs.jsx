@@ -770,8 +770,8 @@ function QuickStats({ allTrades, closedPositions }) {
       </div>
 
       {/* Long vs Short exposure bar */}
-      <div className="mt-3">
-        <div className="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-slate-500 mb-1">
+      <div className="mt-4">
+        <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
           <span>Long ${longExposure.toLocaleString(undefined, { maximumFractionDigits: 0 })} ({((longExposure / totalExposure) * 100).toFixed(0)}%)</span>
           <span>Short ${shortExposure.toLocaleString(undefined, { maximumFractionDigits: 0 })} ({((shortExposure / totalExposure) * 100).toFixed(0)}%)</span>
         </div>
@@ -786,7 +786,7 @@ function QuickStats({ allTrades, closedPositions }) {
 
 function PortfolioOverview({ allTrades, closedPositions }) {
   return (
-    <div className="flex flex-col gap-5 px-2 sm:px-4">
+    <div className="flex flex-col gap-7 px-2 sm:px-4">
       <QuickStats allTrades={allTrades} closedPositions={closedPositions} />
       <CumulativePnLChart closedPositions={closedPositions} />
       <ActivityHeatmap allTrades={allTrades} />
