@@ -464,81 +464,75 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
       } ${expanded ? 'bg-slate-800/60 ring-1 ring-slate-700/50' : ''}`}
     >
       <div
-        className="px-4 py-3 sm:px-5 sm:py-4"
+        className="flex flex-wrap items-center gap-2 sm:gap-3 px-4 py-3 sm:px-5 sm:py-4"
         onClick={onToggle}
       >
-        {/* Row 1: status, label, ticker, days */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Status indicator */}
-          {isClosed ? (
-            <svg className={`h-3 w-3 shrink-0 ${isShort ? 'text-pink-400' : 'text-blue-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          ) : (
-            <GlowDot color={isLong ? 'green' : 'pink'} />
-          )}
+        {/* Status indicator */}
+        {isClosed ? (
+          <svg className={`h-3 w-3 shrink-0 ${isShort ? 'text-pink-400' : 'text-blue-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        ) : (
+          <GlowDot color={isLong ? 'green' : 'pink'} />
+        )}
 
-          {/* Trade label */}
-          <span className={`text-xs font-bold uppercase tracking-wide shrink-0 ${
-            isClosed
-              ? (isShort ? 'text-pink-400' : 'text-blue-400')
-              : isLong ? 'text-emerald-400/70' : 'text-pink-400/70'
-          }`}>
-            {isClosed ? (isShort ? 'Short' : 'Closed') : isLong ? 'Long' : 'Short'}
+        {/* Trade label */}
+        <span className={`text-xs font-bold uppercase tracking-wide shrink-0 ${
+          isClosed
+            ? (isShort ? 'text-pink-400' : 'text-blue-400')
+            : isLong ? 'text-emerald-400/70' : 'text-pink-400/70'
+        }`}>
+          {isClosed ? (isShort ? 'Short' : 'Closed') : isLong ? 'Long' : 'Short'}
+        </span>
+
+        {/* Ticker + Shares */}
+        <span className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-100 shrink-0">
+          {position.ticker}
+          <span className="text-xs sm:text-sm font-normal text-slate-400 ml-1.5">
+            x{position.quantity}
           </span>
+        </span>
 
-          {/* Ticker + Shares */}
-          <span className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-100 shrink-0">
-            {position.ticker}
-            <span className="text-xs sm:text-sm font-normal text-slate-400 ml-1.5">
-              x{position.quantity}
+        {/* Avg Price + Current/Exit Price */}
+        <span className="text-sm sm:text-base font-bold text-blue-400 shrink-0">
+          {sym}{position.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+        {isClosed && position.exitPrice != null ? (
+          <>
+            <span className="text-xs text-slate-500 shrink-0">→</span>
+            <span className="text-sm sm:text-base font-bold text-amber-400 shrink-0">
+              {sym}{position.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
+          </>
+        ) : currentPrice != null ? (
+          <span className="text-sm sm:text-base font-bold text-amber-400 shrink-0">
+            {sym}{currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
+        ) : null}
 
-          {/* Spacer */}
-          <div className="flex-1 min-w-0" />
-
-          {/* Days holding — right aligned */}
-          <span className="text-[11px] text-slate-500 shrink-0 text-right">
-            {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
+        {/* PnL badge */}
+        {(pct || pnlDollar) && (
+          <span className={`rounded-md px-2 py-0.5 text-xs sm:text-sm font-bold shrink-0 ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+            {pct !== null && <>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</>}
+            {pct !== null && pnlDollar !== null && ' '}
+            {pnlDollar !== null && <>{pnlDollar >= 0 ? '+' : '-'}{sym}{Math.abs(pnlDollar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
           </span>
-        </div>
+        )}
 
-        {/* Row 2: prices + PnL */}
-        <div className="flex items-center gap-2 sm:gap-3 mt-1.5 ml-5 sm:ml-6 flex-wrap">
-          {/* Avg Price + Current/Exit Price */}
-          <span className="text-sm font-bold text-blue-400 shrink-0">
-            {sym}{position.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        {/* Fees badge */}
+        {position.fees != null && position.fees > 0 && (
+          <span className="rounded-md px-2 py-0.5 text-xs font-bold shrink-0 bg-slate-500/15 text-slate-400">
+            fees -{sym}{position.fees.toFixed(2)}
           </span>
-          {isClosed && position.exitPrice != null ? (
-            <>
-              <span className="text-xs text-slate-500 shrink-0">→</span>
-              <span className="text-sm font-bold text-amber-400 shrink-0">
-                {sym}{position.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </>
-          ) : currentPrice != null ? (
-            <span className="text-sm font-bold text-amber-400 shrink-0">
-              {sym}{currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-          ) : null}
+        )}
 
-          {/* PnL badge */}
-          {(pct || pnlDollar) && (
-            <span className={`rounded-md px-2 py-0.5 text-xs sm:text-sm font-bold shrink-0 ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
-              {pct !== null && <>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</>}
-              {pct !== null && pnlDollar !== null && ' '}
-              {pnlDollar !== null && <>{pnlDollar >= 0 ? '+' : '-'}{sym}{Math.abs(pnlDollar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
-            </span>
-          )}
+        {/* Spacer */}
+        <div className="flex-1 min-w-0" />
 
-          {/* Fees badge */}
-          {position.fees != null && position.fees > 0 && (
-            <span className="rounded-md px-2 py-0.5 text-xs font-bold shrink-0 bg-slate-500/15 text-slate-400">
-              fees -{sym}{position.fees.toFixed(2)}
-            </span>
-          )}
-        </div>
+        {/* Days holding — right aligned */}
+        <span className="text-[11px] text-slate-500 shrink-0 text-right">
+          {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
+        </span>
       </div>
 
       {/* Expanded detail */}
