@@ -81,9 +81,34 @@ const defaultShortPositions = [
   { ticker: 'CRWD', status: 'open', entryPrice: 398.61, quantity: 10, openDate: '2026-03-05' },
 ]
 
-const defaultClosedLongPositions = []
+const defaultClosedLongPositions = [
+  {
+    ticker: 'FCX',
+    status: 'closed',
+    entryPrice: 64.41,
+    quantity: 13,
+    exitPrice: 64.60,
+    profitPercent: 0.29,
+    profitDollar: 2.46,
+    fees: 1.05,
+    openDate: '2026-01-26',
+    closeDate: '2026-02-04',
+  },
+]
 
 const defaultClosedShortPositions = [
+  {
+    ticker: 'FCX',
+    status: 'closed',
+    entryPrice: 67.57,
+    quantity: 4,
+    exitPrice: 66.47,
+    profitPercent: 1.63,
+    profitDollar: 4.40,
+    fees: 0.70,
+    openDate: '2026-02-26',
+    closeDate: '2026-03-04',
+  },
   {
     ticker: 'HYMC',
     status: 'closed',
@@ -137,12 +162,13 @@ export function calcDailyPnL() {
 
 // ── Helper: calculate % gain/loss ───────────────────────────────────────
 
-function calcPnlPercent(position) {
+function calcPnlPercent(position, isShort = false) {
   if (position.profitPercent != null && position.profitPercent !== 0) {
     return position.profitPercent
   }
   if (position.status === 'closed' && position.exitPrice && position.entryPrice) {
-    return ((position.exitPrice - position.entryPrice) / position.entryPrice) * 100
+    const raw = ((position.exitPrice - position.entryPrice) / position.entryPrice) * 100
+    return isShort ? -raw : raw
   }
   if (position.profitDollar != null && position.entryPrice && position.quantity) {
     const totalCost = position.entryPrice * position.quantity
@@ -151,46 +177,48 @@ function calcPnlPercent(position) {
   return null
 }
 
-// ── Aggregate duplicates ────────────────────────────────────────────────
+// ── Group into trades ────────────────────────────────────────────────
+// A "trade" = positions with same ticker opened on the same date.
+// Closed positions are already complete trades — keep as individual cards.
 
-function aggregatePositions(positions) {
+function groupIntoTrades(openPositions, closedPositions) {
+  // Each closed entry is already a complete trade
+  const closedTrades = closedPositions.map(p => ({ ...p }))
+
+  // Group open positions by ticker + openDate (same-day fills = one trade)
   const grouped = {}
-  for (const p of positions) {
-    const key = `${p.ticker}|${p.status}`
+  for (const p of openPositions) {
+    const key = `${p.ticker}|${p.openDate || ''}`
     if (!grouped[key]) {
       grouped[key] = {
         ...p,
-        totalCost: p.entryPrice * p.quantity,
-        totalQuantity: p.quantity,
-        earliestDate: p.openDate || '',
-        totalDailyPnL: p.dailyPnL || 0,
-        totalUnrealizedPnL: p.unrealizedPnL || 0,
-        totalProfitDollar: p.profitDollar || 0,
-        totalFees: p.fees || 0,
+        _totalCost: p.entryPrice * p.quantity,
+        _totalQty: p.quantity,
+        _totalDailyPnL: p.dailyPnL || 0,
+        _totalUnrealizedPnL: p.unrealizedPnL || 0,
+        _totalFees: p.fees || 0,
       }
     } else {
       const g = grouped[key]
-      g.totalCost += p.entryPrice * p.quantity
-      g.totalQuantity += p.quantity
-      if (p.openDate && (!g.earliestDate || p.openDate < g.earliestDate)) g.earliestDate = p.openDate
-      g.totalDailyPnL += p.dailyPnL || 0
-      g.totalUnrealizedPnL += p.unrealizedPnL || 0
-      g.totalProfitDollar += p.profitDollar || 0
-      g.totalFees += p.fees || 0
+      g._totalCost += p.entryPrice * p.quantity
+      g._totalQty += p.quantity
+      g._totalDailyPnL += p.dailyPnL || 0
+      g._totalUnrealizedPnL += p.unrealizedPnL || 0
+      g._totalFees += p.fees || 0
       if (p.exitPrice != null && g.exitPrice == null) g.exitPrice = p.exitPrice
     }
   }
 
-  return Object.values(grouped).map(g => ({
+  const openTrades = Object.values(grouped).map(g => ({
     ...g,
-    entryPrice: g.totalCost / g.totalQuantity,
-    quantity: g.totalQuantity,
-    openDate: g.earliestDate,
-    dailyPnL: g.totalDailyPnL || undefined,
-    unrealizedPnL: g.totalUnrealizedPnL || undefined,
-    profitDollar: g.totalProfitDollar || undefined,
-    fees: g.totalFees || undefined,
+    entryPrice: g._totalCost / g._totalQty,
+    quantity: g._totalQty,
+    dailyPnL: g._totalDailyPnL || undefined,
+    unrealizedPnL: g._totalUnrealizedPnL || undefined,
+    fees: g._totalFees || undefined,
   }))
+
+  return [...closedTrades, ...openTrades]
 }
 
 // ── Components ──────────────────────────────────────────────────────────
@@ -291,13 +319,13 @@ function ExpandedDetail({ ticker, history }) {
 
 function PositionRow({ position, type, expanded, onToggle, hidden }) {
   const isLong = type === 'long'
+  const isShort = type === 'short'
   const isClosed = position.status === 'closed'
   const sym = ccySym(position.currency)
-  const pct = calcPnlPercent(position)
+  const pct = calcPnlPercent(position, isShort)
 
-  const dotColor = isClosed ? 'red' : isLong ? 'green' : 'pink'
   const borderColor = isClosed
-    ? 'border-red-500/20 hover:border-red-500/40'
+    ? 'border-blue-500/20 hover:border-blue-500/40'
     : isLong
       ? 'border-emerald-500/20 hover:border-emerald-500/40'
       : 'border-pink-500/20 hover:border-pink-500/40'
@@ -333,14 +361,20 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
         className="flex items-center gap-3 sm:gap-4 px-4 py-3 sm:px-5 sm:py-4"
         onClick={onToggle}
       >
-        {/* Status dot */}
-        <GlowDot color={dotColor} />
+        {/* Status indicator */}
+        {isClosed ? (
+          <svg className="h-3 w-3 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        ) : (
+          <GlowDot color={isLong ? 'green' : 'pink'} />
+        )}
 
-        {/* Long/Short label */}
-        <span className={`text-xs font-bold uppercase tracking-wide shrink-0 w-10 ${
-          isClosed ? 'text-slate-500' : isLong ? 'text-emerald-400/70' : 'text-pink-400/70'
+        {/* Trade label */}
+        <span className={`text-xs font-bold uppercase tracking-wide shrink-0 w-14 ${
+          isClosed ? 'text-blue-400' : isLong ? 'text-emerald-400/70' : 'text-pink-400/70'
         }`}>
-          {isLong ? 'Long' : 'Short'}
+          {isClosed ? 'Closed' : isLong ? 'Long' : 'Short'}
         </span>
 
         {/* Ticker */}
@@ -377,15 +411,9 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
         {/* Spacer */}
         <div className="flex-1 min-w-0" />
 
-        {/* Days holding / closing date — right aligned */}
+        {/* Days holding — right aligned */}
         <span className="text-[11px] text-slate-500 shrink-0 text-right">
-          {isClosed
-            ? `closed ${formatDate(position.closeDate || position.openDate)}`
-            : days !== null
-              ? `${days}d`
-              : position.openDate
-                ? formatDate(position.openDate)
-                : ''}
+          {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
         </span>
       </div>
 
@@ -402,26 +430,26 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker }) {
     ...longs.map(p => ({ ...p, _type: 'long' })),
     ...shorts.map(p => ({ ...p, _type: 'short' })),
   ].sort((a, b) => {
-    const aClosed = a.status === 'closed' ? 0 : 1
-    const bClosed = b.status === 'closed' ? 0 : 1
-    if (aClosed !== bClosed) return aClosed - bClosed
-    const pctA = calcPnlPercent(a) ?? 0
-    const pctB = calcPnlPercent(b) ?? 0
-    return pctB - pctA
+    const dateA = a.openDate || ''
+    const dateB = b.openDate || ''
+    return dateB.localeCompare(dateA) // newest first
   })
 
   return (
     <div className="flex flex-col gap-2 px-2 sm:px-4">
-      {allPositions.map((position, i) => (
-        <PositionRow
-          key={`${position._type}-${position.ticker}-${i}`}
-          position={position}
-          type={position._type}
-          expanded={expandedTicker === position.ticker}
-          hidden={false}
-          onToggle={() => onToggleTicker(position.ticker)}
-        />
-      ))}
+      {allPositions.map((position, i) => {
+        const tradeKey = `${position._type}-${position.ticker}-${position.openDate || i}`
+        return (
+          <PositionRow
+            key={tradeKey}
+            position={position}
+            type={position._type}
+            expanded={expandedTicker === tradeKey}
+            hidden={false}
+            onToggle={() => onToggleTicker(tradeKey)}
+          />
+        )
+      })}
     </div>
   )
 }
@@ -499,9 +527,9 @@ function Positions({ ibkrData }) {
   // Keep the calculation helpers in sync (use raw positions for accuracy)
   setPositionData({ longPositions, shortPositions, closedLongPositions, closedShortPositions })
 
-  // Aggregate duplicates for display
-  const aggregatedLongs = aggregatePositions([...longPositions, ...closedLongPositions])
-  const aggregatedShorts = aggregatePositions([...shortPositions, ...closedShortPositions])
+  // Group into individual trades for display
+  const tradeLongs = groupIntoTrades(longPositions, closedLongPositions)
+  const tradeShorts = groupIntoTrades(shortPositions, closedShortPositions)
 
   const [expandedTicker, setExpandedTicker] = useState(null)
 
@@ -517,16 +545,16 @@ function Positions({ ibkrData }) {
           All Positions
         </button>
         <span className="pb-3 pt-4 text-sm text-slate-500">
-          {aggregatedLongs.length} long
+          {tradeLongs.length} long
         </span>
         <span className="pb-3 pt-4 text-sm text-slate-500">
-          {aggregatedShorts.length} short
+          {tradeShorts.length} short
         </span>
       </div>
 
       <PositionList
-        longs={aggregatedLongs}
-        shorts={aggregatedShorts}
+        longs={tradeLongs}
+        shorts={tradeShorts}
         expandedTicker={expandedTicker}
         onToggleTicker={handleToggleTicker}
       />
