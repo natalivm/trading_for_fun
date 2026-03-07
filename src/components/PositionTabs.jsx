@@ -698,8 +698,8 @@ function CumulativePnLChart({ closedPositions, width = 500, height = 120 }) {
 
   const lastVal = values[values.length - 1]
   const isUp = lastVal >= 0
-  const strokeColor = isUp ? '#34d399' : '#f87171'
-  const fillColor = isUp ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)'
+  const strokeColor = isUp ? '#34d399' : '#f472b6'
+  const fillColor = isUp ? 'rgba(52,211,153,0.12)' : 'rgba(244,114,182,0.10)'
 
   return (
     <div>
@@ -710,10 +710,10 @@ function CumulativePnLChart({ closedPositions, width = 500, height = 120 }) {
         {/* Area fill */}
         <path d={areaPath} fill={fillColor} />
         {/* Line */}
-        <path d={linePath} fill="none" stroke={strokeColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={linePath} fill="none" stroke={strokeColor} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
         {/* Dots for each trade */}
         {pathPoints.map((p, i) => (
-          <circle key={i} cx={p.x} cy={p.y} r="3" fill={strokeColor} opacity="0.7" />
+          <circle key={i} cx={p.x} cy={p.y} r="2" fill={strokeColor} opacity="0.7" />
         ))}
         {/* Labels */}
         <text x="4" y={height - 4} fill="#475569" fontSize="9" fontFamily="monospace">{formatDate(points[0].date)}</text>
