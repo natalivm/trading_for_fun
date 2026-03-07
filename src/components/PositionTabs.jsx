@@ -580,11 +580,15 @@ function mergePositions(defaults, livePositions) {
     if (liveEntries && liveEntries.length > 0) {
       if (!usedLiveTickers.has(def.ticker)) {
         for (const live of liveEntries) {
-          merged.push({
+          const entry = {
             ...def,
             ...live,
             openDate: def.openDate || live.openDate || '',
-          })
+          }
+          // Preserve manually-set P/L when live data doesn't provide it
+          if (!live.profitPercent && def.profitPercent) entry.profitPercent = def.profitPercent
+          if (!live.unrealizedPnL && def.unrealizedPnL) entry.unrealizedPnL = def.unrealizedPnL
+          merged.push(entry)
         }
         usedLiveTickers.add(def.ticker)
       }
