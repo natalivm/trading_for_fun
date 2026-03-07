@@ -544,21 +544,24 @@ function ActivityHeatmap({ allTrades }) {
     if (p.closeDate) activityMap[p.closeDate] = (activityMap[p.closeDate] || 0) + 1
   }
 
-  // Build weekday-only (Mon–Fri) grid for the full year
+  // Build weekday-only (Mon–Fri) grid: Jan 1 – Dec 31
   const year = 2026
   const jan1 = new Date(year, 0, 1)
   const dec31 = new Date(year, 11, 31)
   // Walk to the Monday on or before Jan 1
   const startDay = new Date(jan1)
   while (startDay.getDay() !== 1) startDay.setDate(startDay.getDate() - 1)
+  // Walk to the Friday on or after Dec 31
+  const endDay = new Date(dec31)
+  while (endDay.getDay() !== 5) endDay.setDate(endDay.getDate() + 1)
 
   const weeks = []
   const cursor = new Date(startDay)
-  while (cursor <= dec31) {
+  while (cursor <= endDay) {
     const week = []
     for (let d = 0; d < 5; d++) { // Mon–Fri only
       const dateStr = cursor.toISOString().slice(0, 10)
-      const inYear = cursor.getFullYear() === year
+      const inYear = cursor.getFullYear() === year && cursor >= jan1 && cursor <= dec31
       week.push({ date: dateStr, count: activityMap[dateStr] || 0, inYear })
       cursor.setDate(cursor.getDate() + 1)
     }
@@ -770,8 +773,8 @@ function QuickStats({ allTrades, closedPositions }) {
       </div>
 
       {/* Long vs Short exposure bar */}
-      <div className="mt-3">
-        <div className="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-slate-500 mb-1">
+      <div className="mt-4">
+        <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
           <span>Long ${longExposure.toLocaleString(undefined, { maximumFractionDigits: 0 })} ({((longExposure / totalExposure) * 100).toFixed(0)}%)</span>
           <span>Short ${shortExposure.toLocaleString(undefined, { maximumFractionDigits: 0 })} ({((shortExposure / totalExposure) * 100).toFixed(0)}%)</span>
         </div>
@@ -786,7 +789,7 @@ function QuickStats({ allTrades, closedPositions }) {
 
 function PortfolioOverview({ allTrades, closedPositions }) {
   return (
-    <div className="flex flex-col gap-5 px-2 sm:px-4">
+    <div className="flex flex-col gap-7 px-2 sm:px-4">
       <QuickStats allTrades={allTrades} closedPositions={closedPositions} />
       <CumulativePnLChart closedPositions={closedPositions} />
       <ActivityHeatmap allTrades={allTrades} />
