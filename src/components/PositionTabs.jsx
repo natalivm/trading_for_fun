@@ -432,8 +432,8 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
           </span>
         )}
 
-        {/* PnL badge: % + $ */}
-        {(pct !== null || pnlDollar !== null) && (
+        {/* PnL badge: % + $ — hide when both are 0 (no live data) */}
+        {(pct || pnlDollar) && (
           <span className={`rounded-md px-2 py-0.5 text-sm font-bold shrink-0 ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
             {pct !== null && <>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</>}
             {pct !== null && pnlDollar !== null && ' '}
