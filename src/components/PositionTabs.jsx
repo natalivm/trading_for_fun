@@ -582,8 +582,8 @@ function ActivityHeatmap({ allTrades }) {
   const cellSize = 13, gap = 3
 
   const getColor = (count, inYear) => {
-    if (!inYear) return 'rgba(30,41,59,0.3)'
-    if (count === 0) return 'rgba(30,41,59,0.6)'
+    if (!inYear) return 'transparent'
+    if (count === 0) return 'rgba(30,41,59,0.18)'
     const intensity = Math.min(count / maxCount, 1)
     // 4 levels of green
     if (intensity <= 0.25) return '#064e3b'
@@ -645,7 +645,7 @@ function ActivityHeatmap({ allTrades }) {
       {/* Legend */}
       <div className="flex items-center gap-1.5 mt-1.5">
         <span className="text-[10px] text-slate-500">Less</span>
-        {['rgba(30,41,59,0.6)', '#064e3b', '#059669', '#34d399', '#6ee7b7'].map((c, i) => (
+        {['rgba(30,41,59,0.18)', '#064e3b', '#059669', '#34d399', '#6ee7b7'].map((c, i) => (
           <div key={i} className="rounded-sm" style={{ width: cellSize, height: cellSize, background: c }} />
         ))}
         <span className="text-[10px] text-slate-500">More</span>
