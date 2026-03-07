@@ -536,66 +536,126 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
 
 // ── Portfolio Overview Charts ──────────────────────────────────────────
 
-function packCircles(items, width, height) {
-  // Simple front-chain circle packing: place largest first, spiral outward
-  const cx = width / 2, cy = height / 2
-  const maxVal = Math.max(...items.map(d => d.invested))
-  const minR = 18, maxR = Math.min(width, height) * 0.22
-  const circles = items.map(d => ({
-    ...d,
-    r: minR + (maxR - minR) * Math.sqrt(d.invested / maxVal),
-    x: 0, y: 0,
-  }))
-  // Place first circle at center
-  if (circles.length > 0) {
-    circles[0].x = cx
-    circles[0].y = cy
+function ActivityHeatmap({ allTrades }) {
+  // Count activity per day: each open or close event counts as 1
+  const activityMap = {}
+  for (const p of allTrades) {
+    if (p.openDate) activityMap[p.openDate] = (activityMap[p.openDate] || 0) + 1
+    if (p.closeDate) activityMap[p.closeDate] = (activityMap[p.closeDate] || 0) + 1
   }
-  // Place remaining circles — find closest non-overlapping spot via spiral scan
-  for (let i = 1; i < circles.length; i++) {
-    const c = circles[i]
-    let bestDist = Infinity, bestX = cx, bestY = cy
-    for (let angle = 0; angle < Math.PI * 20; angle += 0.15) {
-      const dist = 2 + angle * 3.5
-      const tx = cx + Math.cos(angle) * dist
-      const ty = cy + Math.sin(angle) * dist
-      let overlaps = false
-      for (let j = 0; j < i; j++) {
-        const dx = tx - circles[j].x, dy = ty - circles[j].y
-        if (Math.sqrt(dx * dx + dy * dy) < c.r + circles[j].r + 2) {
-          overlaps = true
-          break
-        }
-      }
-      if (!overlaps) {
-        const d = Math.sqrt((tx - cx) ** 2 + (ty - cy) ** 2)
-        if (d < bestDist) {
-          bestDist = d
-          bestX = tx
-          bestY = ty
-        }
-        if (bestDist < c.r) break // good enough, close to center
+
+  // Build calendar grid for current year starting from Jan 1
+  const year = new Date().getFullYear()
+  const jan1 = new Date(year, 0, 1)
+  const today = new Date()
+  // Start from the Monday of the week containing Jan 1
+  const startDay = new Date(jan1)
+  const jan1Dow = jan1.getDay() === 0 ? 6 : jan1.getDay() - 1 // Mon=0
+  startDay.setDate(startDay.getDate() - jan1Dow)
+
+  const weeks = []
+  const cursor = new Date(startDay)
+  let currentWeek = []
+  while (cursor <= today || currentWeek.length > 0) {
+    const dow = cursor.getDay() === 0 ? 6 : cursor.getDay() - 1
+    const dateStr = cursor.toISOString().slice(0, 10)
+    const inYear = cursor.getFullYear() === year && cursor <= today
+    currentWeek.push({
+      date: dateStr,
+      dow,
+      count: activityMap[dateStr] || 0,
+      inYear,
+    })
+    cursor.setDate(cursor.getDate() + 1)
+    if (currentWeek.length === 7) {
+      weeks.push(currentWeek)
+      currentWeek = []
+      if (cursor > today) break
+    }
+  }
+  if (currentWeek.length > 0) {
+    while (currentWeek.length < 7) currentWeek.push({ date: '', dow: currentWeek.length, count: 0, inYear: false })
+    weeks.push(currentWeek)
+  }
+
+  const maxCount = Math.max(1, ...Object.values(activityMap))
+  const cellSize = 13, gap = 3
+
+  const getColor = (count, inYear) => {
+    if (!inYear) return 'transparent'
+    if (count === 0) return 'rgba(30,41,59,0.18)'
+    const intensity = Math.min(count / maxCount, 1)
+    // 4 levels of green
+    if (intensity <= 0.25) return '#064e3b'
+    if (intensity <= 0.5) return '#059669'
+    if (intensity <= 0.75) return '#34d399'
+    return '#6ee7b7'
+  }
+
+  // Month labels
+  const months = []
+  let lastMonth = -1
+  for (let w = 0; w < weeks.length; w++) {
+    const firstValidDay = weeks[w].find(d => d.inYear)
+    if (firstValidDay) {
+      const m = new Date(firstValidDay.date).getMonth()
+      if (m !== lastMonth) {
+        months.push({ label: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m], week: w })
+        lastMonth = m
       }
     }
-    c.x = bestX
-    c.y = bestY
   }
-  // Re-center the whole cluster
-  const minX = Math.min(...circles.map(c => c.x - c.r))
-  const maxX = Math.max(...circles.map(c => c.x + c.r))
-  const minY = Math.min(...circles.map(c => c.y - c.r))
-  const maxY = Math.max(...circles.map(c => c.y + c.r))
-  const clusterW = maxX - minX, clusterH = maxY - minY
-  const offsetX = (width - clusterW) / 2 - minX
-  const offsetY = (height - clusterH) / 2 - minY
-  for (const c of circles) {
-    c.x += offsetX
-    c.y += offsetY
-  }
-  return circles
+
+  const dayLabels = ['Mon', '', 'Wed', '', 'Fri', '', '']
+  const svgW = weeks.length * (cellSize + gap) + 28
+  const svgH = 7 * (cellSize + gap) + 22
+
+  return (
+    <div>
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Trading Activity — {year}</h3>
+      <div className="overflow-x-auto">
+        <svg width={svgW} height={svgH} className="block">
+          {/* Day labels */}
+          {dayLabels.map((label, i) => label && (
+            <text key={i} x={0} y={20 + i * (cellSize + gap) + cellSize / 2 + 1}
+              fill="#64748b" fontSize="9" fontFamily="system-ui" dominantBaseline="middle">{label}</text>
+          ))}
+          {/* Month labels */}
+          {months.map(({ label, week }) => (
+            <text key={label} x={28 + week * (cellSize + gap)} y={9}
+              fill="#64748b" fontSize="9" fontFamily="system-ui">{label}</text>
+          ))}
+          {/* Grid cells */}
+          {weeks.map((week, wi) =>
+            week.map((day, di) => (
+              <rect key={`${wi}-${di}`}
+                x={28 + wi * (cellSize + gap)}
+                y={16 + di * (cellSize + gap)}
+                width={cellSize} height={cellSize} rx={2}
+                fill={getColor(day.count, day.inYear)}
+                stroke={day.count > 0 && day.inYear ? 'rgba(52,211,153,0.2)' : 'none'}
+                strokeWidth={0.5}
+              >
+                {day.inYear && <title>{day.date}: {day.count} trade{day.count !== 1 ? 's' : ''}</title>}
+              </rect>
+            ))
+          )}
+        </svg>
+      </div>
+      {/* Legend */}
+      <div className="flex items-center gap-1.5 mt-1.5">
+        <span className="text-[10px] text-slate-500">Less</span>
+        {['rgba(30,41,59,0.18)', '#064e3b', '#059669', '#34d399', '#6ee7b7'].map((c, i) => (
+          <div key={i} className="rounded-sm" style={{ width: cellSize, height: cellSize, background: c }} />
+        ))}
+        <span className="text-[10px] text-slate-500">More</span>
+      </div>
+    </div>
+  )
 }
 
-function AllocationBubbles({ positions }) {
+function AllocationBar({ positions }) {
+  // Group by ticker, sum invested amounts
   const byTicker = {}
   for (const p of positions) {
     if (p.status === 'closed') continue
@@ -603,50 +663,27 @@ function AllocationBubbles({ positions }) {
     if (!byTicker[p.ticker]) byTicker[p.ticker] = { ticker: p.ticker, invested: 0, type: p._type }
     byTicker[p.ticker].invested += invested
   }
-  const sorted = Object.values(byTicker).sort((a, b) => b.invested - a.invested).slice(0, 18)
-  if (sorted.length === 0) return null
-
-  const width = 500, height = 340
-  const circles = packCircles(sorted, width, height)
+  const sorted = Object.values(byTicker).sort((a, b) => b.invested - a.invested).slice(0, 12)
+  const maxInvested = sorted[0]?.invested || 1
 
   return (
-    <div>
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Capital Allocation</h3>
-      <svg width="100%" viewBox={`0 0 ${width} ${height}`} className="w-full">
-        <defs>
-          <radialGradient id="glow-long" cx="35%" cy="35%">
-            <stop offset="0%" stopColor="#34d399" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#059669" stopOpacity="0.12" />
-          </radialGradient>
-          <radialGradient id="glow-short" cx="35%" cy="35%">
-            <stop offset="0%" stopColor="#f472b6" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#db2777" stopOpacity="0.12" />
-          </radialGradient>
-        </defs>
-        {circles.map((c, i) => {
-          const isShort = c.type === 'short'
-          const fill = isShort ? 'url(#glow-short)' : 'url(#glow-long)'
-          const stroke = isShort ? '#f472b6' : '#34d399'
-          const showAmount = c.r > 28
-          const fontSize = Math.max(8, Math.min(13, c.r * 0.38))
-          const amountSize = Math.max(7, fontSize - 2)
-          return (
-            <g key={c.ticker}>
-              <circle cx={c.x} cy={c.y} r={c.r} fill={fill} stroke={stroke} strokeWidth="1" strokeOpacity="0.4" />
-              <text x={c.x} y={showAmount ? c.y - 2 : c.y + 1} textAnchor="middle" dominantBaseline="middle"
-                fill={isShort ? '#f9a8d4' : '#6ee7b7'} fontSize={fontSize} fontWeight="bold" fontFamily="system-ui">
-                {c.ticker}
-              </text>
-              {showAmount && (
-                <text x={c.x} y={c.y + amountSize + 1} textAnchor="middle" dominantBaseline="middle"
-                  fill="#64748b" fontSize={amountSize} fontFamily="monospace">
-                  ${c.invested >= 1000 ? `${(c.invested / 1000).toFixed(1)}k` : c.invested.toFixed(0)}
-                </text>
-              )}
-            </g>
-          )
-        })}
-      </svg>
+    <div className="flex flex-col gap-1.5">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Capital Allocation — Top Holdings</h3>
+      {sorted.map(item => {
+        const pct = (item.invested / maxInvested) * 100
+        const color = item.type === 'short' ? 'bg-pink-500/60' : 'bg-emerald-500/60'
+        return (
+          <div key={item.ticker} className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-300 w-14 text-right shrink-0">{item.ticker}</span>
+            <div className="flex-1 h-5 bg-slate-800/60 rounded-md overflow-hidden">
+              <div className={`h-full ${color} rounded-md transition-all duration-500`} style={{ width: `${pct}%` }} />
+            </div>
+            <span className="text-[11px] text-slate-400 tabular-nums w-16 text-right shrink-0">
+              ${item.invested.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </span>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -796,7 +833,8 @@ function PortfolioOverview({ allTrades, closedPositions }) {
     <div className="flex flex-col gap-5 px-2 sm:px-4">
       <QuickStats allTrades={allTrades} closedPositions={closedPositions} />
       <CumulativePnLChart closedPositions={closedPositions} />
-      <AllocationBubbles positions={allTrades} />
+      <ActivityHeatmap allTrades={allTrades} />
+      <AllocationBar positions={allTrades} />
     </div>
   )
 }
