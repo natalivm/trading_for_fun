@@ -50,7 +50,7 @@
     { "ticker": "MDB", "status": "open", "entryPrice": 239.80, "quantity": 2, "openDate": "2026-03-03" },
     { "ticker": "MDB", "status": "open", "entryPrice": 239.18, "quantity": 2, "openDate": "2026-03-03" },
     { "ticker": "MDB", "status": "open", "entryPrice": 253.35, "quantity": 2, "openDate": "2026-03-03" },
-    { "ticker": "POWL", "status": "open", "entryPrice": 521, "quantity": 2, "openDate": "2026-03-04" },
+    { "ticker": "POWL", "status": "open", "entryPrice": 521, "quantity": 2, "openDate": "2026-03-04", "profitPercent": 4.07, "unrealizedPnL": 62.26 },
     { "ticker": "CRDO", "status": "open", "entryPrice": 113.93, "quantity": 5, "openDate": "2026-03-05" },
     { "ticker": "CRWD", "status": "open", "entryPrice": 398.61, "quantity": 10, "openDate": "2026-03-05" }
   ],
