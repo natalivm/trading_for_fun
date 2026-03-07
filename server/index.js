@@ -291,6 +291,14 @@ app.get('/api/history/:snapshotId', async (req, res) => {
   res.json(transformPortfolio(snapshot.accountId, snapshot.positions, snapshot.executions))
 })
 
+// ── Ticker history (for sparkline charts) ────────────────────────────────
+
+app.get('/api/history/ticker/:ticker', async (req, res) => {
+  const rows = db.getTickerHistory(req.params.ticker.toUpperCase(), Number(req.query.limit) || 60)
+  // Reverse so oldest is first (for charting)
+  res.json(rows.reverse())
+})
+
 // ── Error handler ───────────────────────────────────────────────────────
 
 app.use((err, _req, res, _next) => {
