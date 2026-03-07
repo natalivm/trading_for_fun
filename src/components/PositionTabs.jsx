@@ -199,7 +199,7 @@ function GlowDot({ color }) {
   const colors = {
     green: 'bg-emerald-400 shadow-emerald-400/60',
     red: 'bg-red-400 shadow-red-400/60',
-    orange: 'bg-orange-400 shadow-orange-400/60',
+    pink: 'bg-pink-400 shadow-pink-400/60',
   }
   return (
     <span className="relative flex h-3 w-3 shrink-0">
@@ -295,12 +295,12 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
   const sym = ccySym(position.currency)
   const pct = calcPnlPercent(position)
 
-  const dotColor = isClosed ? 'red' : isLong ? 'green' : 'orange'
+  const dotColor = isClosed ? 'red' : isLong ? 'green' : 'pink'
   const borderColor = isClosed
     ? 'border-red-500/20 hover:border-red-500/40'
     : isLong
       ? 'border-emerald-500/20 hover:border-emerald-500/40'
-      : 'border-orange-500/20 hover:border-orange-500/40'
+      : 'border-pink-500/20 hover:border-pink-500/40'
 
   // PnL dollar amount
   const pnlDollar = position.unrealizedPnL || position.profitDollar || null
@@ -338,7 +338,7 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
 
         {/* Long/Short label */}
         <span className={`text-xs font-bold uppercase tracking-wide shrink-0 w-10 ${
-          isClosed ? 'text-slate-500' : isLong ? 'text-emerald-400/70' : 'text-orange-400/70'
+          isClosed ? 'text-slate-500' : isLong ? 'text-emerald-400/70' : 'text-pink-400/70'
         }`}>
           {isLong ? 'Long' : 'Short'}
         </span>
@@ -360,7 +360,7 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
 
         {/* PnL badge: % + $ */}
         {(pct !== null || pnlDollar !== null) && (
-          <span className={`rounded-md px-2 py-0.5 text-xs font-bold shrink-0 ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+          <span className={`rounded-md px-2 py-0.5 text-sm font-bold shrink-0 ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
             {pct !== null && <>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</>}
             {pct !== null && pnlDollar !== null && ' '}
             {pnlDollar !== null && <>{pnlDollar >= 0 ? '+' : '-'}{sym}{Math.abs(pnlDollar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
