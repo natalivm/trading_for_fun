@@ -92,6 +92,7 @@ const defaultClosedShortPositions = [
     exitPrice: 47.87,
     profitPercent: 6.65,
     profitDollar: 34.08,
+    fees: 1.05,
     openDate: '2026-03-02',
     closeDate: '2026-03-05',
   },
@@ -103,6 +104,7 @@ const defaultClosedShortPositions = [
     exitPrice: 112.94,
     profitPercent: 7.04,
     profitDollar: 34.20,
+    fees: 0.70,
     openDate: '2026-03-02',
     closeDate: '2026-03-05',
   },
@@ -125,7 +127,7 @@ export function calcCurrentlyInvested() {
 }
 
 export function calcProfit() {
-  return _closedPositions.reduce((sum, p) => sum + (p.profitDollar || 0), 0)
+  return _closedPositions.reduce((sum, p) => sum + (p.profitDollar || 0) - (p.fees || 0), 0)
 }
 
 export function calcDailyPnL() {
@@ -164,6 +166,7 @@ function aggregatePositions(positions) {
         totalDailyPnL: p.dailyPnL || 0,
         totalUnrealizedPnL: p.unrealizedPnL || 0,
         totalProfitDollar: p.profitDollar || 0,
+        totalFees: p.fees || 0,
       }
     } else {
       const g = grouped[key]
@@ -173,6 +176,7 @@ function aggregatePositions(positions) {
       g.totalDailyPnL += p.dailyPnL || 0
       g.totalUnrealizedPnL += p.unrealizedPnL || 0
       g.totalProfitDollar += p.profitDollar || 0
+      g.totalFees += p.fees || 0
       if (p.exitPrice != null && g.exitPrice == null) g.exitPrice = p.exitPrice
     }
   }
@@ -185,6 +189,7 @@ function aggregatePositions(positions) {
     dailyPnL: g.totalDailyPnL || undefined,
     unrealizedPnL: g.totalUnrealizedPnL || undefined,
     profitDollar: g.totalProfitDollar || undefined,
+    fees: g.totalFees || undefined,
   }))
 }
 
@@ -359,6 +364,13 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
             {pct !== null && <>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</>}
             {pct !== null && pnlDollar !== null && ' '}
             {pnlDollar !== null && <>{pnlDollar >= 0 ? '+' : '-'}{sym}{Math.abs(pnlDollar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
+          </span>
+        )}
+
+        {/* Fees badge */}
+        {position.fees != null && position.fees > 0 && (
+          <span className="rounded-md px-2 py-0.5 text-xs font-bold shrink-0 bg-slate-500/15 text-slate-400">
+            fees -{sym}{position.fees.toFixed(2)}
           </span>
         )}
 
