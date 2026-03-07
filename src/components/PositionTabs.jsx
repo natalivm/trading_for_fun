@@ -28,7 +28,7 @@ function toUSD(amount, currency) {
 
 const defaultLongPositions = [
   { ticker: 'FTNT', status: 'open', entryPrice: 84.46, quantity: 10, openDate: '2026-01-12' },
-  { ticker: 'ANET', status: 'open', entryPrice: 148.83, quantity: 20, openDate: '2026-01-29' },
+  { ticker: 'ANET', status: 'open', entryPrice: 148.83, quantity: 20, openDate: '2026-01-29', profitPercent: -10.5, unrealizedPnL: -318.67 },
   { ticker: 'SOFI', status: 'open', entryPrice: 23.17, quantity: 100, openDate: '2026-01-30' },
   { ticker: 'RDDT', status: 'open', entryPrice: 181.30, quantity: 3, openDate: '2026-02-03' },
   { ticker: 'ENVA', status: 'open', entryPrice: 156, quantity: 5, openDate: '2026-02-10' },
@@ -96,6 +96,26 @@ const defaultShortPositions = [
 ]
 
 const defaultClosedLongPositions = [
+  {
+    ticker: 'ANET',
+    status: 'closed',
+    entryPrice: 132.68,
+    quantity: 30,
+    exitPrice: 128.86,
+    profitDollar: -114.50,
+    openDate: '2026-01-06',
+    closeDate: '2026-01-07',
+  },
+  {
+    ticker: 'ANET',
+    status: 'closed',
+    entryPrice: 130.93,
+    quantity: 35,
+    exitPrice: 130.01,
+    profitDollar: -32.15,
+    openDate: '2026-01-07',
+    closeDate: '2026-01-20',
+  },
   {
     ticker: 'HY9H',
     status: 'closed',
