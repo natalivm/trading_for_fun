@@ -1,18 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 
-const TODAY = new Date().toISOString().slice(0, 10)
-
 function formatDate(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr + 'T00:00:00')
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-function daysBetween(startDate, endDate) {
-  if (!startDate) return null
-  const start = new Date(startDate + 'T00:00:00')
-  const end = new Date(endDate + 'T00:00:00')
-  return Math.floor((end - start) / (1000 * 60 * 60 * 24))
 }
 
 // ── Hardcoded fallback data ─────────────────────────────────────────────
@@ -70,7 +61,7 @@ const defaultLongPositions = [
 ]
 
 const defaultShortPositions = [
-  { ticker: 'LITE', status: 'open', entryPrice: 716.95, quantity: 3, exitPrice: 500 },
+  { ticker: 'LITE', status: 'open', entryPrice: 716.95, quantity: 3, exitPrice: 500, openDate: '2026-02-26' },
   { ticker: 'APP', status: 'open', entryPrice: 447.75, quantity: 6, openDate: '2026-02-26' },
   { ticker: 'HYMC', status: 'open', entryPrice: 54.95, quantity: 5, openDate: '2026-03-02' },
   { ticker: 'CAT', status: 'open', entryPrice: 742, quantity: 1, openDate: '2026-03-02' },
@@ -151,9 +142,7 @@ function aggregatePositions(positions) {
         ...p,
         totalCost: p.entryPrice * p.quantity,
         totalQuantity: p.quantity,
-        entries: [{ price: p.entryPrice, quantity: p.quantity, date: p.openDate }],
         earliestDate: p.openDate || '',
-        latestDate: p.openDate || '',
         totalDailyPnL: p.dailyPnL || 0,
         totalUnrealizedPnL: p.unrealizedPnL || 0,
         totalProfitDollar: p.profitDollar || 0,
@@ -162,54 +151,23 @@ function aggregatePositions(positions) {
       const g = grouped[key]
       g.totalCost += p.entryPrice * p.quantity
       g.totalQuantity += p.quantity
-      g.entries.push({ price: p.entryPrice, quantity: p.quantity, date: p.openDate })
       if (p.openDate && (!g.earliestDate || p.openDate < g.earliestDate)) g.earliestDate = p.openDate
-      if (p.openDate && (!g.latestDate || p.openDate > g.latestDate)) g.latestDate = p.openDate
       g.totalDailyPnL += p.dailyPnL || 0
       g.totalUnrealizedPnL += p.unrealizedPnL || 0
       g.totalProfitDollar += p.profitDollar || 0
-      // Keep exitPrice from any entry that has one
       if (p.exitPrice != null && g.exitPrice == null) g.exitPrice = p.exitPrice
     }
   }
 
   return Object.values(grouped).map(g => ({
     ...g,
-    entryPrice: g.totalCost / g.totalQuantity, // weighted average
+    entryPrice: g.totalCost / g.totalQuantity,
     quantity: g.totalQuantity,
     openDate: g.earliestDate,
-    _latestDate: g.latestDate,
-    _entryCount: g.entries.length,
-    _entries: g.entries,
     dailyPnL: g.totalDailyPnL || undefined,
     unrealizedPnL: g.totalUnrealizedPnL || undefined,
     profitDollar: g.totalProfitDollar || undefined,
   }))
-}
-
-// ── Rating helper ───────────────────────────────────────────────────────
-
-function getRating(position, type) {
-  const pct = calcPnlPercent(position)
-  if (position.status === 'closed') return { label: 'CLOSED', color: 'text-slate-500' }
-  if (type === 'short') {
-    if (pct !== null && pct < -5) return { label: 'STRONG SHORT', color: 'text-orange-400' }
-    return { label: 'SHORT', color: 'text-orange-400/70' }
-  }
-  if (pct !== null && pct > 5) return { label: 'STRONG BUY', color: 'text-emerald-400' }
-  if (pct !== null && pct < -5) return { label: 'HOLD', color: 'text-amber-400' }
-  return { label: 'BUY', color: 'text-emerald-400/80' }
-}
-
-// ── Score helper (days holding → relative strength style) ───────────────
-
-function getScore(position) {
-  const days = position.status === 'closed'
-    ? daysBetween(position.openDate, position.closeDate)
-    : daysBetween(position.openDate, TODAY)
-  if (days === null) return null
-  const score = Math.max(1, Math.min(99, 100 - days))
-  return score
 }
 
 // ── Components ──────────────────────────────────────────────────────────
@@ -232,97 +190,69 @@ function PositionRow({ position, type, onClick, selected, hidden }) {
   const isLong = type === 'long'
   const isClosed = position.status === 'closed'
   const sym = ccySym(position.currency)
-  const rating = getRating(position, type)
-  const score = getScore(position)
   const pct = calcPnlPercent(position)
 
   const dotColor = isClosed ? 'red' : isLong ? 'green' : 'orange'
+  const borderColor = isClosed
+    ? 'border-red-500/20 hover:border-red-500/40'
+    : isLong
+      ? 'border-emerald-500/20 hover:border-emerald-500/40'
+      : 'border-orange-500/20 hover:border-orange-500/40'
 
-  // Date labels
-  const openLabel = position.openDate ? formatDate(position.openDate) : null
-  const hasMultipleDates = position._latestDate && position._latestDate !== position.openDate
-  const dateDisplay = hasMultipleDates
-    ? `${openLabel} - ${formatDate(position._latestDate)}`
-    : openLabel
-
-  const closeLabel = isClosed && position.closeDate ? formatDate(position.closeDate) : null
+  // Date label: opening date for open, closing date for closed
+  const dateLabel = isClosed && position.closeDate
+    ? formatDate(position.closeDate)
+    : position.openDate
+      ? formatDate(position.openDate)
+      : null
 
   return (
     <div
       onClick={onClick}
-      className={`group cursor-pointer border-b border-slate-800/60 transition-all duration-300 ease-in-out ${
-        hidden ? 'scale-95 opacity-0 max-h-0 overflow-hidden !py-0' : 'scale-100 opacity-100 max-h-[200px]'
-      } ${selected ? 'bg-slate-800/40' : 'hover:bg-slate-800/20'}`}
+      className={`group cursor-pointer rounded-2xl border bg-slate-900/60 transition-all duration-300 ease-in-out ${borderColor} ${
+        hidden ? 'scale-95 opacity-0 max-h-0 overflow-hidden !p-0 !m-0' : 'scale-100 opacity-100 max-h-[200px]'
+      } ${selected ? 'bg-slate-800/60' : ''}`}
     >
-      <div className="flex items-center gap-4 sm:gap-6 px-4 py-4 sm:px-8 sm:py-5">
+      <div className="flex items-center gap-3 sm:gap-4 px-4 py-3 sm:px-5 sm:py-4">
         {/* Status dot */}
         <GlowDot color={dotColor} />
 
+        {/* Long/Short label */}
+        <span className={`text-xs font-bold uppercase tracking-wide shrink-0 w-10 ${
+          isClosed ? 'text-slate-500' : isLong ? 'text-emerald-400/70' : 'text-orange-400/70'
+        }`}>
+          {isLong ? 'Long' : 'Short'}
+        </span>
+
         {/* Ticker */}
-        <div className="w-14 sm:w-20 shrink-0">
-          <span className="text-lg sm:text-2xl font-extrabold tracking-tight text-slate-100">
-            {position.ticker}
+        <span className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-100 w-14 sm:w-16 shrink-0">
+          {position.ticker}
+        </span>
+
+        {/* Price */}
+        <span className="text-sm sm:text-base font-bold text-blue-400 shrink-0">
+          {sym}{position.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+
+        {/* Shares */}
+        <span className="text-xs sm:text-sm text-slate-400 shrink-0">
+          {position.quantity} shares
+        </span>
+
+        {/* PnL badge */}
+        {pct !== null && (
+          <span className={`rounded-md px-2 py-0.5 text-xs font-bold shrink-0 ${pct >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+            {pct >= 0 ? '+' : ''}{pct.toFixed(1)}%
           </span>
-        </div>
-
-        {/* Price + date */}
-        <div className="w-24 sm:w-32 shrink-0">
-          <div className="text-base sm:text-xl font-bold text-blue-400">
-            {sym}{position.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </div>
-          {dateDisplay && (
-            <div className="mt-0.5 inline-block rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-500">
-              {isClosed ? `closed ${closeLabel}` : dateDisplay}
-            </div>
-          )}
-        </div>
-
-        {/* Rating */}
-        <div className="w-28 sm:w-36 shrink-0 hidden sm:block">
-          <span className={`text-xs sm:text-sm font-extrabold tracking-wide uppercase ${rating.color}`}>
-            {rating.label}
-          </span>
-        </div>
-
-        {/* Score badge */}
-        {score !== null && (
-          <div className="shrink-0 hidden md:flex items-center">
-            <span className="inline-flex items-center justify-center rounded border border-emerald-500/40 px-2.5 py-1 text-xs sm:text-sm font-bold text-emerald-400 min-w-[56px]">
-              RS {score}
-            </span>
-          </div>
         )}
 
-        {/* Target / price range */}
-        <div className="flex-1 min-w-0 flex items-center gap-2 justify-end sm:justify-start">
-          {isClosed && position.exitPrice != null ? (
-            <span className="text-sm font-semibold text-slate-300">
-              {sym}{position.exitPrice.toLocaleString()}
-            </span>
-          ) : position.exitPrice != null ? (
-            <span className="text-sm font-semibold text-slate-300">
-              <span className="text-slate-400">{sym}{position.entryPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-              <span className="text-slate-600 mx-1">-</span>
-              <span>{sym}{position.exitPrice.toLocaleString()}</span>
-            </span>
-          ) : null}
-
-          {pct !== null && (
-            <span className={`rounded-md px-2 py-0.5 text-xs font-bold ${pct >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
-              {pct >= 0 ? '+' : ''}{pct.toFixed(1)}%
-            </span>
-          )}
-        </div>
-
-        {/* Type + quantity label */}
-        <div className="shrink-0 text-right">
-          <span className="text-xs font-medium text-slate-500">
-            {isLong ? 'Long' : 'Short'}
+        {/* Spacer + Date right-aligned */}
+        <div className="flex-1 min-w-0" />
+        {dateLabel && (
+          <span className="text-[11px] text-slate-500 shrink-0">
+            {isClosed ? `closed ${dateLabel}` : dateLabel}
           </span>
-          <div className="text-[10px] text-slate-600">
-            {position.quantity}x{position._entryCount > 1 ? ` (${position._entryCount} buys)` : ''}
-          </div>
-        </div>
+        )}
       </div>
     </div>
   )
@@ -333,15 +263,19 @@ function PositionList({ longs, shorts, selectedTicker, onSelectTicker }) {
     ...longs.map(p => ({ ...p, _type: 'long' })),
     ...shorts.map(p => ({ ...p, _type: 'short' })),
   ].sort((a, b) => {
-    const dateA = a.openDate || ''
-    const dateB = b.openDate || ''
-    if (!dateA) return 1
-    if (!dateB) return -1
-    return dateB.localeCompare(dateA)
+    // Closed positions first
+    const aClosed = a.status === 'closed' ? 0 : 1
+    const bClosed = b.status === 'closed' ? 0 : 1
+    if (aClosed !== bClosed) return aClosed - bClosed
+
+    // Then sort by PnL% descending (biggest gainer to biggest loser)
+    const pctA = calcPnlPercent(a) ?? 0
+    const pctB = calcPnlPercent(b) ?? 0
+    return pctB - pctA
   })
 
   return (
-    <div>
+    <div className="flex flex-col gap-2 px-2 sm:px-4">
       {allPositions.map((position, i) => (
         <PositionRow
           key={`${position._type}-${position.ticker}-${i}`}
@@ -458,7 +392,7 @@ function Positions({ ibkrData }) {
   return (
     <div className="mx-auto max-w-5xl" ref={containerRef}>
       {/* Tab bar */}
-      <div className="flex items-center gap-6 border-b border-slate-800 px-4 sm:px-8 mb-1">
+      <div className="flex items-center gap-6 border-b border-slate-800 px-4 sm:px-8 mb-3">
         <button className="border-b-2 border-emerald-400 pb-3 pt-4 text-sm font-semibold text-emerald-400">
           All Positions
         </button>
