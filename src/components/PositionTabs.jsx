@@ -956,24 +956,7 @@ function Positions({ ibkrData }) {
   ]
 
   return (
-    <div className="mx-auto max-w-5xl">
-      {/* Tab bar */}
-      <div className="flex items-center gap-6 border-b border-slate-800 px-4 sm:px-8 mb-3">
-        {tabs.map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setFilter(tab.key)}
-            className={`pb-3 pt-4 text-sm font-semibold transition-colors ${
-              filter === tab.key
-                ? 'border-b-2 border-emerald-400 text-emerald-400'
-                : 'text-slate-500 hover:text-slate-300'
-            }`}
-          >
-            {tab.label}{tab.count != null && <> <span className="text-xs font-normal">{tab.count}</span></>}
-          </button>
-        ))}
-      </div>
-
+    <div className="mx-auto max-w-5xl pb-20">
       {filter === 'overview' ? (
         <PortfolioOverview allTrades={allTrades} closedPositions={[...closedLongPositions, ...closedShortPositions]} />
       ) : (
@@ -985,6 +968,33 @@ function Positions({ ibkrData }) {
           filter={filter}
         />
       )}
+
+      {/* Bottom navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-800 bg-slate-950/90 backdrop-blur-lg">
+        <div className="mx-auto flex max-w-5xl items-stretch justify-around">
+          {tabs.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setFilter(tab.key)}
+              className={`flex flex-1 flex-col items-center gap-0.5 py-3 text-xs font-semibold transition-colors ${
+                filter === tab.key
+                  ? 'text-emerald-400'
+                  : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              {filter === tab.key && (
+                <span className="absolute top-0 h-0.5 w-10 rounded-b bg-emerald-400" />
+              )}
+              <span className="text-sm">{tab.label}</span>
+              {tab.count != null && (
+                <span className={`text-[10px] font-normal ${filter === tab.key ? 'text-emerald-400/70' : 'text-slate-600'}`}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </nav>
     </div>
   )
 }
