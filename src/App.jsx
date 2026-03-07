@@ -10,11 +10,11 @@ function App() {
   const { portfolio, loading, error, connected, refresh } = useIBKR()
 
   return (
-    <div className="flex min-h-screen min-h-dvh flex-col bg-slate-950">
+    <div className="flex min-h-screen min-h-dvh flex-col bg-slate-950 text-slate-100">
       <Header portfolio={portfolio} />
       <NotificationBanner update={updateAvailable} onDismiss={dismissUpdate} />
 
-      <main className="flex-1 overflow-y-auto scrollbar-hide px-4 pb-4 pt-4 sm:px-6 lg:px-8">
+      <main className="flex-1 overflow-y-auto scrollbar-hide pb-8 pt-2">
         <IBKRStatus
           connected={connected}
           loading={loading}

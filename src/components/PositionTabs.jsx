@@ -5,7 +5,7 @@ const TODAY = new Date().toISOString().slice(0, 10)
 function formatDate(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr + 'T00:00:00')
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 function daysBetween(startDate, endDate) {
@@ -17,13 +17,11 @@ function daysBetween(startDate, endDate) {
 
 // ── Hardcoded fallback data ─────────────────────────────────────────────
 
-// Currency symbol for display on individual cards (local price)
 const CCY_SYMBOLS = { USD: '$', EUR: '€', CAD: 'C$', GBP: '£', CHF: 'CHF ' }
 function ccySym(currency) {
   return CCY_SYMBOLS[currency] || (currency ? currency + ' ' : '$')
 }
 
-// Approximate FX rates to USD for aggregating invested/profit totals
 const FX_TO_USD = { USD: 1, EUR: 1.08, CAD: 0.73, GBP: 1.27, CHF: 1.13 }
 function toUSD(amount, currency) {
   return amount * (FX_TO_USD[currency] || 1)
@@ -142,189 +140,218 @@ function calcPnlPercent(position) {
   return null
 }
 
+// ── Aggregate duplicates ────────────────────────────────────────────────
+
+function aggregatePositions(positions) {
+  const grouped = {}
+  for (const p of positions) {
+    const key = p.ticker
+    if (!grouped[key]) {
+      grouped[key] = {
+        ...p,
+        totalCost: p.entryPrice * p.quantity,
+        totalQuantity: p.quantity,
+        entries: [{ price: p.entryPrice, quantity: p.quantity, date: p.openDate }],
+        earliestDate: p.openDate || '',
+        latestDate: p.openDate || '',
+        totalDailyPnL: p.dailyPnL || 0,
+        totalUnrealizedPnL: p.unrealizedPnL || 0,
+        totalProfitDollar: p.profitDollar || 0,
+      }
+    } else {
+      const g = grouped[key]
+      g.totalCost += p.entryPrice * p.quantity
+      g.totalQuantity += p.quantity
+      g.entries.push({ price: p.entryPrice, quantity: p.quantity, date: p.openDate })
+      if (p.openDate && (!g.earliestDate || p.openDate < g.earliestDate)) g.earliestDate = p.openDate
+      if (p.openDate && (!g.latestDate || p.openDate > g.latestDate)) g.latestDate = p.openDate
+      g.totalDailyPnL += p.dailyPnL || 0
+      g.totalUnrealizedPnL += p.unrealizedPnL || 0
+      g.totalProfitDollar += p.profitDollar || 0
+      // Keep exitPrice from any entry that has one
+      if (p.exitPrice != null && g.exitPrice == null) g.exitPrice = p.exitPrice
+    }
+  }
+
+  return Object.values(grouped).map(g => ({
+    ...g,
+    entryPrice: g.totalCost / g.totalQuantity, // weighted average
+    quantity: g.totalQuantity,
+    openDate: g.earliestDate,
+    _latestDate: g.latestDate,
+    _entryCount: g.entries.length,
+    _entries: g.entries,
+    dailyPnL: g.totalDailyPnL || undefined,
+    unrealizedPnL: g.totalUnrealizedPnL || undefined,
+    profitDollar: g.totalProfitDollar || undefined,
+  }))
+}
+
+// ── Rating helper ───────────────────────────────────────────────────────
+
+function getRating(position, type) {
+  const pct = calcPnlPercent(position)
+  if (position.status === 'closed') return { label: 'CLOSED', color: 'text-slate-500' }
+  if (type === 'short') {
+    if (pct !== null && pct < -5) return { label: 'STRONG SHORT', color: 'text-orange-400' }
+    return { label: 'SHORT', color: 'text-orange-400/70' }
+  }
+  if (pct !== null && pct > 5) return { label: 'STRONG BUY', color: 'text-emerald-400' }
+  if (pct !== null && pct < -5) return { label: 'HOLD', color: 'text-amber-400' }
+  return { label: 'BUY', color: 'text-emerald-400/80' }
+}
+
+// ── Score helper (days holding → relative strength style) ───────────────
+
+function getScore(position) {
+  const days = position.status === 'closed'
+    ? daysBetween(position.openDate, position.closeDate)
+    : daysBetween(position.openDate, TODAY)
+  if (days === null) return null
+  const score = Math.max(1, Math.min(99, 100 - days))
+  return score
+}
+
 // ── Components ──────────────────────────────────────────────────────────
 
 function GlowDot({ color }) {
   const colors = {
     green: 'bg-emerald-400 shadow-emerald-400/60',
     red: 'bg-red-400 shadow-red-400/60',
+    orange: 'bg-orange-400 shadow-orange-400/60',
   }
   return (
-    <span className="relative flex h-2.5 w-2.5">
+    <span className="relative flex h-3 w-3 shrink-0">
       <span className={`glow-dot absolute inline-flex h-full w-full rounded-full opacity-75 ${colors[color]}`} />
-      <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${colors[color]}`} />
+      <span className={`relative inline-flex h-3 w-3 rounded-full ${colors[color]}`} />
     </span>
   )
 }
 
-function StatusTag({ status }) {
-  const isOpen = status === 'open'
-  return (
-    <div className="flex items-center gap-1.5">
-      <GlowDot color={isOpen ? 'green' : 'red'} />
-      <span className={`text-[10px] font-semibold uppercase tracking-wider ${isOpen ? 'text-emerald-400' : 'text-red-400'}`}>
-        {status}
-      </span>
-    </div>
-  )
-}
-
-function PnlBadge({ position }) {
-  const pct = calcPnlPercent(position)
-  if (pct === null) return null
-  const isPositive = pct >= 0
-
-  // Daily change % for open positions
-  let dailyPct = null
-  if (position.status === 'open' && position.dailyPnL != null && position.dailyPnL !== 0) {
-    const cost = position.entryPrice * position.quantity
-    if (cost > 0) dailyPct = (position.dailyPnL / cost) * 100
-  }
-
-  return (
-    <span className="flex items-center gap-1.5">
-      <span className={`rounded-md px-2 py-0.5 text-xs font-bold ${isPositive ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
-        {isPositive ? '+' : ''}{pct.toFixed(1)}%
-      </span>
-      {dailyPct !== null && (
-        <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${dailyPct >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
-          {dailyPct >= 0 ? '+' : ''}{dailyPct.toFixed(1)}%
-        </span>
-      )}
-    </span>
-  )
-}
-
-function DaysHolding({ position }) {
-  const isClosed = position.status === 'closed'
-  const days = isClosed
-    ? daysBetween(position.openDate, position.closeDate)
-    : daysBetween(position.openDate, TODAY)
-
-  if (days === null) return null
-
-  const label = days === 0 ? 'Today' : days === 1 ? '1 day' : `${days} days`
-
-  return (
-    <span className="text-[10px] font-medium text-slate-500">
-      {label}
-    </span>
-  )
-}
-
-function PositionCard({ position, type, onClick, selected, hidden }) {
+function PositionRow({ position, type, onClick, selected, hidden }) {
   const isLong = type === 'long'
   const isClosed = position.status === 'closed'
   const sym = ccySym(position.currency)
-  const borderColor = selected
-    ? isLong ? 'border-blue-400/60 shadow-lg shadow-blue-500/10' : 'border-orange-400/60 shadow-lg shadow-orange-500/10'
-    : isLong ? 'border-blue-500/20 hover:border-blue-500/40' : 'border-orange-500/20 hover:border-orange-500/40'
-  const accentColor = isLong ? 'text-blue-400' : 'text-orange-400'
+  const rating = getRating(position, type)
+  const score = getScore(position)
+  const pct = calcPnlPercent(position)
+
+  const dotColor = isClosed ? 'red' : isLong ? 'green' : 'orange'
+
+  // Date labels
+  const openLabel = position.openDate ? formatDate(position.openDate) : null
+  const hasMultipleDates = position._latestDate && position._latestDate !== position.openDate
+  const dateDisplay = hasMultipleDates
+    ? `${openLabel} - ${formatDate(position._latestDate)}`
+    : openLabel
+
+  const closeLabel = isClosed && position.closeDate ? formatDate(position.closeDate) : null
 
   return (
     <div
       onClick={onClick}
-      className={`rounded-2xl border bg-slate-900/60 px-4 py-3 cursor-pointer transition-all duration-300 ease-in-out ${borderColor} ${hidden ? 'scale-95 opacity-0 max-h-0 !m-0 !p-0 overflow-hidden border-0' : 'scale-100 opacity-100 max-h-[500px]'} ${selected ? 'ring-1 ring-white/10' : ''}`}
+      className={`group cursor-pointer border-b border-slate-800/60 transition-all duration-300 ease-in-out ${
+        hidden ? 'scale-95 opacity-0 max-h-0 overflow-hidden !py-0' : 'scale-100 opacity-100 max-h-[200px]'
+      } ${selected ? 'bg-slate-800/40' : 'hover:bg-slate-800/20'}`}
     >
-      <div className="flex items-center gap-4 whitespace-nowrap">
-        <GlowDot color={isClosed ? 'red' : 'green'} />
-        <span className={`text-[10px] font-bold uppercase tracking-widest w-10 ${accentColor}`}>
-          {isLong ? 'Long' : 'Short'}
-        </span>
-        <span className="text-base font-bold text-slate-100 w-14">{position.ticker}</span>
-        <span className="text-xs text-slate-500">{sym}{position.entryPrice.toLocaleString()}</span>
-        <span className="text-xs text-slate-500">{position.quantity}x</span>
-        {isClosed ? (
-          <>
-            <span className="text-xs text-slate-400">exit {sym}{position.exitPrice.toLocaleString()}</span>
-            {position.profitDollar != null && (
-              <span className={`text-xs font-bold ${position.profitDollar >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {position.profitDollar >= 0 ? '+' : ''}${position.profitDollar.toLocaleString()}
-              </span>
-            )}
-          </>
-        ) : (
-          <>
-            {position.dailyPnL != null && position.dailyPnL !== 0 && (
-              <span className={`text-xs font-bold ${position.dailyPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {position.dailyPnL >= 0 ? '+' : ''}{((position.dailyPnL / (position.entryPrice * position.quantity)) * 100).toFixed(1)}% {position.dailyPnL >= 0 ? '+' : ''}${position.dailyPnL.toFixed(0)}
-              </span>
-            )}
-            {position.unrealizedPnL != null && position.unrealizedPnL !== 0 && (
-              <span className={`text-xs font-bold ${position.unrealizedPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                unrl {position.unrealizedPnL >= 0 ? '+' : ''}${position.unrealizedPnL.toFixed(0)}
-              </span>
-            )}
-            {position.exitPrice != null && (
-              <span className={`text-xs font-bold ${isLong ? 'text-emerald-400' : 'text-amber-400'}`}>
-                target {sym}{position.exitPrice.toLocaleString()}
-              </span>
-            )}
-          </>
+      <div className="flex items-center gap-4 sm:gap-6 px-4 py-4 sm:px-8 sm:py-5">
+        {/* Status dot */}
+        <GlowDot color={dotColor} />
+
+        {/* Ticker */}
+        <div className="w-14 sm:w-20 shrink-0">
+          <span className="text-lg sm:text-2xl font-extrabold tracking-tight text-slate-100">
+            {position.ticker}
+          </span>
+        </div>
+
+        {/* Price + date */}
+        <div className="w-24 sm:w-32 shrink-0">
+          <div className="text-base sm:text-xl font-bold text-blue-400">
+            {sym}{position.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
+          {dateDisplay && (
+            <div className="mt-0.5 inline-block rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-500">
+              {isClosed ? `closed ${closeLabel}` : dateDisplay}
+            </div>
+          )}
+        </div>
+
+        {/* Rating */}
+        <div className="w-28 sm:w-36 shrink-0 hidden sm:block">
+          <span className={`text-xs sm:text-sm font-extrabold tracking-wide uppercase ${rating.color}`}>
+            {rating.label}
+          </span>
+        </div>
+
+        {/* Score badge */}
+        {score !== null && (
+          <div className="shrink-0 hidden md:flex items-center">
+            <span className="inline-flex items-center justify-center rounded border border-emerald-500/40 px-2.5 py-1 text-xs sm:text-sm font-bold text-emerald-400 min-w-[56px]">
+              RS {score}
+            </span>
+          </div>
         )}
-        <PnlBadge position={position} />
-        <span className="ml-auto"><DaysHolding position={position} /></span>
+
+        {/* Target / price range */}
+        <div className="flex-1 min-w-0 flex items-center gap-2 justify-end sm:justify-start">
+          {isClosed && position.exitPrice != null ? (
+            <span className="text-sm font-semibold text-slate-300">
+              {sym}{position.exitPrice.toLocaleString()}
+            </span>
+          ) : position.exitPrice != null ? (
+            <span className="text-sm font-semibold text-slate-300">
+              <span className="text-slate-400">{sym}{position.entryPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+              <span className="text-slate-600 mx-1">-</span>
+              <span>{sym}{position.exitPrice.toLocaleString()}</span>
+            </span>
+          ) : null}
+
+          {pct !== null && (
+            <span className={`rounded-md px-2 py-0.5 text-xs font-bold ${pct >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+              {pct >= 0 ? '+' : ''}{pct.toFixed(1)}%
+            </span>
+          )}
+        </div>
+
+        {/* Type + quantity label */}
+        <div className="shrink-0 text-right">
+          <span className="text-xs font-medium text-slate-500">
+            {isLong ? 'Long' : 'Short'}
+          </span>
+          <div className="text-[10px] text-slate-600">
+            {position.quantity}x{position._entryCount > 1 ? ` (${position._entryCount} buys)` : ''}
+          </div>
+        </div>
       </div>
     </div>
   )
 }
 
 function PositionList({ longs, shorts, selectedTicker, onSelectTicker }) {
-  const allDates = [...new Set([
-    ...longs.map((p) => p.openDate || ''),
-    ...shorts.map((p) => p.openDate || ''),
-  ])].sort((a, b) => {
-    if (!a) return 1
-    if (!b) return -1
-    return new Date(b) - new Date(a)
+  const allPositions = [
+    ...longs.map(p => ({ ...p, _type: 'long' })),
+    ...shorts.map(p => ({ ...p, _type: 'short' })),
+  ].sort((a, b) => {
+    const dateA = a.openDate || ''
+    const dateB = b.openDate || ''
+    if (!dateA) return 1
+    if (!dateB) return -1
+    return dateB.localeCompare(dateA)
   })
 
   return (
-    <div className="space-y-6">
-      {allDates.map((date) => {
-        const longsForDate = longs.filter((p) => (p.openDate || '') === date)
-        const shortsForDate = shorts.filter((p) => (p.openDate || '') === date)
-        const hasLongs = longsForDate.length > 0
-        const hasShorts = shortsForDate.length > 0
-        const hasBoth = hasLongs && hasShorts
-        const displayDate = date ? formatDate(date) : 'No date'
-
-        const dateHasMatch = !selectedTicker || longsForDate.some((p) => p.ticker === selectedTicker) || shortsForDate.some((p) => p.ticker === selectedTicker)
-
-        return (
-          <div
-            key={date || 'no-date'}
-            className={`relative transition-all duration-300 ease-in-out ${selectedTicker && !dateHasMatch ? 'opacity-0 max-h-0 overflow-hidden !my-0' : 'opacity-100'}`}
-          >
-            <div className="mb-3 px-1 text-center">
-              <span className={`text-[11px] font-medium tracking-wide transition-colors duration-300 ${selectedTicker && dateHasMatch ? 'text-slate-400' : 'text-slate-600'}`}>{displayDate}</span>
-            </div>
-
-            <div className="space-y-2">
-              {longsForDate.map((position, i) => (
-                <PositionCard
-                  key={`long-${position.ticker}-${i}`}
-                  position={position}
-                  type="long"
-                  selected={selectedTicker === position.ticker}
-                  hidden={!!selectedTicker && position.ticker !== selectedTicker}
-                  onClick={() => onSelectTicker(position.ticker)}
-                />
-              ))}
-              {shortsForDate.map((position, i) => (
-                <PositionCard
-                  key={`short-${position.ticker}-${i}`}
-                  position={position}
-                  type="short"
-                  selected={selectedTicker === position.ticker}
-                  hidden={!!selectedTicker && position.ticker !== selectedTicker}
-                  onClick={() => onSelectTicker(position.ticker)}
-                />
-              ))}
-            </div>
-          </div>
-        )
-      })}
+    <div>
+      {allPositions.map((position, i) => (
+        <PositionRow
+          key={`${position._type}-${position.ticker}-${i}`}
+          position={position}
+          type={position._type}
+          selected={selectedTicker === position.ticker}
+          hidden={!!selectedTicker && position.ticker !== selectedTicker}
+          onClick={() => onSelectTicker(position.ticker)}
+        />
+      ))}
     </div>
   )
 }
@@ -337,17 +364,9 @@ function filterClosed2026(positions) {
   })
 }
 
-/**
- * Merge hardcoded defaults with live IB data.
- * - Live positions override hardcoded ones (matched by ticker)
- * - Hardcoded positions not in live are kept (IB might not show old ones)
- * - New live positions not in hardcoded are added
- * - Live closed positions (executions) are merged with hardcoded closed
- */
 function mergePositions(defaults, livePositions) {
   if (!livePositions || livePositions.length === 0) return defaults
 
-  // Build a map of live positions by ticker (there can be multiple per ticker)
   const liveByTicker = {}
   for (const pos of livePositions) {
     if (!liveByTicker[pos.ticker]) liveByTicker[pos.ticker] = []
@@ -360,9 +379,7 @@ function mergePositions(defaults, livePositions) {
   for (const def of defaults) {
     const liveEntries = liveByTicker[def.ticker]
     if (liveEntries && liveEntries.length > 0) {
-      // Live overrides this ticker — find best match by quantity or take first
       if (!usedLiveTickers.has(def.ticker)) {
-        // First time seeing this ticker: add all live entries for it
         for (const live of liveEntries) {
           merged.push({
             ...def,
@@ -372,14 +389,11 @@ function mergePositions(defaults, livePositions) {
         }
         usedLiveTickers.add(def.ticker)
       }
-      // Skip additional hardcoded entries for same ticker (live has the truth)
     } else {
-      // No live data for this ticker — keep hardcoded
       merged.push(def)
     }
   }
 
-  // Add any live positions for tickers not in hardcoded defaults
   for (const [ticker, entries] of Object.entries(liveByTicker)) {
     if (!usedLiveTickers.has(ticker)) {
       merged.push(...entries)
@@ -392,7 +406,6 @@ function mergePositions(defaults, livePositions) {
 function Positions({ ibkrData }) {
   const hasLive = ibkrData && (ibkrData.longPositions || ibkrData.shortPositions)
 
-  // Merge: live data updates hardcoded, hardcoded fills in what live doesn't have
   const longPositions = hasLive
     ? mergePositions(defaultLongPositions, ibkrData.longPositions)
     : defaultLongPositions
@@ -400,7 +413,6 @@ function Positions({ ibkrData }) {
     ? mergePositions(defaultShortPositions, ibkrData.shortPositions)
     : defaultShortPositions
 
-  // Closed positions: merge live executions with hardcoded closed, deduplicate
   const liveClosedLong = filterClosed2026(ibkrData?.closedLongPositions || [])
   const liveClosedShort = filterClosed2026(ibkrData?.closedShortPositions || [])
   const closedLongKeys = new Set(liveClosedLong.map(p => `${p.ticker}|${p.openDate}`))
@@ -414,11 +426,12 @@ function Positions({ ibkrData }) {
     ...filterClosed2026(defaultClosedShortPositions).filter(p => !closedShortKeys.has(`${p.ticker}|${p.openDate}`)),
   ]
 
-  // Keep the calculation helpers in sync
+  // Keep the calculation helpers in sync (use raw positions for accuracy)
   setPositionData({ longPositions, shortPositions, closedLongPositions, closedShortPositions })
 
-  const allLongs = [...longPositions, ...closedLongPositions]
-  const allShorts = [...shortPositions, ...closedShortPositions]
+  // Aggregate duplicates for display
+  const aggregatedLongs = aggregatePositions([...longPositions, ...closedLongPositions])
+  const aggregatedShorts = aggregatePositions([...shortPositions, ...closedShortPositions])
 
   const [selectedTicker, setSelectedTicker] = useState(null)
   const containerRef = useRef(null)
@@ -443,10 +456,23 @@ function Positions({ ibkrData }) {
   }
 
   return (
-    <div className="mx-auto max-w-4xl" ref={containerRef}>
+    <div className="mx-auto max-w-5xl" ref={containerRef}>
+      {/* Tab bar */}
+      <div className="flex items-center gap-6 border-b border-slate-800 px-4 sm:px-8 mb-1">
+        <button className="border-b-2 border-emerald-400 pb-3 pt-4 text-sm font-semibold text-emerald-400">
+          All Positions
+        </button>
+        <span className="pb-3 pt-4 text-sm text-slate-500">
+          {aggregatedLongs.length} long
+        </span>
+        <span className="pb-3 pt-4 text-sm text-slate-500">
+          {aggregatedShorts.length} short
+        </span>
+      </div>
+
       <PositionList
-        longs={allLongs}
-        shorts={allShorts}
+        longs={aggregatedLongs}
+        shorts={aggregatedShorts}
         selectedTicker={selectedTicker}
         onSelectTicker={handleSelectTicker}
       />
