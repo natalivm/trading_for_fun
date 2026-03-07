@@ -36,8 +36,8 @@ function Header({ portfolio }) {
           )}
         </div>
 
-        {/* Stats row: Invested + Profit side by side, Daily on right */}
-        <div className="flex items-center justify-between border-t border-slate-800/40 py-3">
+        {/* Stats row: Invested + Profit centered, Daily on right */}
+        <div className="flex items-center justify-center border-t border-slate-800/40 py-3">
           <div className="flex items-center gap-5">
             <div className="flex items-baseline gap-2">
               <span className="text-[11px] font-medium uppercase tracking-wider text-slate-600">Invested</span>
@@ -52,21 +52,21 @@ function Header({ portfolio }) {
                 {isPositive ? '+' : '-'}${Math.abs(profit).toLocaleString()}
               </span>
             </div>
-          </div>
 
-          {hasDailyData && (
-            <div className="flex items-baseline gap-2">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-slate-600">Daily</span>
-              <span className={`text-lg font-bold tabular-nums ${dailyPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                {dailyPositive ? '+' : '-'}${Math.abs(dailyPnL).toLocaleString()}
-              </span>
-              {dailyPct !== null && (
-                <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${dailyPositive ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
-                  {dailyPct >= 0 ? '+' : ''}{dailyPct.toFixed(1)}%
+            {hasDailyData && (
+              <div className="flex items-baseline gap-2">
+                <span className="text-[11px] font-medium uppercase tracking-wider text-slate-600">Daily</span>
+                <span className={`text-lg font-bold tabular-nums ${dailyPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {dailyPositive ? '+' : '-'}${Math.abs(dailyPnL).toLocaleString()}
                 </span>
-              )}
-            </div>
-          )}
+                {dailyPct !== null && (
+                  <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${dailyPositive ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+                    {dailyPct >= 0 ? '+' : ''}{dailyPct.toFixed(1)}%
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>
