@@ -71,9 +71,8 @@ const defaultLongPositions = [
 const defaultShortPositions = [
   { ticker: 'LITE', status: 'open', entryPrice: 716.95, quantity: 3, exitPrice: 500, openDate: '2026-02-26' },
   { ticker: 'APP', status: 'open', entryPrice: 447.75, quantity: 6, openDate: '2026-02-26' },
-  { ticker: 'HYMC', status: 'open', entryPrice: 54.95, quantity: 5, openDate: '2026-03-02' },
+  { ticker: 'HYMC', status: 'open', entryPrice: 40.20, quantity: 10, openDate: '2026-03-06', profitPercent: -2.32, unrealizedPnL: -9.34 },
   { ticker: 'CAT', status: 'open', entryPrice: 742, quantity: 1, openDate: '2026-03-02', profitPercent: 8.54, unrealizedPnL: 63.43 },
-  { ticker: 'HYMC', status: 'open', entryPrice: 47.60, quantity: 5, openDate: '2026-03-03' },
   { ticker: 'MDB', status: 'open', entryPrice: 239.80, quantity: 2, openDate: '2026-03-03' },
   { ticker: 'MDB', status: 'open', entryPrice: 239.18, quantity: 2, openDate: '2026-03-03' },
   { ticker: 'MDB', status: 'open', entryPrice: 253.35, quantity: 2, openDate: '2026-03-03' },
@@ -88,12 +87,12 @@ const defaultClosedShortPositions = [
   {
     ticker: 'HYMC',
     status: 'closed',
-    entryPrice: 47.87,
+    entryPrice: 51.28,
     quantity: 10,
     exitPrice: 47.87,
-    profitPercent: 0,
-    profitDollar: 0,
-    openDate: '2026-03-05',
+    profitPercent: 6.65,
+    profitDollar: 34.08,
+    openDate: '2026-03-02',
     closeDate: '2026-03-05',
   },
 ]
@@ -126,11 +125,11 @@ export function calcDailyPnL() {
 // ── Helper: calculate % gain/loss ───────────────────────────────────────
 
 function calcPnlPercent(position) {
-  if (position.status === 'closed' && position.exitPrice && position.entryPrice) {
-    return ((position.exitPrice - position.entryPrice) / position.entryPrice) * 100
-  }
   if (position.profitPercent != null && position.profitPercent !== 0) {
     return position.profitPercent
+  }
+  if (position.status === 'closed' && position.exitPrice && position.entryPrice) {
+    return ((position.exitPrice - position.entryPrice) / position.entryPrice) * 100
   }
   if (position.profitDollar != null && position.entryPrice && position.quantity) {
     const totalCost = position.entryPrice * position.quantity
@@ -144,7 +143,7 @@ function calcPnlPercent(position) {
 function aggregatePositions(positions) {
   const grouped = {}
   for (const p of positions) {
-    const key = p.ticker
+    const key = `${p.ticker}|${p.status}`
     if (!grouped[key]) {
       grouped[key] = {
         ...p,
