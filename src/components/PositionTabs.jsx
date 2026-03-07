@@ -547,7 +547,7 @@ function ActivityHeatmap({ allTrades }) {
   // Build calendar grid for current year starting from Jan 1
   const year = new Date().getFullYear()
   const jan1 = new Date(year, 0, 1)
-  const today = new Date()
+  const dec31 = new Date(year, 11, 31)
   // Start from the Monday of the week containing Jan 1
   const startDay = new Date(jan1)
   const jan1Dow = jan1.getDay() === 0 ? 6 : jan1.getDay() - 1 // Mon=0
@@ -556,10 +556,10 @@ function ActivityHeatmap({ allTrades }) {
   const weeks = []
   const cursor = new Date(startDay)
   let currentWeek = []
-  while (cursor <= today || currentWeek.length > 0) {
+  while (cursor <= dec31 || currentWeek.length > 0) {
     const dow = cursor.getDay() === 0 ? 6 : cursor.getDay() - 1
     const dateStr = cursor.toISOString().slice(0, 10)
-    const inYear = cursor.getFullYear() === year && cursor <= today
+    const inYear = cursor.getFullYear() === year
     currentWeek.push({
       date: dateStr,
       dow,
@@ -570,7 +570,7 @@ function ActivityHeatmap({ allTrades }) {
     if (currentWeek.length === 7) {
       weeks.push(currentWeek)
       currentWeek = []
-      if (cursor > today) break
+      if (cursor > dec31) break
     }
   }
   if (currentWeek.length > 0) {
@@ -579,7 +579,7 @@ function ActivityHeatmap({ allTrades }) {
   }
 
   const maxCount = Math.max(1, ...Object.values(activityMap))
-  const cellSize = 13, gap = 3
+  const cellSize = 18, gap = 3
 
   const getColor = (count, inYear) => {
     if (!inYear) return 'transparent'
@@ -607,31 +607,32 @@ function ActivityHeatmap({ allTrades }) {
   }
 
   const dayLabels = ['Mon', '', 'Wed', '', 'Fri', '', '']
-  const svgW = weeks.length * (cellSize + gap) + 28
-  const svgH = 7 * (cellSize + gap) + 22
+  const labelW = 36
+  const svgW = weeks.length * (cellSize + gap) + labelW
+  const svgH = 7 * (cellSize + gap) + 26
 
   return (
     <div>
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Trading Activity — {year}</h3>
+      <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-2">Trading Activity — {year}</h3>
       <div className="overflow-x-auto">
         <svg width={svgW} height={svgH} className="block">
           {/* Day labels */}
           {dayLabels.map((label, i) => label && (
-            <text key={i} x={0} y={20 + i * (cellSize + gap) + cellSize / 2 + 1}
-              fill="#64748b" fontSize="9" fontFamily="system-ui" dominantBaseline="middle">{label}</text>
+            <text key={i} x={0} y={24 + i * (cellSize + gap) + cellSize / 2 + 1}
+              fill="#94a3b8" fontSize="11" fontFamily="system-ui" dominantBaseline="middle">{label}</text>
           ))}
           {/* Month labels */}
           {months.map(({ label, week }) => (
-            <text key={label} x={28 + week * (cellSize + gap)} y={9}
-              fill="#64748b" fontSize="9" fontFamily="system-ui">{label}</text>
+            <text key={label} x={labelW + week * (cellSize + gap)} y={11}
+              fill="#94a3b8" fontSize="11" fontWeight="500" fontFamily="system-ui">{label}</text>
           ))}
           {/* Grid cells */}
           {weeks.map((week, wi) =>
             week.map((day, di) => (
               <rect key={`${wi}-${di}`}
-                x={28 + wi * (cellSize + gap)}
-                y={16 + di * (cellSize + gap)}
-                width={cellSize} height={cellSize} rx={2}
+                x={labelW + wi * (cellSize + gap)}
+                y={20 + di * (cellSize + gap)}
+                width={cellSize} height={cellSize} rx={3}
                 fill={getColor(day.count, day.inYear)}
                 stroke={day.count > 0 && day.inYear ? 'rgba(52,211,153,0.2)' : 'none'}
                 strokeWidth={0.5}
@@ -643,50 +644,17 @@ function ActivityHeatmap({ allTrades }) {
         </svg>
       </div>
       {/* Legend */}
-      <div className="flex items-center gap-1.5 mt-1.5">
-        <span className="text-[10px] text-slate-500">Less</span>
+      <div className="flex items-center gap-2 mt-2">
+        <span className="text-[11px] text-slate-400">Less</span>
         {['rgba(30,41,59,0.18)', '#064e3b', '#059669', '#34d399', '#6ee7b7'].map((c, i) => (
           <div key={i} className="rounded-sm" style={{ width: cellSize, height: cellSize, background: c }} />
         ))}
-        <span className="text-[10px] text-slate-500">More</span>
+        <span className="text-[11px] text-slate-400">More</span>
       </div>
     </div>
   )
 }
 
-function AllocationBar({ positions }) {
-  // Group by ticker, sum invested amounts
-  const byTicker = {}
-  for (const p of positions) {
-    if (p.status === 'closed') continue
-    const invested = toUSD(p.entryPrice * p.quantity, p.currency)
-    if (!byTicker[p.ticker]) byTicker[p.ticker] = { ticker: p.ticker, invested: 0, type: p._type }
-    byTicker[p.ticker].invested += invested
-  }
-  const sorted = Object.values(byTicker).sort((a, b) => b.invested - a.invested).slice(0, 12)
-  const maxInvested = sorted[0]?.invested || 1
-
-  return (
-    <div className="flex flex-col gap-1.5">
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Capital Allocation — Top Holdings</h3>
-      {sorted.map(item => {
-        const pct = (item.invested / maxInvested) * 100
-        const color = item.type === 'short' ? 'bg-pink-500/60' : 'bg-emerald-500/60'
-        return (
-          <div key={item.ticker} className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-300 w-14 text-right shrink-0">{item.ticker}</span>
-            <div className="flex-1 h-5 bg-slate-800/60 rounded-md overflow-hidden">
-              <div className={`h-full ${color} rounded-md transition-all duration-500`} style={{ width: `${pct}%` }} />
-            </div>
-            <span className="text-[11px] text-slate-400 tabular-nums w-16 text-right shrink-0">
-              ${item.invested.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-            </span>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
 
 function CumulativePnLChart({ closedPositions, width = 500, height = 120 }) {
   if (!closedPositions || closedPositions.length < 2) {
@@ -730,8 +698,8 @@ function CumulativePnLChart({ closedPositions, width = 500, height = 120 }) {
 
   const lastVal = values[values.length - 1]
   const isUp = lastVal >= 0
-  const strokeColor = isUp ? '#34d399' : '#f87171'
-  const fillColor = isUp ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)'
+  const strokeColor = isUp ? '#34d399' : '#f472b6'
+  const fillColor = isUp ? 'rgba(52,211,153,0.12)' : 'rgba(244,114,182,0.10)'
 
   return (
     <div>
@@ -742,10 +710,10 @@ function CumulativePnLChart({ closedPositions, width = 500, height = 120 }) {
         {/* Area fill */}
         <path d={areaPath} fill={fillColor} />
         {/* Line */}
-        <path d={linePath} fill="none" stroke={strokeColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={linePath} fill="none" stroke={strokeColor} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
         {/* Dots for each trade */}
         {pathPoints.map((p, i) => (
-          <circle key={i} cx={p.x} cy={p.y} r="3" fill={strokeColor} opacity="0.7" />
+          <circle key={i} cx={p.x} cy={p.y} r="2" fill={strokeColor} opacity="0.7" />
         ))}
         {/* Labels */}
         <text x="4" y={height - 4} fill="#475569" fontSize="9" fontFamily="monospace">{formatDate(points[0].date)}</text>
@@ -834,7 +802,6 @@ function PortfolioOverview({ allTrades, closedPositions }) {
       <QuickStats allTrades={allTrades} closedPositions={closedPositions} />
       <CumulativePnLChart closedPositions={closedPositions} />
       <ActivityHeatmap allTrades={allTrades} />
-      <AllocationBar positions={allTrades} />
     </div>
   )
 }
