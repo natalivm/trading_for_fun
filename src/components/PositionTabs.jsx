@@ -195,6 +195,7 @@ function groupFills(positions) {
         _totalUnrealizedPnL: p.unrealizedPnL || 0,
         _totalRealizedPnL: p.realizedPnL || 0,
         _totalFees: p.fees || 0,
+        _totalMarketValue: p.marketValue || 0,
         _hasExit: p.exitPrice != null,
       }
     } else {
@@ -206,6 +207,7 @@ function groupFills(positions) {
       g._totalUnrealizedPnL += p.unrealizedPnL || 0
       g._totalRealizedPnL += p.realizedPnL || 0
       g._totalFees += p.fees || 0
+      g._totalMarketValue += p.marketValue || 0
       if (p.exitPrice != null) g._hasExit = true
     }
   }
@@ -218,6 +220,7 @@ function groupFills(positions) {
     unrealizedPnL: g._totalUnrealizedPnL || undefined,
     realizedPnL: g._totalRealizedPnL || undefined,
     fees: g._totalFees || undefined,
+    marketValue: g._totalMarketValue || undefined,
   }))
 }
 
@@ -337,6 +340,11 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
   // PnL dollar amount
   const pnlDollar = position.unrealizedPnL || position.profitDollar || null
 
+  // Current market price (derived from marketValue / quantity)
+  const currentPrice = !isClosed && position.marketValue && position.quantity
+    ? position.marketValue / position.quantity
+    : null
+
   // Days holding
   const days = isClosed
     ? daysBetween(position.openDate, position.closeDate)
@@ -381,20 +389,23 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
           {isClosed ? 'Closed' : isLong ? 'Long' : 'Short'}
         </span>
 
-        {/* Ticker */}
-        <span className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-100 w-14 sm:w-16 shrink-0">
+        {/* Ticker + Shares */}
+        <span className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-100 shrink-0">
           {position.ticker}
+          <span className="text-xs sm:text-sm font-normal text-slate-400 ml-1.5">
+            x{position.quantity}
+          </span>
         </span>
 
-        {/* Price */}
+        {/* Avg Price + Current Price */}
         <span className="text-sm sm:text-base font-bold text-blue-400 shrink-0">
           {sym}{position.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
-
-        {/* Shares */}
-        <span className="text-xs sm:text-sm text-slate-400 shrink-0">
-          {position.quantity} shares
-        </span>
+        {currentPrice != null && (
+          <span className="text-sm sm:text-base font-bold text-amber-400 shrink-0">
+            {sym}{currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+        )}
 
         {/* PnL badge: % + $ */}
         {(pct !== null || pnlDollar !== null) && (
