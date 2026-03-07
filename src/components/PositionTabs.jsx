@@ -544,38 +544,26 @@ function ActivityHeatmap({ allTrades }) {
     if (p.closeDate) activityMap[p.closeDate] = (activityMap[p.closeDate] || 0) + 1
   }
 
-  // Build calendar grid for current year starting from Jan 1
-  const year = new Date().getFullYear()
+  // Build weekday-only (Mon–Fri) grid for the full year
+  const year = 2026
   const jan1 = new Date(year, 0, 1)
   const dec31 = new Date(year, 11, 31)
-  // Start from the Monday of the week containing Jan 1
+  // Walk to the Monday on or before Jan 1
   const startDay = new Date(jan1)
-  const jan1Dow = jan1.getDay() === 0 ? 6 : jan1.getDay() - 1 // Mon=0
-  startDay.setDate(startDay.getDate() - jan1Dow)
+  while (startDay.getDay() !== 1) startDay.setDate(startDay.getDate() - 1)
 
   const weeks = []
   const cursor = new Date(startDay)
-  let currentWeek = []
-  while (cursor <= dec31 || currentWeek.length > 0) {
-    const dow = cursor.getDay() === 0 ? 6 : cursor.getDay() - 1
-    const dateStr = cursor.toISOString().slice(0, 10)
-    const inYear = cursor.getFullYear() === year
-    currentWeek.push({
-      date: dateStr,
-      dow,
-      count: activityMap[dateStr] || 0,
-      inYear,
-    })
-    cursor.setDate(cursor.getDate() + 1)
-    if (currentWeek.length === 7) {
-      weeks.push(currentWeek)
-      currentWeek = []
-      if (cursor > dec31) break
+  while (cursor <= dec31) {
+    const week = []
+    for (let d = 0; d < 5; d++) { // Mon–Fri only
+      const dateStr = cursor.toISOString().slice(0, 10)
+      const inYear = cursor.getFullYear() === year
+      week.push({ date: dateStr, count: activityMap[dateStr] || 0, inYear })
+      cursor.setDate(cursor.getDate() + 1)
     }
-  }
-  if (currentWeek.length > 0) {
-    while (currentWeek.length < 7) currentWeek.push({ date: '', dow: currentWeek.length, count: 0, inYear: false })
-    weeks.push(currentWeek)
+    cursor.setDate(cursor.getDate() + 2) // skip Sat & Sun
+    weeks.push(week)
   }
 
   const maxCount = Math.max(1, ...Object.values(activityMap))
@@ -585,7 +573,6 @@ function ActivityHeatmap({ allTrades }) {
     if (!inYear) return 'transparent'
     if (count === 0) return 'rgba(30,41,59,0.18)'
     const intensity = Math.min(count / maxCount, 1)
-    // 4 levels of green
     if (intensity <= 0.25) return '#064e3b'
     if (intensity <= 0.5) return '#059669'
     if (intensity <= 0.75) return '#34d399'
@@ -596,9 +583,9 @@ function ActivityHeatmap({ allTrades }) {
   const months = []
   let lastMonth = -1
   for (let w = 0; w < weeks.length; w++) {
-    const firstValidDay = weeks[w].find(d => d.inYear)
-    if (firstValidDay) {
-      const m = new Date(firstValidDay.date).getMonth()
+    const firstValid = weeks[w].find(d => d.inYear)
+    if (firstValid) {
+      const m = new Date(firstValid.date).getMonth()
       if (m !== lastMonth) {
         months.push({ label: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m], week: w })
         lastMonth = m
@@ -606,10 +593,10 @@ function ActivityHeatmap({ allTrades }) {
     }
   }
 
-  const dayLabels = ['Mon', '', 'Wed', '', 'Fri', '', '']
+  const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
   const labelW = 36
   const svgW = weeks.length * (cellSize + gap) + labelW
-  const svgH = 7 * (cellSize + gap) + 26
+  const svgH = 5 * (cellSize + gap) + 26
 
   return (
     <div>
@@ -617,7 +604,7 @@ function ActivityHeatmap({ allTrades }) {
       <div className="overflow-x-auto">
         <svg width={svgW} height={svgH} className="block">
           {/* Day labels */}
-          {dayLabels.map((label, i) => label && (
+          {dayLabels.map((label, i) => (
             <text key={i} x={0} y={24 + i * (cellSize + gap) + cellSize / 2 + 1}
               fill="#94a3b8" fontSize="11" fontFamily="system-ui" dominantBaseline="middle">{label}</text>
           ))}
@@ -703,7 +690,12 @@ function CumulativePnLChart({ closedPositions, width = 500, height = 120 }) {
 
   return (
     <div>
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Cumulative P&L — Closed Trades</h3>
+      <div className="flex items-baseline justify-between mb-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Cumulative P&L — Closed Trades</h3>
+        <span className="text-sm font-bold tabular-nums" style={{ color: strokeColor }}>
+          {lastVal >= 0 ? '+' : '-'}${Math.abs(lastVal).toFixed(0)}
+        </span>
+      </div>
       <svg width="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="w-full">
         {/* Zero line */}
         <line x1="0" y1={zeroY} x2={width} y2={zeroY} stroke="#334155" strokeWidth="1" strokeDasharray="4,4" />
@@ -718,10 +710,6 @@ function CumulativePnLChart({ closedPositions, width = 500, height = 120 }) {
         {/* Labels */}
         <text x="4" y={height - 4} fill="#475569" fontSize="9" fontFamily="monospace">{formatDate(points[0].date)}</text>
         <text x={width - 4} y={height - 4} fill="#475569" fontSize="9" fontFamily="monospace" textAnchor="end">{formatDate(points[points.length - 1].date)}</text>
-        {/* End value label */}
-        <text x={width - 4} y={pathPoints[pathPoints.length - 1].y - 6} fill={strokeColor} fontSize="10" fontFamily="monospace" fontWeight="bold" textAnchor="end">
-          {lastVal >= 0 ? '+' : '-'}${Math.abs(lastVal).toFixed(0)}
-        </text>
       </svg>
     </div>
   )
