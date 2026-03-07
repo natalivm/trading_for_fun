@@ -170,9 +170,13 @@ function calcPnlPercent(position, isShort = false) {
     const raw = ((position.exitPrice - position.entryPrice) / position.entryPrice) * 100
     return isShort ? -raw : raw
   }
-  if (position.profitDollar != null && position.entryPrice && position.quantity) {
-    const totalCost = position.entryPrice * position.quantity
-    if (totalCost > 0) return (position.profitDollar / totalCost) * 100
+  const totalCost = (position.entryPrice || 0) * (position.quantity || 0)
+  if (totalCost > 0) {
+    // Use unrealizedPnL, realizedPnL, or profitDollar
+    const pnl = position.unrealizedPnL || position.realizedPnL || position.profitDollar
+    if (pnl != null) return (pnl / totalCost) * 100
+    // Derive from marketValue if available
+    if (position.marketValue) return ((position.marketValue - totalCost) / totalCost) * 100
   }
   return null
 }
@@ -194,9 +198,11 @@ function groupFills(positions) {
         _totalDailyPnL: p.dailyPnL || 0,
         _totalUnrealizedPnL: p.unrealizedPnL || 0,
         _totalRealizedPnL: p.realizedPnL || 0,
+        _totalProfitDollar: p.profitDollar || 0,
         _totalFees: p.fees || 0,
         _totalMarketValue: p.marketValue || 0,
         _hasExit: p.exitPrice != null,
+        _hasProfitDollar: p.profitDollar != null,
       }
     } else {
       const g = grouped[key]
@@ -206,9 +212,11 @@ function groupFills(positions) {
       g._totalDailyPnL += p.dailyPnL || 0
       g._totalUnrealizedPnL += p.unrealizedPnL || 0
       g._totalRealizedPnL += p.realizedPnL || 0
+      g._totalProfitDollar += p.profitDollar || 0
       g._totalFees += p.fees || 0
       g._totalMarketValue += p.marketValue || 0
       if (p.exitPrice != null) g._hasExit = true
+      if (p.profitDollar != null) g._hasProfitDollar = true
     }
   }
   return Object.values(grouped).map(g => ({
@@ -219,6 +227,8 @@ function groupFills(positions) {
     dailyPnL: g._totalDailyPnL || undefined,
     unrealizedPnL: g._totalUnrealizedPnL || undefined,
     realizedPnL: g._totalRealizedPnL || undefined,
+    profitDollar: g._hasProfitDollar ? g._totalProfitDollar : undefined,
+    profitPercent: undefined, // recalculated from aggregated values
     fees: g._totalFees || undefined,
     marketValue: g._totalMarketValue || undefined,
   }))
@@ -338,7 +348,8 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
       : 'border-pink-500/20 hover:border-pink-500/40'
 
   // PnL dollar amount
-  const pnlDollar = position.unrealizedPnL || position.profitDollar || null
+  const pnlDollar = position.unrealizedPnL || position.realizedPnL || position.profitDollar
+    || (currentPrice ? (currentPrice - position.entryPrice) * position.quantity : null)
 
   // Current market price (derived from marketValue / quantity)
   const currentPrice = !isClosed && position.marketValue && position.quantity
