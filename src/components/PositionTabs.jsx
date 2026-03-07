@@ -63,20 +63,34 @@ const defaultLongPositions = [
   { ticker: 'OKTA', status: 'open', entryPrice: 71.73, quantity: 10, openDate: '2026-03-04', profitPercent: 12.6, unrealizedPnL: 90.65 },
   { ticker: 'BTCE', status: 'open', entryPrice: 55.98, quantity: 100, openDate: '2026-03-04' },
   { ticker: 'COHR', status: 'open', entryPrice: 255.17, quantity: 2, openDate: '2026-03-05' },
+  { ticker: 'COHR', status: 'open', entryPrice: 248.19, quantity: 3, openDate: '2026-03-07' },
   { ticker: 'IREN', status: 'open', entryPrice: 38.87, quantity: 15, openDate: '2026-03-05' },
   { ticker: 'GE', status: 'open', entryPrice: 325.78, quantity: 1, openDate: '2026-03-05' },
   { ticker: 'OKLO', status: 'open', entryPrice: 63.03, quantity: 10, openDate: '2026-03-05' },
+  { ticker: 'OKLO', status: 'open', entryPrice: 59.04, quantity: 10, openDate: '2026-03-07' },
+  { ticker: 'ONDS', status: 'open', entryPrice: 10.86, quantity: 100, openDate: '2026-03-07' },
+  { ticker: 'COGT', status: 'open', entryPrice: 38.58, quantity: 35, openDate: '2026-03-07' },
+  { ticker: 'SNDK', status: 'open', entryPrice: 542.17, quantity: 2, openDate: '2026-03-07' },
+  { ticker: 'ORCL', status: 'open', entryPrice: 153.06, quantity: 4, openDate: '2026-03-07' },
+  { ticker: 'STRL', status: 'open', entryPrice: 413.19, quantity: 3, openDate: '2026-03-07' },
+  { ticker: 'BTCWEUR', status: 'open', entryPrice: 15.04, quantity: 100, openDate: '2026-03-07', currency: 'EUR' },
+  { ticker: 'WHR', status: 'open', entryPrice: 59.12, quantity: 2, openDate: '2026-03-07' },
+  { ticker: 'CIEN', status: 'open', entryPrice: 284.28, quantity: 6, openDate: '2026-03-07' },
+  { ticker: 'MU', status: 'open', entryPrice: 413.40, quantity: 2, openDate: '2026-03-07' },
+  { ticker: 'EUGM', status: 'open', entryPrice: 0, quantity: 750, openDate: '2026-03-07', currency: 'CAD' },
+  { ticker: 'AMAT', status: 'open', entryPrice: 328.17, quantity: 2, openDate: '2026-03-07' },
+  { ticker: 'HYMC', status: 'open', entryPrice: 40.20, quantity: 10, openDate: '2026-03-06' },
 ]
 
 const defaultShortPositions = [
   { ticker: 'LITE', status: 'open', entryPrice: 716.95, quantity: 3, exitPrice: 500, openDate: '2026-02-26' },
   { ticker: 'APP', status: 'open', entryPrice: 447.75, quantity: 6, openDate: '2026-02-26' },
-  { ticker: 'HYMC', status: 'open', entryPrice: 40.20, quantity: 10, openDate: '2026-03-06', profitPercent: -2.32, unrealizedPnL: -9.34 },
   { ticker: 'CAT', status: 'open', entryPrice: 742, quantity: 1, openDate: '2026-03-02', profitPercent: 8.54, unrealizedPnL: 63.43 },
   { ticker: 'MDB', status: 'open', entryPrice: 239.80, quantity: 2, openDate: '2026-03-03' },
   { ticker: 'MDB', status: 'open', entryPrice: 239.18, quantity: 2, openDate: '2026-03-03' },
   { ticker: 'MDB', status: 'open', entryPrice: 253.35, quantity: 2, openDate: '2026-03-03' },
   { ticker: 'POWL', status: 'open', entryPrice: 521, quantity: 2, openDate: '2026-03-04', profitPercent: 4.07, unrealizedPnL: 62.26 },
+  { ticker: 'POWL', status: 'open', entryPrice: 487.26, quantity: 1, openDate: '2026-03-07' },
   { ticker: 'CRDO', status: 'open', entryPrice: 113.93, quantity: 5, openDate: '2026-03-05' },
   { ticker: 'CRWD', status: 'open', entryPrice: 398.61, quantity: 10, openDate: '2026-03-05' },
 ]
@@ -170,9 +184,13 @@ function calcPnlPercent(position, isShort = false) {
     const raw = ((position.exitPrice - position.entryPrice) / position.entryPrice) * 100
     return isShort ? -raw : raw
   }
-  if (position.profitDollar != null && position.entryPrice && position.quantity) {
-    const totalCost = position.entryPrice * position.quantity
-    if (totalCost > 0) return (position.profitDollar / totalCost) * 100
+  const totalCost = (position.entryPrice || 0) * (position.quantity || 0)
+  if (totalCost > 0) {
+    // Use unrealizedPnL, realizedPnL, or profitDollar
+    const pnl = position.unrealizedPnL || position.realizedPnL || position.profitDollar
+    if (pnl != null) return (pnl / totalCost) * 100
+    // Derive from marketValue if available
+    if (position.marketValue) return ((position.marketValue - totalCost) / totalCost) * 100
   }
   return null
 }
@@ -194,8 +212,11 @@ function groupFills(positions) {
         _totalDailyPnL: p.dailyPnL || 0,
         _totalUnrealizedPnL: p.unrealizedPnL || 0,
         _totalRealizedPnL: p.realizedPnL || 0,
+        _totalProfitDollar: p.profitDollar || 0,
         _totalFees: p.fees || 0,
+        _totalMarketValue: p.marketValue || 0,
         _hasExit: p.exitPrice != null,
+        _hasProfitDollar: p.profitDollar != null,
       }
     } else {
       const g = grouped[key]
@@ -205,8 +226,11 @@ function groupFills(positions) {
       g._totalDailyPnL += p.dailyPnL || 0
       g._totalUnrealizedPnL += p.unrealizedPnL || 0
       g._totalRealizedPnL += p.realizedPnL || 0
+      g._totalProfitDollar += p.profitDollar || 0
       g._totalFees += p.fees || 0
+      g._totalMarketValue += p.marketValue || 0
       if (p.exitPrice != null) g._hasExit = true
+      if (p.profitDollar != null) g._hasProfitDollar = true
     }
   }
   return Object.values(grouped).map(g => ({
@@ -217,7 +241,10 @@ function groupFills(positions) {
     dailyPnL: g._totalDailyPnL || undefined,
     unrealizedPnL: g._totalUnrealizedPnL || undefined,
     realizedPnL: g._totalRealizedPnL || undefined,
+    profitDollar: g._hasProfitDollar ? g._totalProfitDollar : undefined,
+    profitPercent: undefined, // recalculated from aggregated values
     fees: g._totalFees || undefined,
+    marketValue: g._totalMarketValue || undefined,
   }))
 }
 
@@ -335,7 +362,13 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
       : 'border-pink-500/20 hover:border-pink-500/40'
 
   // PnL dollar amount
-  const pnlDollar = position.unrealizedPnL || position.profitDollar || null
+  const pnlDollar = position.unrealizedPnL || position.realizedPnL || position.profitDollar
+    || (currentPrice ? (currentPrice - position.entryPrice) * position.quantity : null)
+
+  // Current market price (derived from marketValue / quantity)
+  const currentPrice = !isClosed && position.marketValue && position.quantity
+    ? position.marketValue / position.quantity
+    : null
 
   // Days holding
   const days = isClosed
@@ -381,20 +414,23 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
           {isClosed ? 'Closed' : isLong ? 'Long' : 'Short'}
         </span>
 
-        {/* Ticker */}
-        <span className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-100 w-14 sm:w-16 shrink-0">
+        {/* Ticker + Shares */}
+        <span className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-100 shrink-0">
           {position.ticker}
+          <span className="text-xs sm:text-sm font-normal text-slate-400 ml-1.5">
+            x{position.quantity}
+          </span>
         </span>
 
-        {/* Price */}
+        {/* Avg Price + Current Price */}
         <span className="text-sm sm:text-base font-bold text-blue-400 shrink-0">
           {sym}{position.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
-
-        {/* Shares */}
-        <span className="text-xs sm:text-sm text-slate-400 shrink-0">
-          {position.quantity} shares
-        </span>
+        {currentPrice != null && (
+          <span className="text-sm sm:text-base font-bold text-amber-400 shrink-0">
+            {sym}{currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+        )}
 
         {/* PnL badge: % + $ */}
         {(pct !== null || pnlDollar !== null) && (

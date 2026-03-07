@@ -89,9 +89,13 @@ export function getAccounts() {
   return new Promise((resolve, reject) => {
     const { timer, promise: timeout } = collectWithTimeout()
 
-    const handler = (accounts) => {
+    const handler = (accountsList) => {
       clearTimeout(timer)
-      if (accounts && accounts.length > 0) {
+      // managedAccounts event passes a comma-separated string, not an array
+      const accounts = typeof accountsList === 'string'
+        ? accountsList.split(',').map(a => a.trim()).filter(Boolean)
+        : Array.isArray(accountsList) ? accountsList : []
+      if (accounts.length > 0) {
         accountId = accounts[0]
       }
       resolve({ accounts })
