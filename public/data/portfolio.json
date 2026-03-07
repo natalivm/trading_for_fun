@@ -54,7 +54,52 @@
     { "ticker": "CRDO", "status": "open", "entryPrice": 113.93, "quantity": 5, "openDate": "2026-03-05" },
     { "ticker": "CRWD", "status": "open", "entryPrice": 398.61, "quantity": 10, "openDate": "2026-03-05" }
   ],
-  "closedLongPositions": [],
+  "closedLongPositions": [
+    {
+      "ticker": "APH",
+      "status": "closed",
+      "entryPrice": 145.29,
+      "quantity": 35,
+      "exitPrice": 146.86,
+      "profitPercent": 1.08,
+      "profitDollar": 54.93,
+      "openDate": "2026-02-03",
+      "closeDate": "2026-02-03"
+    },
+    {
+      "ticker": "APH",
+      "status": "closed",
+      "entryPrice": 142.67,
+      "quantity": 6,
+      "exitPrice": 143.78,
+      "profitPercent": 0.78,
+      "profitDollar": 6.68,
+      "openDate": "2026-02-03",
+      "closeDate": "2026-02-03"
+    },
+    {
+      "ticker": "APH",
+      "status": "closed",
+      "entryPrice": 144.81,
+      "quantity": 3,
+      "exitPrice": 146.40,
+      "profitPercent": 1.10,
+      "profitDollar": 4.76,
+      "openDate": "2026-02-03",
+      "closeDate": "2026-02-03"
+    },
+    {
+      "ticker": "APH",
+      "status": "closed",
+      "entryPrice": 136.80,
+      "quantity": 19,
+      "exitPrice": 133.62,
+      "profitPercent": -2.32,
+      "profitDollar": -60.36,
+      "openDate": "2026-02-03",
+      "closeDate": "2026-03-04"
+    }
+  ],
   "closedShortPositions": [
     {
       "ticker": "HYMC",
