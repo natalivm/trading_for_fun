@@ -8,7 +8,7 @@
     { "ticker": "ENVA", "status": "open", "entryPrice": 156, "quantity": 5, "openDate": "2026-02-10" },
     { "ticker": "CEG", "status": "open", "entryPrice": 280.17, "quantity": 2, "openDate": "2026-02-12", "profitPercent": 5.04, "unrealizedPnL": 91.79 },
     { "ticker": "CEG", "status": "open", "entryPrice": 310.77, "quantity": 2, "openDate": "2026-02-12" },
-    { "ticker": "THM", "status": "open", "entryPrice": 2.29, "quantity": 100, "openDate": "2026-02-17" },
+    { "ticker": "THM", "status": "open", "entryPrice": 2.29, "quantity": 100, "openDate": "2026-02-17", "profitPercent": 7.41, "unrealizedPnL": 63.37 },
     { "ticker": "RIG", "status": "open", "entryPrice": 6.15, "quantity": 100, "openDate": "2026-02-17" },
     { "ticker": "ZBIO", "status": "open", "entryPrice": 27.41, "quantity": 15, "openDate": "2026-02-17" },
     { "ticker": "ALAB", "status": "open", "entryPrice": 101.62, "quantity": 8, "openDate": "2026-02-17" },
