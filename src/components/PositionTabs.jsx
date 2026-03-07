@@ -181,44 +181,48 @@ function calcPnlPercent(position, isShort = false) {
 // A "trade" = positions with same ticker opened on the same date.
 // Closed positions are already complete trades — keep as individual cards.
 
-function groupIntoTrades(openPositions, closedPositions) {
-  // Each closed entry is already a complete trade
-  const closedTrades = closedPositions.map(p => ({ ...p }))
-
-  // Group open positions by ticker + openDate (same-day fills = one trade)
+function groupFills(positions) {
   const grouped = {}
-  for (const p of openPositions) {
+  for (const p of positions) {
     const key = `${p.ticker}|${p.openDate || ''}`
     if (!grouped[key]) {
       grouped[key] = {
         ...p,
         _totalCost: p.entryPrice * p.quantity,
+        _totalExitCost: (p.exitPrice || 0) * p.quantity,
         _totalQty: p.quantity,
         _totalDailyPnL: p.dailyPnL || 0,
         _totalUnrealizedPnL: p.unrealizedPnL || 0,
+        _totalRealizedPnL: p.realizedPnL || 0,
         _totalFees: p.fees || 0,
+        _hasExit: p.exitPrice != null,
       }
     } else {
       const g = grouped[key]
       g._totalCost += p.entryPrice * p.quantity
+      g._totalExitCost += (p.exitPrice || 0) * p.quantity
       g._totalQty += p.quantity
       g._totalDailyPnL += p.dailyPnL || 0
       g._totalUnrealizedPnL += p.unrealizedPnL || 0
+      g._totalRealizedPnL += p.realizedPnL || 0
       g._totalFees += p.fees || 0
-      if (p.exitPrice != null && g.exitPrice == null) g.exitPrice = p.exitPrice
+      if (p.exitPrice != null) g._hasExit = true
     }
   }
-
-  const openTrades = Object.values(grouped).map(g => ({
+  return Object.values(grouped).map(g => ({
     ...g,
     entryPrice: g._totalCost / g._totalQty,
+    exitPrice: g._hasExit ? g._totalExitCost / g._totalQty : undefined,
     quantity: g._totalQty,
     dailyPnL: g._totalDailyPnL || undefined,
     unrealizedPnL: g._totalUnrealizedPnL || undefined,
+    realizedPnL: g._totalRealizedPnL || undefined,
     fees: g._totalFees || undefined,
   }))
+}
 
-  return [...closedTrades, ...openTrades]
+function groupIntoTrades(openPositions, closedPositions) {
+  return [...groupFills(closedPositions), ...groupFills(openPositions)]
 }
 
 // ── Components ──────────────────────────────────────────────────────────
@@ -413,7 +417,7 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
 
         {/* Days holding — right aligned */}
         <span className="text-[11px] text-slate-500 shrink-0 text-right">
-          {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
+          {days !== null ? `opened for ${days}d` : position.openDate ? formatDate(position.openDate) : ''}
         </span>
       </div>
 
@@ -425,11 +429,16 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
   )
 }
 
-function PositionList({ longs, shorts, expandedTicker, onToggleTicker }) {
+function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter }) {
   const allPositions = [
     ...longs.map(p => ({ ...p, _type: 'long' })),
     ...shorts.map(p => ({ ...p, _type: 'short' })),
-  ].sort((a, b) => {
+  ].filter(p => {
+    if (filter === 'long') return p._type === 'long' && p.status !== 'closed'
+    if (filter === 'short') return p._type === 'short' && p.status !== 'closed'
+    if (filter === 'closed') return p.status === 'closed'
+    return true
+  }).sort((a, b) => {
     const dateA = a.openDate || ''
     const dateB = b.openDate || ''
     return dateB.localeCompare(dateA) // newest first
@@ -532,24 +541,44 @@ function Positions({ ibkrData }) {
   const tradeShorts = groupIntoTrades(shortPositions, closedShortPositions)
 
   const [expandedTicker, setExpandedTicker] = useState(null)
+  const [filter, setFilter] = useState('all')
 
   function handleToggleTicker(ticker) {
     setExpandedTicker((prev) => (prev === ticker ? null : ticker))
   }
 
+  const allTrades = [
+    ...tradeLongs.map(p => ({ ...p, _type: 'long' })),
+    ...tradeShorts.map(p => ({ ...p, _type: 'short' })),
+  ]
+  const longCount = allTrades.filter(p => p._type === 'long' && p.status !== 'closed').length
+  const shortCount = allTrades.filter(p => p._type === 'short' && p.status !== 'closed').length
+  const closedCount = allTrades.filter(p => p.status === 'closed').length
+
+  const tabs = [
+    { key: 'all', label: 'All', count: allTrades.length },
+    { key: 'long', label: 'Long', count: longCount },
+    { key: 'short', label: 'Short', count: shortCount },
+    { key: 'closed', label: 'Closed', count: closedCount },
+  ]
+
   return (
     <div className="mx-auto max-w-5xl">
       {/* Tab bar */}
       <div className="flex items-center gap-6 border-b border-slate-800 px-4 sm:px-8 mb-3">
-        <button className="border-b-2 border-emerald-400 pb-3 pt-4 text-sm font-semibold text-emerald-400">
-          All Positions
-        </button>
-        <span className="pb-3 pt-4 text-sm text-slate-500">
-          {tradeLongs.length} long
-        </span>
-        <span className="pb-3 pt-4 text-sm text-slate-500">
-          {tradeShorts.length} short
-        </span>
+        {tabs.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setFilter(tab.key)}
+            className={`pb-3 pt-4 text-sm font-semibold transition-colors ${
+              filter === tab.key
+                ? 'border-b-2 border-emerald-400 text-emerald-400'
+                : 'text-slate-500 hover:text-slate-300'
+            }`}
+          >
+            {tab.label} <span className="text-xs font-normal">{tab.count}</span>
+          </button>
+        ))}
       </div>
 
       <PositionList
@@ -557,6 +586,7 @@ function Positions({ ibkrData }) {
         shorts={tradeShorts}
         expandedTicker={expandedTicker}
         onToggleTicker={handleToggleTicker}
+        filter={filter}
       />
     </div>
   )
