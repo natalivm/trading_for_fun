@@ -1,9 +1,22 @@
-import { calcCurrentlyInvested, calcProfit } from './PositionTabs'
+import { calcCurrentlyInvested, calcProfit, calcDailyPnL } from './PositionTabs'
 
-function Header() {
+function Header({ portfolio }) {
   const invested = calcCurrentlyInvested()
   const profit = calcProfit()
+  const dailyPnL = calcDailyPnL()
   const isPositive = profit >= 0
+  const dailyPositive = dailyPnL >= 0
+  const hasDailyData = dailyPnL !== 0
+
+  // Format "Updated" timestamp from portfolio
+  const updatedLabel = portfolio?.updatedAt
+    ? 'Updated ' + new Date(portfolio.updatedAt).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit',
+      })
+    : null
+
+  // Calculate daily P/L as % of invested
+  const dailyPct = invested > 0 && hasDailyData ? (dailyPnL / invested) * 100 : null
 
   return (
     <header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/80 backdrop-blur-lg">
@@ -24,17 +37,28 @@ function Header() {
           </svg>
         </button>
       </div>
-      <div className="mx-auto flex max-w-5xl items-center justify-center gap-6 border-t border-slate-800/50 px-4 py-2 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-5xl items-center justify-center gap-4 border-t border-slate-800/50 px-4 py-2 sm:px-6 lg:px-8">
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-500">Invested</span>
           <span className="text-sm font-bold text-slate-200">${invested.toLocaleString()}</span>
         </div>
+        {updatedLabel && (
+          <>
+            <div className="h-3 w-px bg-slate-700" />
+            <span className="text-[10px] text-slate-500">{updatedLabel}</span>
+          </>
+        )}
         <div className="h-3 w-px bg-slate-700" />
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-500">Profit</span>
           <span className={`text-sm font-bold ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
             {isPositive ? '+' : '-'}${Math.abs(profit).toLocaleString()}
           </span>
+          {hasDailyData && (
+            <span className={`text-[10px] font-bold ${dailyPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+              {dailyPositive ? '+' : '-'}${Math.abs(dailyPnL).toLocaleString()}{dailyPct !== null && ` (${dailyPct >= 0 ? '+' : ''}${dailyPct.toFixed(1)}%)`}
+            </span>
+          )}
         </div>
       </div>
     </header>

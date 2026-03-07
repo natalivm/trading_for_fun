@@ -104,10 +104,12 @@ const defaultClosedShortPositions = [
 // ── Calculation helpers (used by Header) ────────────────────────────────
 
 let _longPositions = defaultLongPositions
+let _shortPositions = defaultShortPositions
 let _closedPositions = [...defaultClosedLongPositions, ...defaultClosedShortPositions]
 
-export function setPositionData({ longPositions, closedLongPositions, closedShortPositions }) {
+export function setPositionData({ longPositions, shortPositions, closedLongPositions, closedShortPositions }) {
   _longPositions = longPositions
+  _shortPositions = shortPositions || defaultShortPositions
   _closedPositions = [...closedLongPositions, ...closedShortPositions]
 }
 
@@ -117,6 +119,11 @@ export function calcCurrentlyInvested() {
 
 export function calcProfit() {
   return _closedPositions.reduce((sum, p) => sum + (p.profitDollar || 0), 0)
+}
+
+export function calcDailyPnL() {
+  const allOpen = [..._longPositions, ..._shortPositions].filter(p => p.status === 'open')
+  return allOpen.reduce((sum, p) => sum + (p.dailyPnL || 0), 0)
 }
 
 // ── Helper: calculate % gain/loss ───────────────────────────────────────
@@ -166,9 +173,24 @@ function PnlBadge({ position }) {
   const pct = calcPnlPercent(position)
   if (pct === null) return null
   const isPositive = pct >= 0
+
+  // Daily change % for open positions
+  let dailyPct = null
+  if (position.status === 'open' && position.dailyPnL != null && position.dailyPnL !== 0) {
+    const cost = position.entryPrice * position.quantity
+    if (cost > 0) dailyPct = (position.dailyPnL / cost) * 100
+  }
+
   return (
-    <span className={`rounded-md px-2 py-0.5 text-xs font-bold ${isPositive ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
-      {isPositive ? '+' : ''}{pct.toFixed(1)}%
+    <span className="flex items-center gap-1.5">
+      <span className={`rounded-md px-2 py-0.5 text-xs font-bold ${isPositive ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+        {isPositive ? '+' : ''}{pct.toFixed(1)}%
+      </span>
+      {dailyPct !== null && (
+        <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${dailyPct >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+          {dailyPct >= 0 ? '+' : ''}{dailyPct.toFixed(1)}%
+        </span>
+      )}
     </span>
   )
 }
@@ -393,7 +415,7 @@ function Positions({ ibkrData }) {
   ]
 
   // Keep the calculation helpers in sync
-  setPositionData({ longPositions, closedLongPositions, closedShortPositions })
+  setPositionData({ longPositions, shortPositions, closedLongPositions, closedShortPositions })
 
   const allLongs = [...longPositions, ...closedLongPositions]
   const allShorts = [...shortPositions, ...closedShortPositions]
