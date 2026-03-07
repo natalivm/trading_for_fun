@@ -217,7 +217,8 @@ export function setPositionData({ longPositions, shortPositions, closedLongPosit
 export function calcCurrentlyInvested() {
   // Exclude positions that appear in closed positions (sold stocks)
   const closedKeys = new Set(_closedPositions.map(c => `${c.ticker}|${c.openDate}`))
-  return _longPositions
+  const allOpen = [..._longPositions, ..._shortPositions]
+  return allOpen
     .filter(p => !closedKeys.has(`${p.ticker}|${p.openDate}`))
     .reduce((sum, p) => sum + toUSD(p.entryPrice * p.quantity, p.currency), 0)
 }
