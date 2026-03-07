@@ -68,7 +68,7 @@ const defaultLongPositions = [
   { ticker: 'GE', status: 'open', entryPrice: 325.78, quantity: 1, openDate: '2026-03-05' },
   { ticker: 'OKLO', status: 'open', entryPrice: 63.03, quantity: 10, openDate: '2026-03-05' },
   { ticker: 'OKLO', status: 'open', entryPrice: 59.04, quantity: 10, openDate: '2026-03-07' },
-  { ticker: 'ONDS', status: 'open', entryPrice: 10.86, quantity: 100, openDate: '2026-03-07' },
+  { ticker: 'ONDS', status: 'open', entryPrice: 10.86, quantity: 100, openDate: '2026-01-29', profitPercent: -9.3, unrealizedPnL: -101.00 },
   { ticker: 'COGT', status: 'open', entryPrice: 38.58, quantity: 35, openDate: '2026-03-07' },
   { ticker: 'SNDK', status: 'open', entryPrice: 542.17, quantity: 2, openDate: '2026-03-07' },
   { ticker: 'ORCL', status: 'open', entryPrice: 153.06, quantity: 4, openDate: '2026-03-07' },
@@ -83,7 +83,7 @@ const defaultLongPositions = [
 ]
 
 const defaultShortPositions = [
-  { ticker: 'LITE', status: 'open', entryPrice: 716.95, quantity: 3, exitPrice: 500, openDate: '2026-02-26' },
+  { ticker: 'LITE', status: 'open', entryPrice: 716.95, quantity: 3, exitPrice: 500, openDate: '2026-02-26', profitPercent: 20.8, unrealizedPnL: 446.85 },
   { ticker: 'APP', status: 'open', entryPrice: 447.75, quantity: 6, openDate: '2026-02-26' },
   { ticker: 'CAT', status: 'open', entryPrice: 742, quantity: 1, openDate: '2026-03-02', profitPercent: 8.54, unrealizedPnL: 63.43 },
   { ticker: 'MDB', status: 'open', entryPrice: 239.80, quantity: 2, openDate: '2026-03-03' },
@@ -580,11 +580,27 @@ function mergePositions(defaults, livePositions) {
     if (liveEntries && liveEntries.length > 0) {
       if (!usedLiveTickers.has(def.ticker)) {
         for (const live of liveEntries) {
-          merged.push({
+          const entry = {
             ...def,
             ...live,
             openDate: def.openDate || live.openDate || '',
-          })
+          }
+          // If live provides marketValue but zero P/L, recalculate from price
+          const liveQty = live.quantity || def.quantity || 0
+          const liveEntry = live.entryPrice || def.entryPrice || 0
+          if (live.marketValue && liveQty && liveEntry) {
+            const currentPrice = live.marketValue / liveQty
+            if (!live.unrealizedPnL) {
+              entry.unrealizedPnL = (currentPrice - liveEntry) * liveQty
+            }
+            if (!live.profitPercent) {
+              entry.profitPercent = ((currentPrice - liveEntry) / liveEntry) * 100
+            }
+          }
+          // Still fall back to manual defaults if nothing else available
+          if (!entry.profitPercent && def.profitPercent) entry.profitPercent = def.profitPercent
+          if (!entry.unrealizedPnL && def.unrealizedPnL) entry.unrealizedPnL = def.unrealizedPnL
+          merged.push(entry)
         }
         usedLiveTickers.add(def.ticker)
       }
