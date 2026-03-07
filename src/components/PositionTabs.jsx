@@ -202,76 +202,46 @@ function PositionCard({ position, type, onClick, selected, hidden }) {
   return (
     <div
       onClick={onClick}
-      className={`rounded-2xl border bg-slate-900/60 p-4 cursor-pointer transition-all duration-300 ease-in-out ${borderColor} ${hidden ? 'scale-95 opacity-0 max-h-0 !m-0 !p-0 overflow-hidden border-0' : 'scale-100 opacity-100 max-h-[500px]'} ${selected ? 'ring-1 ring-white/10' : ''}`}
+      className={`rounded-2xl border bg-slate-900/60 px-4 py-3 cursor-pointer transition-all duration-300 ease-in-out ${borderColor} ${hidden ? 'scale-95 opacity-0 max-h-0 !m-0 !p-0 overflow-hidden border-0' : 'scale-100 opacity-100 max-h-[500px]'} ${selected ? 'ring-1 ring-white/10' : ''}`}
     >
-      <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <StatusTag status={position.status} />
-          <DaysHolding position={position} />
-        </div>
-        <span className={`text-[10px] font-bold uppercase tracking-widest ${accentColor}`}>
+      <div className="flex items-center gap-4 whitespace-nowrap">
+        <GlowDot color={isClosed ? 'red' : 'green'} />
+        <span className={`text-[10px] font-bold uppercase tracking-widest w-10 ${accentColor}`}>
           {isLong ? 'Long' : 'Short'}
         </span>
-      </div>
-
-      <div className="mb-3 flex items-center justify-between">
-        <span className="text-xl font-bold text-slate-100">{position.ticker}</span>
-        <PnlBadge position={position} />
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-slate-500">Entry Price</span>
-          <span className="text-sm font-semibold text-slate-200">{sym}{position.entryPrice.toLocaleString()}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-slate-500">Quantity</span>
-          <span className="text-sm font-semibold text-slate-200">{position.quantity} shares</span>
-        </div>
+        <span className="text-base font-bold text-slate-100 w-14">{position.ticker}</span>
+        <span className="text-xs text-slate-500">{sym}{position.entryPrice.toLocaleString()}</span>
+        <span className="text-xs text-slate-500">{position.quantity}x</span>
         {isClosed ? (
           <>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-500">Exit Price</span>
-              <span className="text-sm font-semibold text-slate-200">{sym}{position.exitPrice.toLocaleString()}</span>
-            </div>
+            <span className="text-xs text-slate-400">exit {sym}{position.exitPrice.toLocaleString()}</span>
             {position.profitDollar != null && (
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500">P&L</span>
-                <span className={`text-sm font-bold ${position.profitDollar >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {position.profitDollar >= 0 ? '+' : ''}${position.profitDollar.toLocaleString()}
-                </span>
-              </div>
+              <span className={`text-xs font-bold ${position.profitDollar >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {position.profitDollar >= 0 ? '+' : ''}${position.profitDollar.toLocaleString()}
+              </span>
             )}
           </>
         ) : (
           <>
             {position.dailyPnL != null && position.dailyPnL !== 0 && (
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500">Today</span>
-                <span className={`text-sm font-bold ${position.dailyPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {position.dailyPnL >= 0 ? '+' : ''}{((position.dailyPnL / (position.entryPrice * position.quantity)) * 100).toFixed(1)}%{' '}
-                  {position.dailyPnL >= 0 ? '+' : ''}${position.dailyPnL.toFixed(0)}
-                </span>
-              </div>
+              <span className={`text-xs font-bold ${position.dailyPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {position.dailyPnL >= 0 ? '+' : ''}{((position.dailyPnL / (position.entryPrice * position.quantity)) * 100).toFixed(1)}% {position.dailyPnL >= 0 ? '+' : ''}${position.dailyPnL.toFixed(0)}
+              </span>
             )}
             {position.unrealizedPnL != null && position.unrealizedPnL !== 0 && (
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500">Unrealized</span>
-                <span className={`text-sm font-bold ${position.unrealizedPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {position.unrealizedPnL >= 0 ? '+' : ''}${position.unrealizedPnL.toFixed(0)}
-                </span>
-              </div>
+              <span className={`text-xs font-bold ${position.unrealizedPnL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                unrl {position.unrealizedPnL >= 0 ? '+' : ''}${position.unrealizedPnL.toFixed(0)}
+              </span>
             )}
             {position.exitPrice != null && (
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-500">Exit Target</span>
-                <span className={`text-sm font-bold ${isLong ? 'text-emerald-400' : 'text-amber-400'}`}>
-                  {sym}{position.exitPrice.toLocaleString()}
-                </span>
-              </div>
+              <span className={`text-xs font-bold ${isLong ? 'text-emerald-400' : 'text-amber-400'}`}>
+                target {sym}{position.exitPrice.toLocaleString()}
+              </span>
             )}
           </>
         )}
+        <PnlBadge position={position} />
+        <span className="ml-auto"><DaysHolding position={position} /></span>
       </div>
     </div>
   )
@@ -308,59 +278,28 @@ function PositionList({ longs, shorts, selectedTicker, onSelectTicker }) {
               <span className={`text-[11px] font-medium tracking-wide transition-colors duration-300 ${selectedTicker && dateHasMatch ? 'text-slate-400' : 'text-slate-600'}`}>{displayDate}</span>
             </div>
 
-            {hasBoth ? (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  {longsForDate.map((position, i) => (
-                    <PositionCard
-                      key={`${position.ticker}-${i}`}
-                      position={position}
-                      type="long"
-                      selected={selectedTicker === position.ticker}
-                      hidden={!!selectedTicker && position.ticker !== selectedTicker}
-                      onClick={() => onSelectTicker(position.ticker)}
-                    />
-                  ))}
-                </div>
-                <div className="space-y-3">
-                  {shortsForDate.map((position, i) => (
-                    <PositionCard
-                      key={`${position.ticker}-${i}`}
-                      position={position}
-                      type="short"
-                      selected={selectedTicker === position.ticker}
-                      hidden={!!selectedTicker && position.ticker !== selectedTicker}
-                      onClick={() => onSelectTicker(position.ticker)}
-                    />
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="mx-auto max-w-xl">
-                <div className="space-y-3">
-                  {longsForDate.map((position, i) => (
-                    <PositionCard
-                      key={`${position.ticker}-${i}`}
-                      position={position}
-                      type="long"
-                      selected={selectedTicker === position.ticker}
-                      hidden={!!selectedTicker && position.ticker !== selectedTicker}
-                      onClick={() => onSelectTicker(position.ticker)}
-                    />
-                  ))}
-                  {shortsForDate.map((position, i) => (
-                    <PositionCard
-                      key={`${position.ticker}-${i}`}
-                      position={position}
-                      type="short"
-                      selected={selectedTicker === position.ticker}
-                      hidden={!!selectedTicker && position.ticker !== selectedTicker}
-                      onClick={() => onSelectTicker(position.ticker)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
+            <div className="space-y-2">
+              {longsForDate.map((position, i) => (
+                <PositionCard
+                  key={`long-${position.ticker}-${i}`}
+                  position={position}
+                  type="long"
+                  selected={selectedTicker === position.ticker}
+                  hidden={!!selectedTicker && position.ticker !== selectedTicker}
+                  onClick={() => onSelectTicker(position.ticker)}
+                />
+              ))}
+              {shortsForDate.map((position, i) => (
+                <PositionCard
+                  key={`short-${position.ticker}-${i}`}
+                  position={position}
+                  type="short"
+                  selected={selectedTicker === position.ticker}
+                  hidden={!!selectedTicker && position.ticker !== selectedTicker}
+                  onClick={() => onSelectTicker(position.ticker)}
+                />
+              ))}
+            </div>
           </div>
         )
       })}
@@ -482,7 +421,7 @@ function Positions({ ibkrData }) {
   }
 
   return (
-    <div className="mx-auto max-w-3xl" ref={containerRef}>
+    <div className="mx-auto max-w-4xl" ref={containerRef}>
       <PositionList
         longs={allLongs}
         shorts={allShorts}
