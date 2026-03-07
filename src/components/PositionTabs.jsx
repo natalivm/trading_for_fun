@@ -181,44 +181,48 @@ function calcPnlPercent(position, isShort = false) {
 // A "trade" = positions with same ticker opened on the same date.
 // Closed positions are already complete trades — keep as individual cards.
 
-function groupIntoTrades(openPositions, closedPositions) {
-  // Each closed entry is already a complete trade
-  const closedTrades = closedPositions.map(p => ({ ...p }))
-
-  // Group open positions by ticker + openDate (same-day fills = one trade)
+function groupFills(positions) {
   const grouped = {}
-  for (const p of openPositions) {
+  for (const p of positions) {
     const key = `${p.ticker}|${p.openDate || ''}`
     if (!grouped[key]) {
       grouped[key] = {
         ...p,
         _totalCost: p.entryPrice * p.quantity,
+        _totalExitCost: (p.exitPrice || 0) * p.quantity,
         _totalQty: p.quantity,
         _totalDailyPnL: p.dailyPnL || 0,
         _totalUnrealizedPnL: p.unrealizedPnL || 0,
+        _totalRealizedPnL: p.realizedPnL || 0,
         _totalFees: p.fees || 0,
+        _hasExit: p.exitPrice != null,
       }
     } else {
       const g = grouped[key]
       g._totalCost += p.entryPrice * p.quantity
+      g._totalExitCost += (p.exitPrice || 0) * p.quantity
       g._totalQty += p.quantity
       g._totalDailyPnL += p.dailyPnL || 0
       g._totalUnrealizedPnL += p.unrealizedPnL || 0
+      g._totalRealizedPnL += p.realizedPnL || 0
       g._totalFees += p.fees || 0
-      if (p.exitPrice != null && g.exitPrice == null) g.exitPrice = p.exitPrice
+      if (p.exitPrice != null) g._hasExit = true
     }
   }
-
-  const openTrades = Object.values(grouped).map(g => ({
+  return Object.values(grouped).map(g => ({
     ...g,
     entryPrice: g._totalCost / g._totalQty,
+    exitPrice: g._hasExit ? g._totalExitCost / g._totalQty : undefined,
     quantity: g._totalQty,
     dailyPnL: g._totalDailyPnL || undefined,
     unrealizedPnL: g._totalUnrealizedPnL || undefined,
+    realizedPnL: g._totalRealizedPnL || undefined,
     fees: g._totalFees || undefined,
   }))
+}
 
-  return [...closedTrades, ...openTrades]
+function groupIntoTrades(openPositions, closedPositions) {
+  return [...groupFills(closedPositions), ...groupFills(openPositions)]
 }
 
 // ── Components ──────────────────────────────────────────────────────────
