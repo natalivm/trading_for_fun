@@ -536,8 +536,66 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
 
 // ── Portfolio Overview Charts ──────────────────────────────────────────
 
-function AllocationBar({ positions }) {
-  // Group by ticker, sum invested amounts
+function packCircles(items, width, height) {
+  // Simple front-chain circle packing: place largest first, spiral outward
+  const cx = width / 2, cy = height / 2
+  const maxVal = Math.max(...items.map(d => d.invested))
+  const minR = 18, maxR = Math.min(width, height) * 0.22
+  const circles = items.map(d => ({
+    ...d,
+    r: minR + (maxR - minR) * Math.sqrt(d.invested / maxVal),
+    x: 0, y: 0,
+  }))
+  // Place first circle at center
+  if (circles.length > 0) {
+    circles[0].x = cx
+    circles[0].y = cy
+  }
+  // Place remaining circles — find closest non-overlapping spot via spiral scan
+  for (let i = 1; i < circles.length; i++) {
+    const c = circles[i]
+    let bestDist = Infinity, bestX = cx, bestY = cy
+    for (let angle = 0; angle < Math.PI * 20; angle += 0.15) {
+      const dist = 2 + angle * 3.5
+      const tx = cx + Math.cos(angle) * dist
+      const ty = cy + Math.sin(angle) * dist
+      let overlaps = false
+      for (let j = 0; j < i; j++) {
+        const dx = tx - circles[j].x, dy = ty - circles[j].y
+        if (Math.sqrt(dx * dx + dy * dy) < c.r + circles[j].r + 2) {
+          overlaps = true
+          break
+        }
+      }
+      if (!overlaps) {
+        const d = Math.sqrt((tx - cx) ** 2 + (ty - cy) ** 2)
+        if (d < bestDist) {
+          bestDist = d
+          bestX = tx
+          bestY = ty
+        }
+        if (bestDist < c.r) break // good enough, close to center
+      }
+    }
+    c.x = bestX
+    c.y = bestY
+  }
+  // Re-center the whole cluster
+  const minX = Math.min(...circles.map(c => c.x - c.r))
+  const maxX = Math.max(...circles.map(c => c.x + c.r))
+  const minY = Math.min(...circles.map(c => c.y - c.r))
+  const maxY = Math.max(...circles.map(c => c.y + c.r))
+  const clusterW = maxX - minX, clusterH = maxY - minY
+  const offsetX = (width - clusterW) / 2 - minX
+  const offsetY = (height - clusterH) / 2 - minY
+  for (const c of circles) {
+    c.x += offsetX
+    c.y += offsetY
+  }
+  return circles
+}
+
+function AllocationBubbles({ positions }) {
   const byTicker = {}
   for (const p of positions) {
     if (p.status === 'closed') continue
@@ -545,27 +603,50 @@ function AllocationBar({ positions }) {
     if (!byTicker[p.ticker]) byTicker[p.ticker] = { ticker: p.ticker, invested: 0, type: p._type }
     byTicker[p.ticker].invested += invested
   }
-  const sorted = Object.values(byTicker).sort((a, b) => b.invested - a.invested).slice(0, 12)
-  const maxInvested = sorted[0]?.invested || 1
+  const sorted = Object.values(byTicker).sort((a, b) => b.invested - a.invested).slice(0, 18)
+  if (sorted.length === 0) return null
+
+  const width = 500, height = 340
+  const circles = packCircles(sorted, width, height)
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Capital Allocation — Top Holdings</h3>
-      {sorted.map(item => {
-        const pct = (item.invested / maxInvested) * 100
-        const color = item.type === 'short' ? 'bg-pink-500/60' : 'bg-emerald-500/60'
-        return (
-          <div key={item.ticker} className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-300 w-14 text-right shrink-0">{item.ticker}</span>
-            <div className="flex-1 h-5 bg-slate-800/60 rounded-md overflow-hidden">
-              <div className={`h-full ${color} rounded-md transition-all duration-500`} style={{ width: `${pct}%` }} />
-            </div>
-            <span className="text-[11px] text-slate-400 tabular-nums w-16 text-right shrink-0">
-              ${item.invested.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-            </span>
-          </div>
-        )
-      })}
+    <div>
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Capital Allocation</h3>
+      <svg width="100%" viewBox={`0 0 ${width} ${height}`} className="w-full">
+        <defs>
+          <radialGradient id="glow-long" cx="35%" cy="35%">
+            <stop offset="0%" stopColor="#34d399" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#059669" stopOpacity="0.12" />
+          </radialGradient>
+          <radialGradient id="glow-short" cx="35%" cy="35%">
+            <stop offset="0%" stopColor="#f472b6" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#db2777" stopOpacity="0.12" />
+          </radialGradient>
+        </defs>
+        {circles.map((c, i) => {
+          const isShort = c.type === 'short'
+          const fill = isShort ? 'url(#glow-short)' : 'url(#glow-long)'
+          const stroke = isShort ? '#f472b6' : '#34d399'
+          const showAmount = c.r > 28
+          const fontSize = Math.max(8, Math.min(13, c.r * 0.38))
+          const amountSize = Math.max(7, fontSize - 2)
+          return (
+            <g key={c.ticker}>
+              <circle cx={c.x} cy={c.y} r={c.r} fill={fill} stroke={stroke} strokeWidth="1" strokeOpacity="0.4" />
+              <text x={c.x} y={showAmount ? c.y - 2 : c.y + 1} textAnchor="middle" dominantBaseline="middle"
+                fill={isShort ? '#f9a8d4' : '#6ee7b7'} fontSize={fontSize} fontWeight="bold" fontFamily="system-ui">
+                {c.ticker}
+              </text>
+              {showAmount && (
+                <text x={c.x} y={c.y + amountSize + 1} textAnchor="middle" dominantBaseline="middle"
+                  fill="#64748b" fontSize={amountSize} fontFamily="monospace">
+                  ${c.invested >= 1000 ? `${(c.invested / 1000).toFixed(1)}k` : c.invested.toFixed(0)}
+                </text>
+              )}
+            </g>
+          )
+        })}
+      </svg>
     </div>
   )
 }
@@ -715,7 +796,7 @@ function PortfolioOverview({ allTrades, closedPositions }) {
     <div className="flex flex-col gap-5 px-2 sm:px-4">
       <QuickStats allTrades={allTrades} closedPositions={closedPositions} />
       <CumulativePnLChart closedPositions={closedPositions} />
-      <AllocationBar positions={allTrades} />
+      <AllocationBubbles positions={allTrades} />
     </div>
   )
 }
