@@ -215,7 +215,11 @@ export function setPositionData({ longPositions, shortPositions, closedLongPosit
 }
 
 export function calcCurrentlyInvested() {
-  return _longPositions.reduce((sum, p) => sum + toUSD(p.entryPrice * p.quantity, p.currency), 0)
+  // Exclude positions that appear in closed positions (sold stocks)
+  const closedKeys = new Set(_closedPositions.map(c => `${c.ticker}|${c.openDate}`))
+  return _longPositions
+    .filter(p => !closedKeys.has(`${p.ticker}|${p.openDate}`))
+    .reduce((sum, p) => sum + toUSD(p.entryPrice * p.quantity, p.currency), 0)
 }
 
 export function calcProfit() {
@@ -521,6 +525,192 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
   )
 }
 
+// ── Portfolio Overview Charts ──────────────────────────────────────────
+
+function AllocationBar({ positions }) {
+  // Group by ticker, sum invested amounts
+  const byTicker = {}
+  for (const p of positions) {
+    if (p.status === 'closed') continue
+    const invested = toUSD(p.entryPrice * p.quantity, p.currency)
+    if (!byTicker[p.ticker]) byTicker[p.ticker] = { ticker: p.ticker, invested: 0, type: p._type }
+    byTicker[p.ticker].invested += invested
+  }
+  const sorted = Object.values(byTicker).sort((a, b) => b.invested - a.invested).slice(0, 12)
+  const maxInvested = sorted[0]?.invested || 1
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Capital Allocation — Top Holdings</h3>
+      {sorted.map(item => {
+        const pct = (item.invested / maxInvested) * 100
+        const color = item.type === 'short' ? 'bg-pink-500/60' : 'bg-emerald-500/60'
+        return (
+          <div key={item.ticker} className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-300 w-14 text-right shrink-0">{item.ticker}</span>
+            <div className="flex-1 h-5 bg-slate-800/60 rounded-md overflow-hidden">
+              <div className={`h-full ${color} rounded-md transition-all duration-500`} style={{ width: `${pct}%` }} />
+            </div>
+            <span className="text-[11px] text-slate-400 tabular-nums w-16 text-right shrink-0">
+              ${item.invested.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function CumulativePnLChart({ closedPositions, width = 500, height = 120 }) {
+  if (!closedPositions || closedPositions.length < 2) {
+    return (
+      <div>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Cumulative P&L — Closed Trades</h3>
+        <span className="text-[11px] text-slate-600 italic">Need more closed trades to chart</span>
+      </div>
+    )
+  }
+
+  // Sort by close date, build cumulative P&L
+  const sorted = [...closedPositions]
+    .filter(p => p.closeDate)
+    .sort((a, b) => (a.closeDate || '').localeCompare(b.closeDate || ''))
+  let cumulative = 0
+  const points = sorted.map(p => {
+    cumulative += toUSD((p.profitDollar || 0) - (p.fees || 0), p.currency)
+    return { date: p.closeDate, value: cumulative, ticker: p.ticker }
+  })
+
+  const values = points.map(p => p.value)
+  const min = Math.min(0, ...values)
+  const max = Math.max(0, ...values)
+  const range = max - min || 1
+  const padTop = 8
+  const padBottom = 20
+
+  const chartH = height - padTop - padBottom
+  const yForVal = v => padTop + chartH - ((v - min) / range) * chartH
+  const zeroY = yForVal(0)
+
+  const pathPoints = points.map((p, i) => {
+    const x = (i / (points.length - 1)) * width
+    const y = yForVal(p.value)
+    return { x, y }
+  })
+
+  const linePath = pathPoints.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ')
+  const areaPath = `${linePath} L${pathPoints[pathPoints.length - 1].x},${zeroY} L${pathPoints[0].x},${zeroY} Z`
+
+  const lastVal = values[values.length - 1]
+  const isUp = lastVal >= 0
+  const strokeColor = isUp ? '#34d399' : '#f87171'
+  const fillColor = isUp ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)'
+
+  return (
+    <div>
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Cumulative P&L — Closed Trades</h3>
+      <svg width="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="w-full">
+        {/* Zero line */}
+        <line x1="0" y1={zeroY} x2={width} y2={zeroY} stroke="#334155" strokeWidth="1" strokeDasharray="4,4" />
+        {/* Area fill */}
+        <path d={areaPath} fill={fillColor} />
+        {/* Line */}
+        <path d={linePath} fill="none" stroke={strokeColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        {/* Dots for each trade */}
+        {pathPoints.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r="3" fill={strokeColor} opacity="0.7" />
+        ))}
+        {/* Labels */}
+        <text x="4" y={height - 4} fill="#475569" fontSize="9" fontFamily="monospace">{formatDate(points[0].date)}</text>
+        <text x={width - 4} y={height - 4} fill="#475569" fontSize="9" fontFamily="monospace" textAnchor="end">{formatDate(points[points.length - 1].date)}</text>
+        {/* End value label */}
+        <text x={width - 4} y={pathPoints[pathPoints.length - 1].y - 6} fill={strokeColor} fontSize="10" fontFamily="monospace" fontWeight="bold" textAnchor="end">
+          {lastVal >= 0 ? '+' : '-'}${Math.abs(lastVal).toFixed(0)}
+        </text>
+      </svg>
+    </div>
+  )
+}
+
+function QuickStats({ allTrades, closedPositions }) {
+  const closed = closedPositions.filter(p => p.profitDollar != null)
+  const wins = closed.filter(p => (p.profitDollar - (p.fees || 0)) > 0)
+  const losses = closed.filter(p => (p.profitDollar - (p.fees || 0)) <= 0)
+  const winRate = closed.length > 0 ? ((wins.length / closed.length) * 100).toFixed(0) : '—'
+
+  // Best and worst trade
+  const best = closed.length > 0
+    ? closed.reduce((a, b) => (toUSD(a.profitDollar - (a.fees || 0), a.currency) > toUSD(b.profitDollar - (b.fees || 0), b.currency) ? a : b))
+    : null
+  const worst = closed.length > 0
+    ? closed.reduce((a, b) => (toUSD(a.profitDollar - (a.fees || 0), a.currency) < toUSD(b.profitDollar - (b.fees || 0), b.currency) ? a : b))
+    : null
+
+  // Avg holding period for closed trades
+  const holdDays = closed.map(p => daysBetween(p.openDate, p.closeDate)).filter(d => d != null)
+  const avgHold = holdDays.length > 0 ? (holdDays.reduce((a, b) => a + b, 0) / holdDays.length).toFixed(0) : '—'
+
+  // Long vs Short exposure
+  const openTrades = allTrades.filter(p => p.status !== 'closed')
+  const longExposure = openTrades.filter(p => p._type === 'long').reduce((s, p) => s + toUSD(p.entryPrice * p.quantity, p.currency), 0)
+  const shortExposure = openTrades.filter(p => p._type === 'short').reduce((s, p) => s + toUSD(p.entryPrice * p.quantity, p.currency), 0)
+  const totalExposure = longExposure + shortExposure || 1
+
+  const stats = [
+    { label: 'Win Rate', value: `${winRate}%`, sub: `${wins.length}W / ${losses.length}L`, color: 'text-emerald-400' },
+    { label: 'Avg Hold', value: `${avgHold}d`, sub: `${closed.length} trades`, color: 'text-blue-400' },
+    {
+      label: 'Best Trade',
+      value: best ? best.ticker : '—',
+      sub: best ? `+$${toUSD(best.profitDollar - (best.fees || 0), best.currency).toFixed(0)}` : '',
+      color: 'text-emerald-400',
+    },
+    {
+      label: 'Worst Trade',
+      value: worst ? worst.ticker : '—',
+      sub: worst ? `${toUSD(worst.profitDollar - (worst.fees || 0), worst.currency) >= 0 ? '+' : '-'}$${Math.abs(toUSD(worst.profitDollar - (worst.fees || 0), worst.currency)).toFixed(0)}` : '',
+      color: 'text-red-400',
+    },
+  ]
+
+  return (
+    <div>
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Performance Stats</h3>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {stats.map(s => (
+          <div key={s.label} className="rounded-xl bg-slate-800/50 border border-slate-700/30 px-3 py-2.5">
+            <span className="text-[10px] font-medium uppercase tracking-wider text-slate-500 block">{s.label}</span>
+            <span className={`text-lg font-bold ${s.color}`}>{s.value}</span>
+            {s.sub && <span className="text-[11px] text-slate-500 ml-1.5">{s.sub}</span>}
+          </div>
+        ))}
+      </div>
+
+      {/* Long vs Short exposure bar */}
+      <div className="mt-3">
+        <div className="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-slate-500 mb-1">
+          <span>Long ${longExposure.toLocaleString(undefined, { maximumFractionDigits: 0 })} ({((longExposure / totalExposure) * 100).toFixed(0)}%)</span>
+          <span>Short ${shortExposure.toLocaleString(undefined, { maximumFractionDigits: 0 })} ({((shortExposure / totalExposure) * 100).toFixed(0)}%)</span>
+        </div>
+        <div className="flex h-2.5 rounded-full overflow-hidden bg-slate-800/60">
+          <div className="bg-emerald-500/60 rounded-l-full" style={{ width: `${(longExposure / totalExposure) * 100}%` }} />
+          <div className="bg-pink-500/60 rounded-r-full" style={{ width: `${(shortExposure / totalExposure) * 100}%` }} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PortfolioOverview({ allTrades, closedPositions }) {
+  return (
+    <div className="flex flex-col gap-5 px-2 sm:px-4">
+      <QuickStats allTrades={allTrades} closedPositions={closedPositions} />
+      <CumulativePnLChart closedPositions={closedPositions} />
+      <AllocationBar positions={allTrades} />
+    </div>
+  )
+}
+
 function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter }) {
   const allPositions = [
     ...longs.map(p => ({ ...p, _type: 'long' })),
@@ -649,7 +839,7 @@ function Positions({ ibkrData }) {
   const tradeShorts = groupIntoTrades(shortPositions, closedShortPositions)
 
   const [expandedTicker, setExpandedTicker] = useState(null)
-  const [filter, setFilter] = useState('all')
+  const [filter, setFilter] = useState('overview')
 
   function handleToggleTicker(ticker) {
     setExpandedTicker((prev) => (prev === ticker ? null : ticker))
@@ -664,7 +854,7 @@ function Positions({ ibkrData }) {
   const closedCount = allTrades.filter(p => p.status === 'closed').length
 
   const tabs = [
-    { key: 'all', label: 'All', count: allTrades.length },
+    { key: 'overview', label: 'Overview' },
     { key: 'long', label: 'Long', count: longCount },
     { key: 'short', label: 'Short', count: shortCount },
     { key: 'closed', label: 'Closed', count: closedCount },
@@ -684,18 +874,22 @@ function Positions({ ibkrData }) {
                 : 'text-slate-500 hover:text-slate-300'
             }`}
           >
-            {tab.label} <span className="text-xs font-normal">{tab.count}</span>
+            {tab.label}{tab.count != null && <> <span className="text-xs font-normal">{tab.count}</span></>}
           </button>
         ))}
       </div>
 
-      <PositionList
-        longs={tradeLongs}
-        shorts={tradeShorts}
-        expandedTicker={expandedTicker}
-        onToggleTicker={handleToggleTicker}
-        filter={filter}
-      />
+      {filter === 'overview' ? (
+        <PortfolioOverview allTrades={allTrades} closedPositions={[...closedLongPositions, ...closedShortPositions]} />
+      ) : (
+        <PositionList
+          longs={tradeLongs}
+          shorts={tradeShorts}
+          expandedTicker={expandedTicker}
+          onToggleTicker={handleToggleTicker}
+          filter={filter}
+        />
+      )}
     </div>
   )
 }
