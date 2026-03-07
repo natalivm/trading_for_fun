@@ -417,14 +417,14 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
       ? 'border-emerald-500/20 hover:border-emerald-500/40'
       : 'border-pink-500/20 hover:border-pink-500/40'
 
-  // PnL dollar amount
-  const pnlDollar = position.unrealizedPnL || position.realizedPnL || position.profitDollar
-    || (currentPrice ? (currentPrice - position.entryPrice) * position.quantity : null)
-
   // Current market price (derived from marketValue / quantity)
   const currentPrice = !isClosed && position.marketValue && position.quantity
     ? position.marketValue / position.quantity
     : null
+
+  // PnL dollar amount
+  const pnlDollar = position.unrealizedPnL || position.realizedPnL || position.profitDollar
+    || (currentPrice ? (currentPrice - position.entryPrice) * position.quantity : null)
 
   // Days holding
   const days = isClosed
