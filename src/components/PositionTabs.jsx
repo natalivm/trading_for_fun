@@ -425,11 +425,16 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
   )
 }
 
-function PositionList({ longs, shorts, expandedTicker, onToggleTicker }) {
+function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter }) {
   const allPositions = [
     ...longs.map(p => ({ ...p, _type: 'long' })),
     ...shorts.map(p => ({ ...p, _type: 'short' })),
-  ].sort((a, b) => {
+  ].filter(p => {
+    if (filter === 'long') return p._type === 'long' && p.status !== 'closed'
+    if (filter === 'short') return p._type === 'short' && p.status !== 'closed'
+    if (filter === 'closed') return p.status === 'closed'
+    return true
+  }).sort((a, b) => {
     const dateA = a.openDate || ''
     const dateB = b.openDate || ''
     return dateB.localeCompare(dateA) // newest first
@@ -532,24 +537,44 @@ function Positions({ ibkrData }) {
   const tradeShorts = groupIntoTrades(shortPositions, closedShortPositions)
 
   const [expandedTicker, setExpandedTicker] = useState(null)
+  const [filter, setFilter] = useState('all')
 
   function handleToggleTicker(ticker) {
     setExpandedTicker((prev) => (prev === ticker ? null : ticker))
   }
 
+  const allTrades = [
+    ...tradeLongs.map(p => ({ ...p, _type: 'long' })),
+    ...tradeShorts.map(p => ({ ...p, _type: 'short' })),
+  ]
+  const longCount = allTrades.filter(p => p._type === 'long' && p.status !== 'closed').length
+  const shortCount = allTrades.filter(p => p._type === 'short' && p.status !== 'closed').length
+  const closedCount = allTrades.filter(p => p.status === 'closed').length
+
+  const tabs = [
+    { key: 'all', label: 'All', count: allTrades.length },
+    { key: 'long', label: 'Long', count: longCount },
+    { key: 'short', label: 'Short', count: shortCount },
+    { key: 'closed', label: 'Closed', count: closedCount },
+  ]
+
   return (
     <div className="mx-auto max-w-5xl">
       {/* Tab bar */}
       <div className="flex items-center gap-6 border-b border-slate-800 px-4 sm:px-8 mb-3">
-        <button className="border-b-2 border-emerald-400 pb-3 pt-4 text-sm font-semibold text-emerald-400">
-          All Positions
-        </button>
-        <span className="pb-3 pt-4 text-sm text-slate-500">
-          {tradeLongs.length} long
-        </span>
-        <span className="pb-3 pt-4 text-sm text-slate-500">
-          {tradeShorts.length} short
-        </span>
+        {tabs.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setFilter(tab.key)}
+            className={`pb-3 pt-4 text-sm font-semibold transition-colors ${
+              filter === tab.key
+                ? 'border-b-2 border-emerald-400 text-emerald-400'
+                : 'text-slate-500 hover:text-slate-300'
+            }`}
+          >
+            {tab.label} <span className="text-xs font-normal">{tab.count}</span>
+          </button>
+        ))}
       </div>
 
       <PositionList
@@ -557,6 +582,7 @@ function Positions({ ibkrData }) {
         shorts={tradeShorts}
         expandedTicker={expandedTicker}
         onToggleTicker={handleToggleTicker}
+        filter={filter}
       />
     </div>
   )
