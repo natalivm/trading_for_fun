@@ -690,7 +690,12 @@ function CumulativePnLChart({ closedPositions, width = 500, height = 120 }) {
 
   return (
     <div>
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Cumulative P&L — Closed Trades</h3>
+      <div className="flex items-baseline justify-between mb-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Cumulative P&L — Closed Trades</h3>
+        <span className="text-sm font-bold tabular-nums" style={{ color: strokeColor }}>
+          {lastVal >= 0 ? '+' : '-'}${Math.abs(lastVal).toFixed(0)}
+        </span>
+      </div>
       <svg width="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="w-full">
         {/* Zero line */}
         <line x1="0" y1={zeroY} x2={width} y2={zeroY} stroke="#334155" strokeWidth="1" strokeDasharray="4,4" />
@@ -705,10 +710,6 @@ function CumulativePnLChart({ closedPositions, width = 500, height = 120 }) {
         {/* Labels */}
         <text x="4" y={height - 4} fill="#475569" fontSize="9" fontFamily="monospace">{formatDate(points[0].date)}</text>
         <text x={width - 4} y={height - 4} fill="#475569" fontSize="9" fontFamily="monospace" textAnchor="end">{formatDate(points[points.length - 1].date)}</text>
-        {/* End value label */}
-        <text x={width - 4} y={pathPoints[pathPoints.length - 1].y - 6} fill={strokeColor} fontSize="10" fontFamily="monospace" fontWeight="bold" textAnchor="end">
-          {lastVal >= 0 ? '+' : '-'}${Math.abs(lastVal).toFixed(0)}
-        </text>
       </svg>
     </div>
   )
