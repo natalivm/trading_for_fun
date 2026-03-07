@@ -92,7 +92,7 @@ const defaultClosedShortPositions = [
     exitPrice: 47.87,
     profitPercent: 6.65,
     profitDollar: 34.08,
-    fees: 1.05,
+    fees: 1.40,
     openDate: '2026-03-02',
     closeDate: '2026-03-05',
   },
