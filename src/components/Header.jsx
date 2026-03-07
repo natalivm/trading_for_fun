@@ -37,34 +37,34 @@ function Header({ portfolio }) {
           )}
         </div>
 
-        {/* Stats row: Invested + Profit centered, Daily on right */}
-        <div className="flex items-center justify-center border-t border-slate-800/40 py-3">
-          <div className="flex items-center gap-5">
-            <div className="flex items-baseline gap-2">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-slate-600">My Capital</span>
-              <span className="text-lg font-bold text-slate-200 tabular-nums">
+        {/* Stats row */}
+        <div className="border-t border-slate-800/40 py-3">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:flex sm:items-center sm:justify-center sm:gap-5">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-[10px] sm:text-[11px] font-medium uppercase tracking-wider text-slate-600">Capital</span>
+              <span className="text-base sm:text-lg font-bold text-slate-200 tabular-nums">
                 ${myCapital.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </span>
             </div>
 
-            <div className="flex items-baseline gap-2">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-slate-600">Invested</span>
-              <span className="text-lg font-bold text-slate-200 tabular-nums">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-[10px] sm:text-[11px] font-medium uppercase tracking-wider text-slate-600">Invested</span>
+              <span className="text-base sm:text-lg font-bold text-slate-200 tabular-nums">
                 ${invested.toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </span>
             </div>
 
-            <div className="flex items-baseline gap-2">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-slate-600">Profit</span>
-              <span className={`text-lg font-bold tabular-nums ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-[10px] sm:text-[11px] font-medium uppercase tracking-wider text-slate-600">Profit</span>
+              <span className={`text-base sm:text-lg font-bold tabular-nums ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
                 {isPositive ? '+' : '-'}${Math.abs(profit).toLocaleString()}
               </span>
             </div>
 
             {hasDailyData && (
-              <div className="flex items-baseline gap-2">
-                <span className="text-[11px] font-medium uppercase tracking-wider text-slate-600">Daily</span>
-                <span className={`text-lg font-bold tabular-nums ${dailyPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-[10px] sm:text-[11px] font-medium uppercase tracking-wider text-slate-600">Daily</span>
+                <span className={`text-base sm:text-lg font-bold tabular-nums ${dailyPositive ? 'text-emerald-400' : 'text-red-400'}`}>
                   {dailyPositive ? '+' : '-'}${Math.abs(dailyPnL).toLocaleString()}
                 </span>
                 {dailyPct !== null && (
