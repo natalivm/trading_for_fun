@@ -417,7 +417,7 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
 
         {/* Days holding — right aligned */}
         <span className="text-[11px] text-slate-500 shrink-0 text-right">
-          {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
+          {days !== null ? `opened for ${days}d` : position.openDate ? formatDate(position.openDate) : ''}
         </span>
       </div>
 
