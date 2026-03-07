@@ -97,6 +97,18 @@ const defaultShortPositions = [
 
 const defaultClosedLongPositions = [
   {
+    ticker: 'SAM',
+    status: 'closed',
+    entryPrice: 1.2136,
+    quantity: 2500,
+    exitPrice: 1.0144,
+    profitDollar: -466.64,
+    fees: 0,
+    openDate: '2026-01-30',
+    closeDate: '2026-03-07',
+    currency: 'CAD',
+  },
+  {
     ticker: 'FCX',
     status: 'closed',
     entryPrice: 64.41,
@@ -166,7 +178,10 @@ export function calcCurrentlyInvested() {
 }
 
 export function calcProfit() {
-  return _closedPositions.reduce((sum, p) => sum + (p.profitDollar || 0) - (p.fees || 0), 0)
+  return _closedPositions.reduce((sum, p) => {
+    const pnl = (p.profitDollar || 0) - (p.fees || 0)
+    return sum + toUSD(pnl, p.currency)
+  }, 0)
 }
 
 export function calcDailyPnL() {
