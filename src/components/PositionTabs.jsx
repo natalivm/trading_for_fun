@@ -81,9 +81,32 @@ const defaultShortPositions = [
   { ticker: 'CRWD', status: 'open', entryPrice: 398.61, quantity: 10, openDate: '2026-03-05' },
 ]
 
-const defaultClosedLongPositions = []
+const defaultClosedLongPositions = [
+  {
+    ticker: 'FCX',
+    status: 'closed',
+    entryPrice: 64.41,
+    quantity: 13,
+    exitPrice: 64.60,
+    profitPercent: 0.29,
+    profitDollar: 2.46,
+    openDate: '2026-01-26',
+    closeDate: '2026-02-04',
+  },
+]
 
 const defaultClosedShortPositions = [
+  {
+    ticker: 'FCX',
+    status: 'closed',
+    entryPrice: 67.57,
+    quantity: 4,
+    exitPrice: 66.47,
+    profitPercent: 1.63,
+    profitDollar: 4.40,
+    openDate: '2026-02-26',
+    closeDate: '2026-03-04',
+  },
   {
     ticker: 'HYMC',
     status: 'closed',
