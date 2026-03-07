@@ -28,8 +28,8 @@ function toUSD(amount, currency) {
 
 const defaultLongPositions = [
   { ticker: 'FTNT', status: 'open', entryPrice: 84.46, quantity: 10, openDate: '2026-01-12' },
-  { ticker: 'ANET', status: 'open', entryPrice: 148.83, quantity: 20, openDate: '2026-01-29' },
-  { ticker: 'SOFI', status: 'open', entryPrice: 23.17, quantity: 100, openDate: '2026-01-30' },
+  { ticker: 'ANET', status: 'open', entryPrice: 148.83, quantity: 20, openDate: '2026-01-29', profitPercent: -10.5, unrealizedPnL: -318.67 },
+  { ticker: 'SOFI', status: 'open', entryPrice: 23.17, quantity: 100, openDate: '2026-01-30', profitPercent: -19.9, unrealizedPnL: -461.31 },
   { ticker: 'RDDT', status: 'open', entryPrice: 181.30, quantity: 3, openDate: '2026-02-03' },
   { ticker: 'ENVA', status: 'open', entryPrice: 156, quantity: 5, openDate: '2026-02-10' },
   { ticker: 'CEG', status: 'open', entryPrice: 280.17, quantity: 2, openDate: '2026-02-12', profitPercent: 5.04, unrealizedPnL: 91.79 },
@@ -97,6 +97,49 @@ const defaultShortPositions = [
 
 const defaultClosedLongPositions = [
   {
+    ticker: 'ANET',
+    status: 'closed',
+    entryPrice: 132.68,
+    quantity: 30,
+    exitPrice: 128.86,
+    profitDollar: -114.50,
+    openDate: '2026-01-06',
+    closeDate: '2026-01-07',
+  },
+  {
+    ticker: 'ANET',
+    status: 'closed',
+    entryPrice: 130.93,
+    quantity: 35,
+    exitPrice: 130.01,
+    profitDollar: -32.15,
+    openDate: '2026-01-07',
+    closeDate: '2026-01-20',
+  },
+  {
+    ticker: 'HY9H',
+    status: 'closed',
+    entryPrice: 510,
+    quantity: 1,
+    exitPrice: 560,
+    profitDollar: 50,
+    openDate: '2026-03-04',
+    closeDate: '2026-03-04',
+    currency: 'EUR',
+  },
+  {
+    ticker: 'SAM',
+    status: 'closed',
+    entryPrice: 1.2136,
+    quantity: 2500,
+    exitPrice: 1.0144,
+    profitDollar: -466.64,
+    fees: 0,
+    openDate: '2026-01-30',
+    closeDate: '2026-03-07',
+    currency: 'CAD',
+  },
+  {
     ticker: 'FCX',
     status: 'closed',
     entryPrice: 64.41,
@@ -111,6 +154,16 @@ const defaultClosedLongPositions = [
 ]
 
 const defaultClosedShortPositions = [
+  {
+    ticker: 'COHR',
+    status: 'closed',
+    entryPrice: 298.71,
+    quantity: 1,
+    exitPrice: 264.85,
+    profitDollar: 33.86,
+    openDate: '2026-03-02',
+    closeDate: '2026-03-04',
+  },
   {
     ticker: 'FCX',
     status: 'closed',
@@ -166,7 +219,10 @@ export function calcCurrentlyInvested() {
 }
 
 export function calcProfit() {
-  return _closedPositions.reduce((sum, p) => sum + (p.profitDollar || 0) - (p.fees || 0), 0)
+  return _closedPositions.reduce((sum, p) => {
+    const pnl = (p.profitDollar || 0) - (p.fees || 0)
+    return sum + toUSD(pnl, p.currency)
+  }, 0)
 }
 
 export function calcDailyPnL() {
@@ -432,8 +488,8 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
           </span>
         )}
 
-        {/* PnL badge: % + $ */}
-        {(pct !== null || pnlDollar !== null) && (
+        {/* PnL badge: % + $ — hide when both are 0 (no live data) */}
+        {(pct || pnlDollar) && (
           <span className={`rounded-md px-2 py-0.5 text-sm font-bold shrink-0 ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
             {pct !== null && <>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</>}
             {pct !== null && pnlDollar !== null && ' '}
