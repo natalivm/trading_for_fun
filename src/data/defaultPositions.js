@@ -680,6 +680,105 @@ export const defaultClosedLongPositions = [
     openDate: '2025-12-20',
     closeDate: '2026-01-09',
   },
+  {
+    ticker: 'FICO',
+    status: 'closed',
+    entryPrice: 1200,
+    quantity: 1,
+    exitPrice: 1198.96,
+    profitDollar: (1198.96 - 1200) * 1,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-02-24',
+    closeDate: '2026-02-24',
+  },
+  {
+    ticker: 'FIGR',
+    status: 'closed',
+    entryPrice: (10 * 63.5 + 10 * 63.53 + 10 * 63.25 + 15 * 64.8) / 45,
+    quantity: 45,
+    exitPrice: 63.6,
+    profitDollar: (63.6 - (10 * 63.5 + 10 * 63.53 + 10 * 63.25 + 15 * 64.8) / 45) * 45,
+    fees: 1.85, // 4 buys ($0.34+$0.34+$0.34+$0.33) + 1 sell ($0.50 stop)
+    openDate: '2026-01-27',
+    closeDate: '2026-01-29',
+  },
+  {
+    ticker: 'FSLR',
+    status: 'closed',
+    entryPrice: 257.93,
+    quantity: 4,
+    exitPrice: 252.81,
+    profitDollar: (252.81 - 257.93) * 4,
+    fees: 0.71, // 1 buy ($0.36) + 1 sell ($0.35 stop)
+    openDate: '2026-01-07',
+    closeDate: '2026-01-07',
+  },
+  {
+    ticker: 'FSLR',
+    status: 'closed',
+    entryPrice: 245.56,
+    quantity: 1,
+    exitPrice: 247,
+    profitDollar: (247 - 245.56) * 1,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-01-26',
+    closeDate: '2026-01-28',
+  },
+  {
+    ticker: 'EXAS',
+    status: 'closed',
+    entryPrice: 70.65,
+    quantity: 20,
+    exitPrice: 103.46,
+    profitDollar: (103.46 - 70.65) * 20,
+    fees: 0.58, // estimated: 1 buy ($0.29) + 1 sell ($0.29)
+    openDate: '2026-01-01', // buy date unknown
+    closeDate: '2026-02-12',
+  },
+  {
+    ticker: 'HYMC',
+    status: 'closed',
+    entryPrice: 38,
+    quantity: 50,
+    exitPrice: 42.544,
+    profitDollar: (42.544 - 38) * 50,
+    fees: 0.88, // 1 buy ($0.51) + 1 sell ($0.37)
+    openDate: '2026-01-30',
+    closeDate: '2026-01-30',
+  },
+  {
+    ticker: 'HYMC',
+    status: 'closed',
+    entryPrice: (50 * 38.51 + 34 * 34) / 84,
+    quantity: 84,
+    exitPrice: 42.83,
+    profitDollar: (42.83 - (50 * 38.51 + 34 * 34) / 84) * 84,
+    fees: 1.24, // 2 buys ($0.30+$0.31) + 1 sell ($0.63)
+    openDate: '2026-01-30',
+    closeDate: '2026-02-18',
+  },
+  {
+    ticker: 'RBRK',
+    status: 'closed',
+    entryPrice: (2 * 54.13 + 2 * 55.3 + 2 * 50.1) / 6,
+    quantity: 6,
+    exitPrice: 55.75,
+    profitDollar: (55.75 - (2 * 54.13 + 2 * 55.3 + 2 * 50.1) / 6) * 6,
+    fees: 1.41, // 3 buys ($0.36+$0.35+$0.35) + 1 sell ($0.34)
+    openDate: '2026-02-02',
+    closeDate: '2026-02-11',
+  },
+  {
+    ticker: 'SPGI',
+    status: 'closed',
+    entryPrice: 370.99,
+    quantity: 1,
+    exitPrice: 405.28,
+    profitDollar: (405.28 - 370.99) * 1,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-02-10',
+    closeDate: '2026-02-10',
+  },
 ]
 
 export const defaultClosedShortPositions = [
