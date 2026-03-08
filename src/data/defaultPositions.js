@@ -735,6 +735,50 @@ export const defaultClosedLongPositions = [
     openDate: '2026-01-01', // buy date unknown
     closeDate: '2026-02-12',
   },
+  {
+    ticker: 'HYMC',
+    status: 'closed',
+    entryPrice: 38,
+    quantity: 50,
+    exitPrice: 42.544,
+    profitDollar: (42.544 - 38) * 50,
+    fees: 0.88, // 1 buy ($0.51) + 1 sell ($0.37)
+    openDate: '2026-01-30',
+    closeDate: '2026-01-30',
+  },
+  {
+    ticker: 'HYMC',
+    status: 'closed',
+    entryPrice: (50 * 38.51 + 34 * 34) / 84,
+    quantity: 84,
+    exitPrice: 42.83,
+    profitDollar: (42.83 - (50 * 38.51 + 34 * 34) / 84) * 84,
+    fees: 1.24, // 2 buys ($0.30+$0.31) + 1 sell ($0.63)
+    openDate: '2026-01-30',
+    closeDate: '2026-02-18',
+  },
+  {
+    ticker: 'RBRK',
+    status: 'closed',
+    entryPrice: (2 * 54.13 + 2 * 55.3 + 2 * 50.1) / 6,
+    quantity: 6,
+    exitPrice: 55.75,
+    profitDollar: (55.75 - (2 * 54.13 + 2 * 55.3 + 2 * 50.1) / 6) * 6,
+    fees: 1.41, // 3 buys ($0.36+$0.35+$0.35) + 1 sell ($0.34)
+    openDate: '2026-02-02',
+    closeDate: '2026-02-11',
+  },
+  {
+    ticker: 'SPGI',
+    status: 'closed',
+    entryPrice: 370.99,
+    quantity: 1,
+    exitPrice: 405.28,
+    profitDollar: (405.28 - 370.99) * 1,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-02-10',
+    closeDate: '2026-02-10',
+  },
 ]
 
 export const defaultClosedShortPositions = [
