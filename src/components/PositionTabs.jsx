@@ -196,10 +196,10 @@ const defaultClosedLongPositions = [
   {
     ticker: 'CRDO',
     status: 'closed',
-    entryPrice: (2 * 113.54 + 4 * 299) / 6,
+    entryPrice: (2 * 113.54 + 4 * 99.53) / 6,
     quantity: 6,
-    exitPrice: 105,
-    profitDollar: (105 - (2 * 113.54 + 4 * 299) / 6) * 6,
+    exitPrice: 105.70,
+    profitDollar: (105.70 - (2 * 113.54 + 4 * 99.53) / 6) * 6,
     openDate: '2026-03-02',
     closeDate: '2026-03-04',
   },
