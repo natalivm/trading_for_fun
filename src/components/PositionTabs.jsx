@@ -593,6 +593,30 @@ const defaultClosedLongPositions = [
     openDate: '2026-02-24',
     closeDate: '2026-02-27',
   },
+  {
+    ticker: 'WGR',
+    status: 'closed',
+    entryPrice: (6000 * 0.16 + 930 * 0.155 + 8000 * 0.17) / 14930,
+    quantity: 14930,
+    exitPrice: 0.17,
+    profitDollar: (0.17 * 14930 - (6000 * 0.16 + 930 * 0.155 + 8000 * 0.17)),
+    fees: 4 * FEE_PER_TRANSACTION, // 3 buys + 1 sell
+    openDate: '2025-10-13',
+    closeDate: '2025-10-27',
+    currency: 'AUD',
+  },
+  {
+    ticker: 'WGR',
+    status: 'closed',
+    entryPrice: 0.16,
+    quantity: 12000,
+    exitPrice: 0.215,
+    profitDollar: (0.215 - 0.16) * 12000,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2025-11-07',
+    closeDate: '2026-01-06',
+    currency: 'AUD',
+  },
 ]
 
 const defaultClosedShortPositions = [
