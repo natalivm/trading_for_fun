@@ -12,6 +12,7 @@ const INDEXED_DB_NAME = 'tradingPriceHistory'
 const INDEXED_DB_STORE = 'priceHistory'
 const WRITE_DEBOUNCE_MS = 2000
 const MAX_ENTRIES_BEFORE_COMPRESS = 120
+const MS_PER_DAY = 86400000
 
 class PriceHistoryManager {
   constructor() {
@@ -58,8 +59,8 @@ class PriceHistoryManager {
   // Data <7 days old → keep all entries
   _compress(entries) {
     const now = new Date()
-    const thirtyDaysAgo = new Date(now - 30 * 86400000).toISOString().slice(0, 10)
-    const sevenDaysAgo = new Date(now - 7 * 86400000).toISOString().slice(0, 10)
+    const thirtyDaysAgo = new Date(now - 30 * MS_PER_DAY).toISOString().slice(0, 10)
+    const sevenDaysAgo = new Date(now - 7 * MS_PER_DAY).toISOString().slice(0, 10)
 
     const recent = entries.filter(e => e.date >= sevenDaysAgo)
     const mid = entries.filter(e => e.date >= thirtyDaysAgo && e.date < sevenDaysAgo)
@@ -70,7 +71,7 @@ class PriceHistoryManager {
     for (const e of old) {
       const d = new Date(e.date + 'T00:00:00')
       const yearStart = new Date(d.getFullYear(), 0, 1)
-      const week = Math.floor((d - yearStart) / (7 * 86400000))
+      const week = Math.floor((d - yearStart) / (7 * MS_PER_DAY))
       const key = `${d.getFullYear()}-W${week}`
       if (!weekMap[key] || e.date > weekMap[key].date) {
         weekMap[key] = e

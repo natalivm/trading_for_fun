@@ -2,6 +2,8 @@ import { FEE_PER_TRANSACTION, toUSD } from '../../utils/constants'
 import { loadCachedPrices, saveCachedPrices, recordPriceSnapshot } from '../../utils/storage'
 import { IGNORED_TICKERS } from '../../data/defaultPositions'
 
+const MS_PER_DAY = 86400000
+
 export const TODAY = new Date().toISOString().slice(0, 10)
 
 export function formatDate(dateStr) {
@@ -12,7 +14,7 @@ export function formatDate(dateStr) {
 
 export function daysBetween(a, b) {
   if (!a || !b) return null
-  return Math.floor((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000)
+  return Math.floor((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / MS_PER_DAY)
 }
 
 export function calcPnlPercent(position, isShort = false) {

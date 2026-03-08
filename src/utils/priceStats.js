@@ -1,8 +1,8 @@
 // ── Price Statistics Utilities ──────────────────────────────────────────
-// Functions for analysing price history entries ({ date, price }[]).
+// Functions for analyzing price history entries ({ date, price }[]).
 
 /**
- * Calculate annualised volatility (standard deviation of log returns × √252).
+ * Calculate annualized volatility (standard deviation of log returns × √252).
  * Requires at least 2 entries.
  * Returns null if insufficient data.
  */
