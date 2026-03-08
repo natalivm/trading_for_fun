@@ -285,6 +285,51 @@ const defaultClosedLongPositions = [
     closeDate: '2026-03-03',
   },
   {
+    ticker: 'ALSTI',
+    status: 'closed',
+    entryPrice: (15 * 65.51333 + 8 * 64.1) / 23,
+    quantity: 23,
+    exitPrice: (4 * 55 + 2 * 55.9 + 2 * 57 + 2 * 58 + 2 * 59 + 11 * 55.6) / 23,
+    profitDollar: ((4 * 55 + 2 * 55.9 + 2 * 57 + 2 * 58 + 2 * 59 + 11 * 55.6) / 23 - (15 * 65.51333 + 8 * 64.1) / 23) * 23,
+    fees: 8 * FEE_PER_TRANSACTION, // 2 buys + 6 sells
+    openDate: '2025-10-13',
+    closeDate: '2026-01-14',
+    currency: 'EUR',
+  },
+  {
+    ticker: 'AUGO',
+    status: 'closed',
+    entryPrice: (3 * 73.945 + 1 * 73.64) / 4,
+    quantity: 4,
+    exitPrice: 74,
+    profitDollar: (74 - (3 * 73.945 + 1 * 73.64) / 4) * 4,
+    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
+    openDate: '2026-01-29',
+    closeDate: '2026-01-29',
+  },
+  {
+    ticker: 'AU',
+    status: 'closed',
+    entryPrice: 88.82,
+    quantity: 10,
+    exitPrice: 104.02,
+    profitDollar: (104.02 - 88.82) * 10,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-02-02',
+    closeDate: '2026-02-06',
+  },
+  {
+    ticker: 'BE',
+    status: 'closed',
+    entryPrice: (2 * 146.7 + 2 * 140 + 2 * 136.5 + 2 * 150.73 + 6 * 145 + 2 * 157 + 3 * 174.32 + 2 * 165.13) / 21,
+    quantity: 21,
+    exitPrice: (7 * 159.61 + 14 * 165.36) / 21,
+    profitDollar: ((7 * 159.61 + 14 * 165.36) / 21 - (2 * 146.7 + 2 * 140 + 2 * 136.5 + 2 * 150.73 + 6 * 145 + 2 * 157 + 3 * 174.32 + 2 * 165.13) / 21) * 21,
+    fees: 10 * FEE_PER_TRANSACTION, // 8 buys + 2 sells
+    openDate: '2026-02-12',
+    closeDate: '2026-02-26',
+  },
+  {
     ticker: 'APH',
     status: 'closed',
     entryPrice: (2 * 149 + 33 * 145.3) / 35,
