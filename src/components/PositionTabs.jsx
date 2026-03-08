@@ -569,6 +569,10 @@ function PortfolioOverview({ allTrades, closedPositions }) {
 
 function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, newPositionKeys }) {
   const [showOthers, setShowOthers] = useState(false)
+  // Auto-collapse the expanded list when switching tabs
+  useEffect(() => {
+    setShowOthers(false)
+  }, [filter])
   const allPositions = [
     ...longs.map(p => ({ ...p, _type: 'long' })),
     ...shorts.map(p => ({ ...p, _type: 'short' })),
@@ -591,8 +595,8 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, n
     return best
   }, { key: null, pct: 0 }).key
 
-  // For closed tab, split into significant (top 15 by abs PnL%) and others
-  const MAX_VISIBLE_CLOSED = 15
+  // For closed tab, show only the top 10 most significant trades by default (reduced from 15 for a more concise view)
+  const MAX_VISIBLE_CLOSED = 10
   const isClosed = filter === 'closed'
   const canCollapse = isClosed && allPositions.length > MAX_VISIBLE_CLOSED
   const hiddenCount = canCollapse ? allPositions.length - MAX_VISIBLE_CLOSED : 0
