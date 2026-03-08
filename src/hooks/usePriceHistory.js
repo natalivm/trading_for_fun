@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { priceHistoryManager } from '../utils/priceHistory'
 import { getPriceStats } from '../utils/priceStats'
 
@@ -27,28 +27,19 @@ export function usePrice(ticker) {
 export function usePriceHistory(ticker, days = 30) {
   const [history, setHistory] = useState([])
 
-  const load = useCallback(async () => {
+  useEffect(() => {
     if (!ticker) return
+    let cancelled = false
     const cutoff = new Date()
     cutoff.setDate(cutoff.getDate() - days)
     const cutoffStr = cutoff.toISOString().slice(0, 10)
-    const entries = await priceHistoryManager.getPriceRange(
+    priceHistoryManager.getPriceRange(
       ticker,
       cutoffStr,
       new Date().toISOString().slice(0, 10)
-    )
-    setHistory(entries)
-  }, [ticker, days])
-
-  useEffect(() => {
-    let cancelled = false
-    priceHistoryManager.getPriceRange(
-      ticker,
-      (() => { const d = new Date(); d.setDate(d.getDate() - days); return d.toISOString().slice(0, 10) })(),
-      new Date().toISOString().slice(0, 10)
     ).then(entries => { if (!cancelled) setHistory(entries) })
     return () => { cancelled = true }
-  }, [ticker, days, load])
+  }, [ticker, days])
 
   return history
 }

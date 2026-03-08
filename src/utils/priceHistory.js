@@ -16,14 +16,17 @@ const COMPRESSION_THRESHOLD_DAYS = 30
 // ── Schema validation ────────────────────────────────────────────────────
 
 function isValidEntry(entry) {
-  return (
-    entry &&
-    typeof entry === 'object' &&
-    typeof entry.date === 'string' &&
-    entry.date.match(/^\d{4}-\d{2}-\d{2}$/) &&
-    typeof entry.price === 'number' &&
-    isFinite(entry.price)
-  )
+  if (
+    !entry ||
+    typeof entry !== 'object' ||
+    typeof entry.date !== 'string' ||
+    !entry.date.match(/^\d{4}-\d{2}-\d{2}$/) ||
+    typeof entry.price !== 'number' ||
+    !isFinite(entry.price)
+  ) return false
+  // Verify it's a real calendar date (catches dates like 2026-02-31)
+  const d = new Date(entry.date + 'T00:00:00')
+  return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === entry.date
 }
 
 function isValidTicker(ticker) {
