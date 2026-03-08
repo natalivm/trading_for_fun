@@ -29,6 +29,48 @@ function toUSD(amount, currency) {
 // Tickers to ignore during sync (leftovers, corporate actions, etc.)
 const IGNORED_TICKERS = new Set(['EUGM'])
 
+// ── Price persistence ─────────────────────────────────────────────────
+// Save last known market prices to localStorage so we can show current price
+// even when IBKR returns null/zero. Also keep a rolling price history.
+
+const PRICE_CACHE_KEY = 'cachedPrices'
+const PRICE_HISTORY_KEY = 'priceHistory'
+const MAX_HISTORY_PER_TICKER = 90 // keep ~90 entries per ticker
+
+function loadCachedPrices() {
+  try {
+    return JSON.parse(localStorage.getItem(PRICE_CACHE_KEY)) || {}
+  } catch { return {} }
+}
+
+function saveCachedPrices(prices) {
+  localStorage.setItem(PRICE_CACHE_KEY, JSON.stringify(prices))
+}
+
+function loadPriceHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(PRICE_HISTORY_KEY)) || {}
+  } catch { return {} }
+}
+
+function recordPriceSnapshot(ticker, price) {
+  const history = loadPriceHistory()
+  if (!history[ticker]) history[ticker] = []
+  const today = TODAY
+  const last = history[ticker][history[ticker].length - 1]
+  // Only add one entry per day
+  if (last && last.date === today) {
+    last.price = price
+  } else {
+    history[ticker].push({ date: today, price })
+  }
+  // Trim old entries
+  if (history[ticker].length > MAX_HISTORY_PER_TICKER) {
+    history[ticker] = history[ticker].slice(-MAX_HISTORY_PER_TICKER)
+  }
+  localStorage.setItem(PRICE_HISTORY_KEY, JSON.stringify(history))
+}
+
 const defaultLongPositions = [
   { ticker: 'FTNT', status: 'open', entryPrice: 84.46, quantity: 10, openDate: '2026-01-12', unrealizedPnL: (83.50 - 84.46) * 10, profitPercent: ((83.50 - 84.46) / 84.46) * 100 },
   { ticker: 'ANET', status: 'open', entryPrice: 148.83, quantity: 20, openDate: '2026-01-29', profitPercent: -10.5, unrealizedPnL: -318.67 },
@@ -457,33 +499,35 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
   }, [expanded, position.ticker])
 
   return (
-    <div className={`flex items-center gap-3 ${hidden ? 'scale-95 opacity-0 max-h-0 overflow-hidden !p-0 !m-0' : 'scale-100 opacity-100'} transition-all duration-300 ease-in-out`}>
-      {/* Card – 70% width on desktop */}
+    <div className={`flex items-center gap-3 ${hidden ? 'scale-95 opacity-0 max-h-0 overflow-hidden !p-0 !m-0' : 'scale-100 opacity-100'} transition-all duration-300 ease-in-out w-full`}>
+      {/* Card */}
       <div
-        className={`group cursor-pointer rounded-2xl border bg-slate-900/60 transition-all duration-300 ease-in-out w-full sm:w-[70%] shrink-0 ${borderColor} ${expanded ? 'bg-slate-800/60 ring-1 ring-slate-700/50' : ''}`}
+        className={`group cursor-pointer rounded-2xl border bg-slate-900/60 transition-all duration-300 ease-in-out w-full sm:flex-1 min-w-0 ${borderColor} ${expanded ? 'bg-slate-800/60 ring-1 ring-slate-700/50' : ''}`}
       >
         <div
-          className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2.5"
+          className="grid grid-cols-[auto_auto_1fr_auto] items-center gap-x-2 px-3 py-2 sm:px-4 sm:py-2.5"
           onClick={onToggle}
         >
           {/* Status indicator */}
-          {isClosed ? (
-            <svg className={`h-3 w-3 shrink-0 ${isShort ? 'text-pink-400' : 'text-blue-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          ) : (
-            <GlowDot color={isLong ? 'blue' : 'pink'} />
-          )}
+          <div className="flex items-center gap-2 col-span-1">
+            {isClosed ? (
+              <svg className={`h-3 w-3 shrink-0 ${isShort ? 'text-pink-400' : 'text-blue-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <GlowDot color={isLong ? 'blue' : 'pink'} />
+            )}
 
-          {/* Trade label */}
-          <span className={`text-xs font-bold uppercase tracking-wide shrink-0 w-10 ${
-            isShort ? 'text-pink-400' : 'text-blue-400'
-          }`}>
-            {isClosed ? (isShort ? 'Short' : 'Long') : isLong ? 'Long' : 'Short'}
-          </span>
+            {/* Trade label */}
+            <span className={`text-xs font-bold uppercase tracking-wide ${
+              isShort ? 'text-pink-400' : 'text-blue-400'
+            }`}>
+              {isClosed ? (isShort ? 'Short' : 'Long') : isLong ? 'Long' : 'Short'}
+            </span>
+          </div>
 
           {/* Ticker + Shares */}
-          <span className="text-base sm:text-lg font-extrabold tracking-tight text-slate-100 shrink-0 w-24 sm:w-28">
+          <span className="text-base sm:text-lg font-extrabold tracking-tight text-slate-100 whitespace-nowrap">
             {position.ticker}
             <span className={`text-xs font-normal ml-1 ${
               isShort ? 'text-pink-400/70' : 'text-blue-400/70'
@@ -492,47 +536,40 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
             </span>
           </span>
 
-          {/* NEW badge – only shown inline on mobile, external on desktop */}
-          {isNew && (
-            <span className="rounded-md bg-pink-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-pink-400 shrink-0 sm:hidden">
-              NEW
+          {/* Entry Price → Current/Exit Price */}
+          <div className="flex items-center justify-end gap-1.5 whitespace-nowrap min-w-0">
+            <span className={`text-sm font-bold ${
+              isShort ? 'text-pink-400/40' : 'text-blue-400/40'
+            }`}>
+              {sym}{position.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
-          )}
+            {isClosed && position.exitPrice != null ? (
+              <>
+                <span className={`text-xs ${isShort ? 'text-pink-400/40' : 'text-blue-400/40'}`}>→</span>
+                <span className={`text-sm font-bold ${isShort ? 'text-pink-400' : 'text-blue-400'}`}>
+                  {sym}{position.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </>
+            ) : currentPrice != null ? (
+              <>
+                <span className={`text-xs ${isShort ? 'text-pink-400/30' : 'text-blue-400/30'}`}>→</span>
+                <span className={`text-sm font-bold ${isShort ? 'text-pink-300' : 'text-blue-300'}`}>
+                  {sym}{currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </>
+            ) : null}
+          </div>
 
-          {/* Avg Price + Current/Exit Price */}
-          <span className={`text-sm font-bold shrink-0 w-18 sm:w-20 text-right ${
-            isShort ? 'text-pink-400/40' : 'text-blue-400/40'
-          }`}>
-            {sym}{position.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </span>
-          {isClosed && position.exitPrice != null ? (
-            <>
-              <span className={`text-xs shrink-0 ${isShort ? 'text-pink-400/40' : 'text-blue-400/40'}`}>→</span>
-              <span className={`text-sm font-bold shrink-0 ${isShort ? 'text-pink-400' : 'text-blue-400'}`}>
-                {sym}{position.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </>
-          ) : currentPrice != null ? (
-            <>
-              <span className={`text-xs shrink-0 ${isShort ? 'text-pink-400/30' : 'text-blue-400/30'}`}>→</span>
-              <span className={`text-sm font-bold shrink-0 ${isShort ? 'text-pink-300' : 'text-blue-300'}`}>
-                {sym}{currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </>
-          ) : null}
-
-          {/* PnL */}
-          <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto shrink-0">
+          {/* PnL + Days (mobile) */}
+          <div className="flex items-center gap-2 whitespace-nowrap justify-end">
             {(pct || pnlDollar) ? (
-              <span className={`rounded-md px-1.5 py-0.5 text-sm font-bold text-left ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+              <span className={`rounded-md px-1.5 py-0.5 text-sm font-bold ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
                 {pct !== null && <>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</>}
                 {pct !== null && pnlDollar !== null && ' '}
                 {pnlDollar !== null && <>{pnlDollar >= 0 ? '+' : '-'}{sym}{Math.abs(pnlDollar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
               </span>
             ) : null}
-            {/* Days holding – inline on mobile only */}
-            <div className="flex-1 min-w-0 sm:hidden" />
-            <span className="text-[11px] text-blue-400 shrink-0 text-right sm:hidden">
+            <span className="text-[11px] text-blue-400 text-right sm:hidden">
               {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
             </span>
           </div>
@@ -545,7 +582,7 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
       </div>
 
       {/* External tags – right side, desktop only */}
-      <div className="hidden sm:flex flex-col items-start gap-1.5 min-w-[5rem]">
+      <div className="hidden sm:flex flex-col items-start gap-1.5 shrink-0 min-w-[5rem]">
         {isNew && (
           <span className="rounded-md bg-pink-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-pink-400">
             NEW
@@ -843,7 +880,7 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, n
   })
 
   return (
-    <div className="flex flex-col gap-2 px-2 sm:px-4 sm:items-center">
+    <div className="flex flex-col gap-2 px-2 sm:px-4 sm:max-w-3xl sm:mx-auto w-full">
       {allPositions.map((position, i) => {
         const tradeKey = `${position._type}-${position.ticker}-${position.openDate || i}`
         const closedPrefix = position.status === 'closed' ? `closed-${position._type}` : position._type
@@ -875,6 +912,7 @@ function filterClosed2026(positions) {
 function mergePositions(defaults, livePositions) {
   if (!livePositions || livePositions.length === 0) return defaults.filter(p => !IGNORED_TICKERS.has(p.ticker))
 
+  const cachedPrices = loadCachedPrices()
   const liveByTicker = {}
   for (const pos of livePositions) {
     if (IGNORED_TICKERS.has(pos.ticker)) continue
@@ -895,16 +933,30 @@ function mergePositions(defaults, livePositions) {
             ...live,
             openDate: def.openDate || live.openDate || '',
           }
-          // If live provides marketValue but zero P/L, recalculate from price
           const liveQty = live.quantity || def.quantity || 0
           const liveEntry = live.entryPrice || def.entryPrice || 0
+
           if (live.marketValue && liveQty && liveEntry) {
+            // IBKR delivered fresh data — use it and cache the price
             const currentPrice = live.marketValue / liveQty
+            cachedPrices[live.ticker] = { price: currentPrice, marketValue: live.marketValue, qty: liveQty, updatedAt: TODAY }
+            recordPriceSnapshot(live.ticker, currentPrice)
             if (!live.unrealizedPnL) {
               entry.unrealizedPnL = (currentPrice - liveEntry) * liveQty
             }
             if (!live.profitPercent) {
               entry.profitPercent = ((currentPrice - liveEntry) / liveEntry) * 100
+            }
+          } else if (cachedPrices[live.ticker || def.ticker] && liveQty && liveEntry) {
+            // IBKR returned null/zero — restore last known price
+            const cached = cachedPrices[live.ticker || def.ticker]
+            const restoredPrice = cached.price
+            entry.marketValue = restoredPrice * liveQty
+            if (!entry.unrealizedPnL) {
+              entry.unrealizedPnL = (restoredPrice - liveEntry) * liveQty
+            }
+            if (!entry.profitPercent) {
+              entry.profitPercent = ((restoredPrice - liveEntry) / liveEntry) * 100
             }
           }
           // Still fall back to manual defaults if nothing else available
@@ -924,6 +976,9 @@ function mergePositions(defaults, livePositions) {
       merged.push(...entries)
     }
   }
+
+  // Persist updated price cache
+  saveCachedPrices(cachedPrices)
 
   return merged
 }
