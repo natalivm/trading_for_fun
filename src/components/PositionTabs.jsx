@@ -537,23 +537,21 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
           </span>
 
           {/* Entry Price → Current/Exit Price */}
-          <div className="flex items-center justify-end gap-1.5 whitespace-nowrap min-w-0">
-            <span className={`text-sm font-bold ${
-              isShort ? 'text-pink-400/40' : 'text-blue-400/40'
-            }`}>
+          <div className="flex items-center justify-start gap-1.5 whitespace-nowrap min-w-0">
+            <span className={`text-sm font-bold ${isShort ? 'text-pink-400' : 'text-blue-400'}`}>
               {sym}{position.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
             {isClosed && position.exitPrice != null ? (
               <>
-                <span className={`text-xs ${isShort ? 'text-pink-400/40' : 'text-blue-400/40'}`}>→</span>
-                <span className={`text-sm font-bold ${isShort ? 'text-pink-400' : 'text-blue-400'}`}>
+                <span className="text-xs text-slate-500">→</span>
+                <span className={`text-sm font-bold ${(pct ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                   {sym}{position.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </>
             ) : currentPrice != null ? (
               <>
-                <span className={`text-xs ${isShort ? 'text-pink-400/30' : 'text-blue-400/30'}`}>→</span>
-                <span className={`text-sm font-bold ${isShort ? 'text-pink-300' : 'text-blue-300'}`}>
+                <span className="text-xs text-slate-500">→</span>
+                <span className={`text-sm font-bold ${(pct ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                   {sym}{currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </>
@@ -569,6 +567,11 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
                 {pnlDollar !== null && <>{pnlDollar >= 0 ? '+' : '-'}{sym}{Math.abs(pnlDollar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
               </span>
             ) : null}
+            {!isClosed && days !== null && days <= 1 && (
+              <span className="rounded-md bg-pink-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-pink-400 sm:hidden">
+                NEW
+              </span>
+            )}
             <span className="text-[11px] text-blue-400 text-right sm:hidden">
               {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
             </span>
@@ -583,7 +586,7 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
 
       {/* External tags – right side, desktop only */}
       <div className="hidden sm:flex flex-col items-start gap-1.5 shrink-0 min-w-[5rem]">
-        {isNew && (
+        {!isClosed && days !== null && days <= 1 && (
           <span className="rounded-md bg-pink-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-pink-400">
             NEW
           </span>
@@ -591,11 +594,6 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
         <span className="rounded-md bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-400">
           {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
         </span>
-        {isClosed && (
-          <span className="rounded-md bg-slate-500/10 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
-            CLOSED
-          </span>
-        )}
       </div>
     </div>
   )
