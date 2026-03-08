@@ -567,14 +567,15 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
                 {pnlDollar !== null && <>{pnlDollar >= 0 ? '+' : '-'}{sym}{Math.abs(pnlDollar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
               </span>
             ) : null}
-            {!isClosed && days !== null && days <= 1 && (
+            {!isClosed && days !== null && days <= 1 ? (
               <span className="rounded-md bg-pink-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-pink-400 sm:hidden">
                 NEW
               </span>
+            ) : (
+              <span className="text-[11px] text-blue-400 text-right sm:hidden">
+                {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
+              </span>
             )}
-            <span className="text-[11px] text-blue-400 text-right sm:hidden">
-              {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
-            </span>
           </div>
         </div>
 
@@ -586,14 +587,15 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
 
       {/* External tags – right side, desktop only */}
       <div className="hidden sm:flex flex-col items-start gap-1.5 shrink-0 min-w-[5rem]">
-        {!isClosed && days !== null && days <= 1 && (
+        {!isClosed && days !== null && days <= 1 ? (
           <span className="rounded-md bg-pink-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-pink-400">
             NEW
           </span>
+        ) : (
+          <span className="rounded-md bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-400">
+            {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
+          </span>
         )}
-        <span className="rounded-md bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-400">
-          {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
-        </span>
       </div>
     </div>
   )
