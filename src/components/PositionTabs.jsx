@@ -30,11 +30,11 @@ function toUSD(amount, currency) {
 const IGNORED_TICKERS = new Set(['EUGM'])
 
 const defaultLongPositions = [
-  { ticker: 'FTNT', status: 'open', entryPrice: 84.46, quantity: 10, openDate: '2026-01-12' },
+  { ticker: 'FTNT', status: 'open', entryPrice: 84.46, quantity: 10, openDate: '2026-01-12', unrealizedPnL: (83.50 - 84.46) * 10, profitPercent: ((83.50 - 84.46) / 84.46) * 100 },
   { ticker: 'ANET', status: 'open', entryPrice: 148.83, quantity: 20, openDate: '2026-01-29', profitPercent: -10.5, unrealizedPnL: -318.67 },
   { ticker: 'SOFI', status: 'open', entryPrice: 23.17, quantity: 100, openDate: '2026-01-30', profitPercent: -19.9, unrealizedPnL: -461.31 },
-  { ticker: 'RDDT', status: 'open', entryPrice: 181.30, quantity: 3, openDate: '2026-02-03' },
-  { ticker: 'ENVA', status: 'open', entryPrice: 156, quantity: 5, openDate: '2026-02-10' },
+  { ticker: 'RDDT', status: 'open', entryPrice: 181.30, quantity: 3, openDate: '2026-02-03', unrealizedPnL: (138.40 - 181.30) * 3, profitPercent: ((138.40 - 181.30) / 181.30) * 100 },
+  { ticker: 'ENVA', status: 'open', entryPrice: 156, quantity: 5, openDate: '2026-02-10', unrealizedPnL: (137.58 - 156) * 5, profitPercent: ((137.58 - 156) / 156) * 100 },
   { ticker: 'CEG', status: 'open', entryPrice: 280.17, quantity: 2, openDate: '2026-02-12', profitPercent: 5.04, unrealizedPnL: 91.79 },
   { ticker: 'CEG', status: 'open', entryPrice: 310.77, quantity: 2, openDate: '2026-02-12' },
   { ticker: 'THM', status: 'open', entryPrice: 2.29, quantity: 100, openDate: '2026-02-17', profitPercent: 7.41, unrealizedPnL: 63.37 },
@@ -43,7 +43,7 @@ const defaultLongPositions = [
   { ticker: 'ALAB', status: 'open', entryPrice: 101.62, quantity: 8, openDate: '2026-02-17' },
   { ticker: 'RIG', status: 'open', entryPrice: 6.14, quantity: 100, openDate: '2026-02-20' },
   { ticker: 'ZBIO', status: 'open', entryPrice: 27.52, quantity: 15, openDate: '2026-02-20' },
-  { ticker: 'ENVA', status: 'open', entryPrice: 138, quantity: 5, openDate: '2026-02-23' },
+  { ticker: 'ENVA', status: 'open', entryPrice: 138, quantity: 5, openDate: '2026-02-23', unrealizedPnL: (137.58 - 138) * 5, profitPercent: ((137.58 - 138) / 138) * 100 },
   { ticker: 'DASH', status: 'open', entryPrice: 164.14, quantity: 2, openDate: '2026-02-24' },
   { ticker: 'NU', status: 'open', entryPrice: 16.53, quantity: 20, openDate: '2026-02-24' },
   { ticker: 'TLN', status: 'open', entryPrice: 373.26, quantity: 2, openDate: '2026-02-24' },
@@ -86,15 +86,13 @@ const defaultLongPositions = [
 
 const defaultShortPositions = [
   { ticker: 'LITE', status: 'open', entryPrice: 716.95, quantity: 3, exitPrice: 500, openDate: '2026-02-26', profitPercent: 20.8, unrealizedPnL: 446.85 },
-  { ticker: 'APP', status: 'open', entryPrice: 447.75, quantity: 6, openDate: '2026-02-26' },
+  { ticker: 'APP', status: 'open', entryPrice: 447.75, quantity: 6, openDate: '2026-02-26', unrealizedPnL: (447.75 - 499.17) * 6, profitPercent: ((447.75 - 499.17) / 447.75) * 100 },
   { ticker: 'CAT', status: 'open', entryPrice: 742, quantity: 1, openDate: '2026-03-02', profitPercent: 8.54, unrealizedPnL: 63.43 },
-  { ticker: 'MDB', status: 'open', entryPrice: 239.80, quantity: 2, openDate: '2026-03-03' },
-  { ticker: 'MDB', status: 'open', entryPrice: 239.18, quantity: 2, openDate: '2026-03-03' },
-  { ticker: 'MDB', status: 'open', entryPrice: 253.35, quantity: 2, openDate: '2026-03-03' },
+  { ticker: 'MDB', status: 'open', entryPrice: 244.11, quantity: 6, openDate: '2026-03-03', unrealizedPnL: (244.11 - 269.95) * 6, profitPercent: ((244.11 - 269.95) / 244.11) * 100 },
   { ticker: 'POWL', status: 'open', entryPrice: 521, quantity: 2, openDate: '2026-03-04', profitPercent: 4.07, unrealizedPnL: 62.26 },
   { ticker: 'POWL', status: 'open', entryPrice: 487.26, quantity: 1, openDate: '2026-03-07' },
-  { ticker: 'CRDO', status: 'open', entryPrice: 113.93, quantity: 5, openDate: '2026-03-05' },
-  { ticker: 'CRWD', status: 'open', entryPrice: 398.61, quantity: 10, openDate: '2026-03-05' },
+  { ticker: 'CRDO', status: 'open', entryPrice: 113.93, quantity: 5, openDate: '2026-03-05', unrealizedPnL: (113.93 - 109.11) * 5, profitPercent: ((113.93 - 109.11) / 113.93) * 100 },
+  { ticker: 'CRWD', status: 'open', entryPrice: 398.61, quantity: 10, openDate: '2026-03-05', unrealizedPnL: (398.61 - 428.70) * 10, profitPercent: ((398.61 - 428.70) / 398.61) * 100 },
 ]
 
 const defaultClosedLongPositions = [
@@ -152,6 +150,167 @@ const defaultClosedLongPositions = [
     fees: 1.05,
     openDate: '2026-01-26',
     closeDate: '2026-02-04',
+  },
+  {
+    ticker: 'ALAB',
+    status: 'closed',
+    entryPrice: 148.73,
+    quantity: 8,
+    exitPrice: 118.51,
+    profitDollar: -241.78,
+    openDate: '',
+    closeDate: '2026-02-11',
+  },
+  {
+    ticker: 'RIG',
+    status: 'closed',
+    entryPrice: 6.15,
+    quantity: 200,
+    exitPrice: 5.94,
+    profitDollar: -41.47,
+    openDate: '',
+    closeDate: '2026-02-17',
+  },
+  {
+    ticker: 'ZBIO',
+    status: 'closed',
+    entryPrice: 27.47,
+    quantity: 30,
+    exitPrice: 25.28,
+    profitDollar: -65.62,
+    openDate: '',
+    closeDate: '2026-02-17',
+  },
+  {
+    ticker: 'DASH',
+    status: 'closed',
+    entryPrice: 169.25,
+    quantity: 4,
+    exitPrice: 179.75,
+    profitDollar: 42.00,
+    openDate: '',
+    closeDate: '2026-02-24',
+  },
+  {
+    ticker: 'NU',
+    status: 'closed',
+    entryPrice: 16.20,
+    quantity: 40,
+    exitPrice: 14.45,
+    profitDollar: -70.17,
+    openDate: '',
+    closeDate: '2026-02-24',
+  },
+  {
+    ticker: 'TLN',
+    status: 'closed',
+    entryPrice: 373.26,
+    quantity: 2,
+    exitPrice: 324.61,
+    profitDollar: -97.30,
+    openDate: '',
+    closeDate: '2026-02-24',
+  },
+  {
+    ticker: 'BLCO',
+    status: 'closed',
+    entryPrice: 18.59,
+    quantity: 40,
+    exitPrice: 17.06,
+    profitDollar: -61.36,
+    openDate: '',
+    closeDate: '2026-02-25',
+  },
+  {
+    ticker: 'LRCX',
+    status: 'closed',
+    entryPrice: 238.63,
+    quantity: 2,
+    exitPrice: 199.69,
+    profitDollar: -77.88,
+    openDate: '',
+    closeDate: '2026-02-26',
+  },
+  {
+    ticker: 'SITM',
+    status: 'closed',
+    entryPrice: 409.34,
+    quantity: 2,
+    exitPrice: 328.00,
+    profitDollar: -162.68,
+    openDate: '',
+    closeDate: '2026-03-02',
+  },
+  {
+    ticker: 'PINS',
+    status: 'closed',
+    entryPrice: 19.10,
+    quantity: 30,
+    exitPrice: 19.94,
+    profitDollar: 25.05,
+    openDate: '',
+    closeDate: '2026-03-03',
+  },
+  {
+    ticker: 'ARRY',
+    status: 'closed',
+    entryPrice: 7.29,
+    quantity: 100,
+    exitPrice: 6.80,
+    profitDollar: -49.05,
+    openDate: '',
+    closeDate: '2026-03-03',
+  },
+  {
+    ticker: 'AU',
+    status: 'closed',
+    entryPrice: 115.31,
+    quantity: 10,
+    exitPrice: 106.40,
+    profitDollar: -89.08,
+    openDate: '',
+    closeDate: '2026-03-03',
+  },
+  {
+    ticker: 'COHR',
+    status: 'closed',
+    entryPrice: 250.38,
+    quantity: 5,
+    exitPrice: 237.00,
+    profitDollar: -66.89,
+    openDate: '',
+    closeDate: '2026-03-04',
+  },
+  {
+    ticker: 'BTCWEUR',
+    status: 'closed',
+    entryPrice: 15.04,
+    quantity: 100,
+    exitPrice: 14.06,
+    profitDollar: -98.45,
+    openDate: '',
+    closeDate: '2026-03-04',
+    currency: 'EUR',
+  },
+  {
+    ticker: 'OKLO',
+    status: 'closed',
+    entryPrice: 61.03,
+    quantity: 20,
+    exitPrice: 58.22,
+    profitDollar: -56.27,
+    openDate: '',
+    closeDate: '2026-03-05',
+  },
+  {
+    ticker: 'LRMR',
+    status: 'closed',
+    entryPrice: 5.30,
+    quantity: 100,
+    exitPrice: 5.35,
+    profitDollar: 4.76,
+    openDate: '',
+    closeDate: '2026-03-08',
   },
 ]
 
@@ -330,6 +489,7 @@ function GlowDot({ color }) {
     green: 'bg-emerald-400 shadow-emerald-400/60',
     red: 'bg-red-400 shadow-red-400/60',
     pink: 'bg-pink-400 shadow-pink-400/60',
+    blue: 'bg-blue-400 shadow-blue-400/60',
   }
   return (
     <span className="relative flex h-3 w-3 shrink-0">
@@ -426,11 +586,9 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
   const sym = ccySym(position.currency)
   const pct = calcPnlPercent(position, isShort)
 
-  const borderColor = isClosed
-    ? (isShort ? 'border-pink-500/20 hover:border-pink-500/40' : 'border-blue-500/20 hover:border-blue-500/40')
-    : isLong
-      ? 'border-emerald-500/20 hover:border-emerald-500/40'
-      : 'border-pink-500/20 hover:border-pink-500/40'
+  const borderColor = isShort
+    ? 'border-pink-500/20 hover:border-pink-500/40'
+    : 'border-blue-500/20 hover:border-blue-500/40'
 
   // Current market price (derived from marketValue / quantity)
   const currentPrice = !isClosed && position.marketValue && position.quantity
@@ -475,14 +633,12 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         ) : (
-          <GlowDot color={isLong ? 'green' : 'pink'} />
+          <GlowDot color={isLong ? 'blue' : 'pink'} />
         )}
 
         {/* Trade label */}
         <span className={`text-xs font-bold uppercase tracking-wide shrink-0 w-10 ${
-          isClosed
-            ? (isShort ? 'text-pink-400' : 'text-blue-400')
-            : isLong ? 'text-emerald-400/70' : 'text-pink-400/70'
+          isShort ? 'text-pink-400' : 'text-blue-400'
         }`}>
           {isClosed ? (isShort ? 'Short' : 'Long') : isLong ? 'Long' : 'Short'}
         </span>
@@ -491,7 +647,7 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
         <span className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-100 shrink-0 w-28 sm:w-32">
           {position.ticker}
           <span className={`text-xs sm:text-sm font-normal ml-1.5 ${
-            isClosed ? (isShort ? 'text-pink-400/70' : 'text-blue-400/70') : 'text-slate-400'
+            isShort ? 'text-pink-400/70' : 'text-blue-400/70'
           }`}>
             x{position.quantity}
           </span>
@@ -506,7 +662,7 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
 
         {/* Avg Price + Current/Exit Price */}
         <span className={`text-sm sm:text-base font-bold shrink-0 w-20 sm:w-24 text-right ${
-          isClosed ? (isShort ? 'text-pink-400/70' : 'text-blue-400/70') : 'text-blue-400'
+          isShort ? 'text-pink-400/70' : 'text-blue-400/70'
         }`}>
           {sym}{position.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
@@ -518,29 +674,26 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
             </span>
           </>
         ) : currentPrice != null ? (
-          <span className="text-sm sm:text-base font-bold text-amber-400 shrink-0">
+          <span className={`text-sm sm:text-base font-bold shrink-0 ${isShort ? 'text-pink-400' : 'text-blue-400'}`}>
             {sym}{currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         ) : null}
 
-        {/* PnL badge */}
-        {(pct || pnlDollar) ? (
-          <span className={`rounded-md px-2 py-0.5 text-xs sm:text-sm font-bold shrink-0 w-full sm:w-auto sm:min-w-[10rem] text-center ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
-            {pct !== null && <>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</>}
-            {pct !== null && pnlDollar !== null && ' '}
-            {pnlDollar !== null && <>{pnlDollar >= 0 ? '+' : '-'}{sym}{Math.abs(pnlDollar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
+        {/* PnL + Days row */}
+        <div className="flex items-center gap-2 w-full sm:w-auto sm:min-w-[10rem] shrink-0">
+          {(pct || pnlDollar) ? (
+            <span className={`rounded-md px-2 py-0.5 text-sm sm:text-base font-bold text-left ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+              {pct !== null && <>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</>}
+              {pct !== null && pnlDollar !== null && ' '}
+              {pnlDollar !== null && <>{pnlDollar >= 0 ? '+' : '-'}{sym}{Math.abs(pnlDollar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
+            </span>
+          ) : null}
+          <div className="flex-1 min-w-0" />
+          {/* Days holding */}
+          <span className="text-[11px] text-slate-500 shrink-0 text-right">
+            {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
           </span>
-        ) : (
-          <span className="hidden sm:block shrink-0 sm:min-w-[10rem]" />
-        )}
-
-        {/* Spacer */}
-        <div className="flex-1 min-w-0" />
-
-        {/* Days holding — right aligned */}
-        <span className="text-[11px] text-slate-500 shrink-0 text-right">
-          {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
-        </span>
+        </div>
       </div>
 
       {/* Expanded detail */}
