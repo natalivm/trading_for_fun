@@ -505,105 +505,85 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
     return () => { cancelled = true }
   }, [expanded, position.ticker])
 
+  const sectionBase = `rounded-xl bg-slate-900/60 px-3 py-2 sm:px-4 sm:py-2.5`
+  const displayPrice = isClosed && position.exitPrice != null
+    ? position.exitPrice
+    : currentPrice
+
   return (
-    <div className={`flex items-center gap-3 ${hidden ? 'scale-95 opacity-0 max-h-0 overflow-hidden !p-0 !m-0' : 'scale-100 opacity-100'} transition-all duration-300 ease-in-out w-full`}>
-      {/* Card */}
-      <div
-        className={`group cursor-pointer rounded-2xl border bg-slate-900/60 transition-all duration-300 ease-in-out w-full sm:flex-1 min-w-0 ${borderColor} ${expanded ? 'bg-slate-800/60 ring-1 ring-slate-700/50' : ''}`}
-      >
+    <div className={`${hidden ? 'scale-95 opacity-0 max-h-0 overflow-hidden !p-0 !m-0' : 'scale-100 opacity-100'} transition-all duration-300 ease-in-out w-full`}>
+      <div className="flex items-center gap-3">
+        {/* 3-section card */}
         <div
-          className="grid grid-cols-[auto_auto_1fr_auto] items-center gap-x-2 px-3 py-2 sm:px-4 sm:py-2.5"
+          className={`group cursor-pointer rounded-2xl border transition-all duration-300 ease-in-out flex-1 min-w-0 ${borderColor} ${expanded ? 'ring-1 ring-slate-700/50' : ''}`}
           onClick={onToggle}
         >
-          {/* Status indicator */}
-          <div className="flex items-center gap-2 col-span-1">
-            {isClosed ? (
-              <svg className={`h-3 w-3 shrink-0 ${isShort ? 'text-pink-400' : 'text-blue-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            ) : (
-              <GlowDot color={isLong ? 'blue' : 'pink'} />
-            )}
+          <div className="grid grid-cols-3 gap-[1px] bg-slate-700/30 rounded-2xl overflow-hidden">
+            {/* Section 1: Status + Ticker + Quantity */}
+            <div className={`${sectionBase} flex items-center gap-2`}>
+              {isClosed ? (
+                <svg className={`h-3 w-3 shrink-0 ${isShort ? 'text-pink-400' : 'text-blue-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <GlowDot color={isLong ? 'blue' : 'pink'} />
+              )}
+              <span className="text-base sm:text-lg font-extrabold tracking-tight text-slate-100 whitespace-nowrap">
+                {position.ticker}
+              </span>
+              <span className={`text-xs font-normal ${isShort ? 'text-pink-400/70' : 'text-blue-400/70'}`}>
+                x{position.quantity}
+              </span>
+            </div>
 
-            {/* Trade label */}
-            <span className={`text-xs font-bold uppercase tracking-wide ${
-              isShort ? 'text-pink-400' : 'text-blue-400'
-            }`}>
-              {isClosed ? (isShort ? 'Short' : 'Long') : isLong ? 'Long' : 'Short'}
-            </span>
-          </div>
+            {/* Section 2: Entry Price → Current/Exit Price */}
+            <div className={`${sectionBase} flex items-center gap-1.5 whitespace-nowrap`}>
+              <span className={`text-sm font-bold ${isShort ? 'text-pink-400' : 'text-blue-400'}`}>
+                {sym}{position.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+              {displayPrice != null && (
+                <>
+                  <span className="text-xs text-slate-500">→</span>
+                  <span className={`text-sm font-bold ${(pct ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {sym}{displayPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </>
+              )}
+            </div>
 
-          {/* Ticker + Shares */}
-          <span className="text-base sm:text-lg font-extrabold tracking-tight text-slate-100 whitespace-nowrap">
-            {position.ticker}
-            <span className={`text-xs font-normal ml-1 ${
-              isShort ? 'text-pink-400/70' : 'text-blue-400/70'
-            }`}>
-              x{position.quantity}
-            </span>
-          </span>
-
-          {/* Entry Price → Current/Exit Price */}
-          <div className="flex items-center justify-start gap-1.5 whitespace-nowrap min-w-0">
-            <span className={`text-sm font-bold ${isShort ? 'text-pink-400' : 'text-blue-400'}`}>
-              {sym}{position.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-            {isClosed && position.exitPrice != null ? (
-              <>
-                <span className="text-xs text-slate-500">→</span>
-                <span className={`text-sm font-bold ${(pct ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {sym}{position.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {/* Section 3: PnL */}
+            <div className={`${sectionBase} flex items-center gap-2 whitespace-nowrap`}>
+              {(pct || pnlDollar) ? (
+                <span className={`rounded-md px-1.5 py-0.5 text-sm font-bold ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+                  {pct !== null && <>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</>}
+                  {pct !== null && pnlDollar !== null && ' '}
+                  {pnlDollar !== null && <>{pnlDollar >= 0 ? '+' : '-'}{sym}{Math.abs(pnlDollar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
                 </span>
-              </>
-            ) : currentPrice != null ? (
-              <>
-                <span className="text-xs text-slate-500">→</span>
-                <span className={`text-sm font-bold ${(pct ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {sym}{currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-              </>
-            ) : null}
-          </div>
-
-          {/* PnL + Days (mobile) */}
-          <div className="flex items-center gap-2 whitespace-nowrap justify-end">
-            {(pct || pnlDollar) ? (
-              <span className={`rounded-md px-1.5 py-0.5 text-sm font-bold ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
-                {pct !== null && <>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</>}
-                {pct !== null && pnlDollar !== null && ' '}
-                {pnlDollar !== null && <>{pnlDollar >= 0 ? '+' : '-'}{sym}{Math.abs(pnlDollar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
-              </span>
-            ) : null}
-            {!isClosed && days !== null && days <= 1 ? (
-              <span className="rounded-md bg-pink-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-pink-400 sm:hidden">
-                NEW
-              </span>
-            ) : (
-              <span className="text-[11px] text-blue-400 text-right sm:hidden">
-                {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
-              </span>
-            )}
+              ) : null}
+            </div>
           </div>
         </div>
 
-        {/* Expanded detail */}
-        {expanded && (
-          <ExpandedDetail ticker={position.ticker} history={history} />
-        )}
+        {/* External tag – right side */}
+        <div className="hidden sm:flex flex-col items-start gap-1.5 shrink-0 min-w-[5rem]">
+          {!isClosed && days !== null && days <= 1 ? (
+            <span className="rounded-md bg-pink-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-pink-400">
+              NEW
+            </span>
+          ) : (
+            <span className="rounded-md bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-400">
+              {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* External tags – right side, desktop only */}
-      <div className="hidden sm:flex flex-col items-start gap-1.5 shrink-0 min-w-[5rem]">
-        {!isClosed && days !== null && days <= 1 ? (
-          <span className="rounded-md bg-pink-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-pink-400">
-            NEW
-          </span>
-        ) : (
-          <span className="rounded-md bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-400">
-            {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
-          </span>
-        )}
-      </div>
+      {/* Expanded detail */}
+      {expanded && (
+        <div className={`mt-1 rounded-2xl border ${borderColor} bg-slate-900/60 overflow-hidden`}>
+          <ExpandedDetail ticker={position.ticker} history={history} />
+        </div>
+      )}
     </div>
   )
 }
