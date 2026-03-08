@@ -463,7 +463,7 @@ function ExpandedDetail({ ticker, history }) {
 function FireIcon() {
   return (
     <span className="relative flex h-5 w-5 shrink-0 fire-icon">
-      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="#F97316" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="#3B82F6" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 2c0 4.5-5 7-5 11a5 5 0 0 0 10 0c0-4-5-6.5-5-11z" />
         <path d="M12 9c0 2.5-2 4-2 6a2 2 0 0 0 4 0c0-2-2-3.5-2-6z" />
       </svg>
@@ -526,7 +526,7 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew, isTopG
       <div>
         {/* 3-section card */}
         <div
-          className={`group cursor-pointer rounded-2xl border transition-all duration-300 ease-in-out ${isTopGainer ? 'top-gainer-card border-orange-500 hover:border-orange-400' : borderColor} ${expanded ? 'ring-1 ring-slate-700/50' : ''}`}
+          className={`group cursor-pointer rounded-2xl border transition-all duration-300 ease-in-out ${isTopGainer ? 'top-gainer-card border-blue-500 hover:border-blue-400' : borderColor} ${expanded ? 'ring-1 ring-slate-700/50' : ''}`}
           onClick={onToggle}
         >
           <div className="grid grid-cols-2 sm:grid-cols-[1fr_1fr_auto] gap-[1px] bg-slate-700/30 rounded-2xl overflow-hidden">
