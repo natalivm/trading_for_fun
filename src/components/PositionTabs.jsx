@@ -10,7 +10,6 @@ import {
   defaultClosedLongPositions,
   defaultClosedShortPositions,
 } from '../data/defaultPositions'
-import { usePriceStats } from '../hooks/usePriceHistory'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 
