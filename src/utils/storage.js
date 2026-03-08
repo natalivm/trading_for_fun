@@ -1,6 +1,6 @@
+import { priceHistoryManager } from './priceHistory'
+
 const PRICE_CACHE_KEY = 'cachedPrices'
-const PRICE_HISTORY_KEY = 'priceHistory'
-const MAX_HISTORY_PER_TICKER = 90 // keep ~90 entries per ticker
 
 export function loadCachedPrices() {
   try {
@@ -12,26 +12,22 @@ export function saveCachedPrices(prices) {
   localStorage.setItem(PRICE_CACHE_KEY, JSON.stringify(prices))
 }
 
+/**
+ * @deprecated Use priceHistoryManager.getHistory(ticker) instead.
+ * Kept for backward compatibility – returns the in-memory snapshot synchronously
+ * if already loaded, otherwise returns an empty object.
+ */
 export function loadPriceHistory() {
-  try {
-    return JSON.parse(localStorage.getItem(PRICE_HISTORY_KEY)) || {}
-  } catch { return {} }
+  // Legacy callers expect a synchronous { [ticker]: [{date,price}] } object.
+  // Return what the manager has already loaded into its cache.
+  return priceHistoryManager._cache || {}
 }
 
+/**
+ * Record a price snapshot – delegates to PriceHistoryManager which batches
+ * writes and handles the IndexedDB fallback automatically.
+ */
 export function recordPriceSnapshot(ticker, price) {
-  const today = new Date().toISOString().slice(0, 10)
-  const history = loadPriceHistory()
-  if (!history[ticker]) history[ticker] = []
-  const last = history[ticker][history[ticker].length - 1]
-  // Only add one entry per day
-  if (last && last.date === today) {
-    last.price = price
-  } else {
-    history[ticker].push({ date: today, price })
-  }
-  // Trim old entries
-  if (history[ticker].length > MAX_HISTORY_PER_TICKER) {
-    history[ticker] = history[ticker].slice(-MAX_HISTORY_PER_TICKER)
-  }
-  localStorage.setItem(PRICE_HISTORY_KEY, JSON.stringify(history))
+  // Fire-and-forget; errors are swallowed inside the manager.
+  priceHistoryManager.record(ticker, price)
 }
