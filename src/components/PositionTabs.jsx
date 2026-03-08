@@ -463,7 +463,7 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
         className={`group cursor-pointer rounded-2xl border bg-slate-900/60 transition-all duration-300 ease-in-out w-full sm:flex-1 min-w-0 ${borderColor} ${expanded ? 'bg-slate-800/60 ring-1 ring-slate-700/50' : ''}`}
       >
         <div
-          className="grid grid-cols-[auto_auto_1fr_auto_auto] items-center gap-x-2 px-3 py-2 sm:px-4 sm:py-2.5"
+          className="grid grid-cols-[auto_auto_1fr_auto] items-center gap-x-2 px-3 py-2 sm:px-4 sm:py-2.5"
           onClick={onToggle}
         >
           {/* Status indicator */}
@@ -494,8 +494,8 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
             </span>
           </span>
 
-          {/* Prices – pushed right */}
-          <span className="flex items-center justify-end gap-1.5 whitespace-nowrap overflow-hidden">
+          {/* Entry Price → Current/Exit Price */}
+          <div className="flex items-center justify-end gap-1.5 whitespace-nowrap min-w-0">
             <span className={`text-sm font-bold ${
               isShort ? 'text-pink-400/40' : 'text-blue-400/40'
             }`}>
@@ -516,21 +516,21 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
                 </span>
               </>
             ) : null}
-          </span>
+          </div>
 
-          {/* PnL */}
-          {(pct || pnlDollar) ? (
-            <span className={`rounded-md px-1.5 py-0.5 text-sm font-bold whitespace-nowrap ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
-              {pct !== null && <>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</>}
-              {pct !== null && pnlDollar !== null && ' '}
-              {pnlDollar !== null && <>{pnlDollar >= 0 ? '+' : '-'}{sym}{Math.abs(pnlDollar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
+          {/* PnL + Days (mobile) */}
+          <div className="flex items-center gap-2 whitespace-nowrap justify-end">
+            {(pct || pnlDollar) ? (
+              <span className={`rounded-md px-1.5 py-0.5 text-sm font-bold ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+                {pct !== null && <>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</>}
+                {pct !== null && pnlDollar !== null && ' '}
+                {pnlDollar !== null && <>{pnlDollar >= 0 ? '+' : '-'}{sym}{Math.abs(pnlDollar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
+              </span>
+            ) : null}
+            <span className="text-[11px] text-blue-400 text-right sm:hidden">
+              {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
             </span>
-          ) : <span />}
-
-          {/* Days holding – visible on mobile too */}
-          <span className="text-[11px] text-blue-400 whitespace-nowrap text-right sm:hidden">
-            {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
-          </span>
+          </div>
         </div>
 
         {/* Expanded detail */}
