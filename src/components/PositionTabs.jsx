@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
@@ -25,6 +25,9 @@ const FX_TO_USD = { USD: 1, EUR: 1.08, CAD: 0.73, GBP: 1.27, CHF: 1.13 }
 function toUSD(amount, currency) {
   return amount * (FX_TO_USD[currency] || 1)
 }
+
+// Tickers to ignore during sync (leftovers, corporate actions, etc.)
+const IGNORED_TICKERS = new Set(['EUGM'])
 
 const defaultLongPositions = [
   { ticker: 'FTNT', status: 'open', entryPrice: 84.46, quantity: 10, openDate: '2026-01-12' },
@@ -61,25 +64,24 @@ const defaultLongPositions = [
   { ticker: 'AU', status: 'open', entryPrice: 115.55, quantity: 5, openDate: '2026-03-03' },
   { ticker: 'SITM', status: 'open', entryPrice: 410, quantity: 1, openDate: '2026-03-03' },
   { ticker: 'OKTA', status: 'open', entryPrice: 71.73, quantity: 10, openDate: '2026-03-04', profitPercent: 12.6, unrealizedPnL: 90.65 },
-  { ticker: 'BTCE', status: 'open', entryPrice: 55.98, quantity: 100, openDate: '2026-03-04' },
-  { ticker: 'COHR', status: 'open', entryPrice: 255.17, quantity: 2, openDate: '2026-03-05' },
   { ticker: 'COHR', status: 'open', entryPrice: 248.19, quantity: 3, openDate: '2026-03-07' },
-  { ticker: 'IREN', status: 'open', entryPrice: 38.87, quantity: 15, openDate: '2026-03-05' },
-  { ticker: 'GE', status: 'open', entryPrice: 325.78, quantity: 1, openDate: '2026-03-05' },
   { ticker: 'OKLO', status: 'open', entryPrice: 63.03, quantity: 10, openDate: '2026-03-05' },
   { ticker: 'OKLO', status: 'open', entryPrice: 59.04, quantity: 10, openDate: '2026-03-07' },
   { ticker: 'ONDS', status: 'open', entryPrice: 10.86, quantity: 100, openDate: '2026-01-29', profitPercent: -9.3, unrealizedPnL: -101.00 },
-  { ticker: 'COGT', status: 'open', entryPrice: 38.58, quantity: 35, openDate: '2026-03-07' },
-  { ticker: 'SNDK', status: 'open', entryPrice: 542.17, quantity: 2, openDate: '2026-03-07' },
-  { ticker: 'ORCL', status: 'open', entryPrice: 153.06, quantity: 4, openDate: '2026-03-07' },
-  { ticker: 'STRL', status: 'open', entryPrice: 413.19, quantity: 3, openDate: '2026-03-07' },
+  { ticker: 'COGT', status: 'open', entryPrice: 38.58, quantity: 35, openDate: '2026-01-28', unrealizedPnL: (37.80 - 38.58) * 35, profitPercent: ((37.80 - 38.58) / 38.58) * 100 },
+  { ticker: 'SNDK', status: 'open', entryPrice: 542.17, quantity: 2, openDate: '2026-03-06', unrealizedPnL: (522 - 542.17) * 2, profitPercent: ((522 - 542.17) / 542.17) * 100 },
+  { ticker: 'ORCL', status: 'open', entryPrice: 153.06, quantity: 4, openDate: '2026-03-06', unrealizedPnL: (152.56 - 153.06) * 4, profitPercent: ((152.56 - 153.06) / 153.06) * 100 },
+  { ticker: 'STRL', status: 'open', entryPrice: 413.19, quantity: 3, openDate: '2026-03-04', unrealizedPnL: (391.25 - 413.19) * 3, profitPercent: ((391.25 - 413.19) / 413.19) * 100 },
   { ticker: 'BTCWEUR', status: 'open', entryPrice: 15.04, quantity: 100, openDate: '2026-03-07', currency: 'EUR' },
-  { ticker: 'WHR', status: 'open', entryPrice: 59.12, quantity: 2, openDate: '2026-03-07' },
-  { ticker: 'CIEN', status: 'open', entryPrice: 284.28, quantity: 6, openDate: '2026-03-07' },
-  { ticker: 'MU', status: 'open', entryPrice: 413.40, quantity: 2, openDate: '2026-03-07' },
-  { ticker: 'EUGM', status: 'open', entryPrice: 0, quantity: 750, openDate: '2026-03-07', currency: 'CAD' },
-  { ticker: 'AMAT', status: 'open', entryPrice: 328.17, quantity: 2, openDate: '2026-03-07' },
-  { ticker: 'HYMC', status: 'open', entryPrice: 40.20, quantity: 10, openDate: '2026-03-06' },
+  { ticker: 'BTCE', status: 'open', entryPrice: 55.98, quantity: 100, openDate: '2026-03-04', unrealizedPnL: (52.39 - 55.98) * 100, profitPercent: ((52.39 - 55.98) / 55.98) * 100 },
+  { ticker: 'WHR', status: 'open', entryPrice: 59.12, quantity: 2, openDate: '2026-03-06', unrealizedPnL: (58.90 - 59.12) * 2, profitPercent: ((58.90 - 59.12) / 59.12) * 100 },
+  { ticker: 'CIEN', status: 'open', entryPrice: 284.28, quantity: 6, openDate: '2026-03-05', unrealizedPnL: (292.5 - 284.28) * 6, profitPercent: ((292.5 - 284.28) / 284.28) * 100 },
+  { ticker: 'MU', status: 'open', entryPrice: 413.40, quantity: 2, openDate: '2026-02-25', unrealizedPnL: (369.17 - 413.40) * 2, profitPercent: ((369.17 - 413.40) / 413.40) * 100 },
+  { ticker: 'GE', status: 'open', entryPrice: 325.78, quantity: 1, openDate: '2026-03-05', unrealizedPnL: (322.12 - 325.78) * 1, profitPercent: ((322.12 - 325.78) / 325.78) * 100 },
+  { ticker: 'AMAT', status: 'open', entryPrice: 328.17, quantity: 2, openDate: '2026-03-06', unrealizedPnL: (324.74 - 328.17) * 2, profitPercent: ((324.74 - 328.17) / 328.17) * 100 },
+  { ticker: 'HYMC', status: 'open', entryPrice: 40.20, quantity: 10, openDate: '2026-03-06', unrealizedPnL: (39.30 - 40.20) * 10, profitPercent: ((39.30 - 40.20) / 40.20) * 100 },
+  { ticker: 'COHR', status: 'open', entryPrice: 255.17, quantity: 2, openDate: '2026-03-04', unrealizedPnL: (237.00 - 255.17) * 2, profitPercent: ((237.00 - 255.17) / 255.17) * 100 },
+  { ticker: 'IREN', status: 'open', entryPrice: 38.87, quantity: 15, openDate: '2026-03-05', unrealizedPnL: (36.71 - 38.87) * 15, profitPercent: ((36.71 - 38.87) / 38.87) * 100 },
 ]
 
 const defaultShortPositions = [
@@ -417,7 +419,7 @@ function ExpandedDetail({ ticker, history }) {
 
 // ── Position card ────────────────────────────────────────────────────────
 
-function PositionRow({ position, type, expanded, onToggle, hidden }) {
+function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
   const isLong = type === 'long'
   const isShort = type === 'short'
   const isClosed = position.status === 'closed'
@@ -482,7 +484,7 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
             ? (isShort ? 'text-pink-400' : 'text-blue-400')
             : isLong ? 'text-emerald-400/70' : 'text-pink-400/70'
         }`}>
-          {isClosed ? (isShort ? 'Short' : 'Closed') : isLong ? 'Long' : 'Short'}
+          {isClosed ? (isShort ? 'Short' : 'Long') : isLong ? 'Long' : 'Short'}
         </span>
 
         {/* Ticker + Shares */}
@@ -492,6 +494,13 @@ function PositionRow({ position, type, expanded, onToggle, hidden }) {
             x{position.quantity}
           </span>
         </span>
+
+        {/* NEW badge */}
+        {isNew && (
+          <span className="rounded-md bg-pink-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-pink-400 shrink-0">
+            NEW
+          </span>
+        )}
 
         {/* Avg Price + Current/Exit Price */}
         <span className="text-sm sm:text-base font-bold text-blue-400 shrink-0">
@@ -806,7 +815,7 @@ function PortfolioOverview({ allTrades, closedPositions }) {
   )
 }
 
-function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter }) {
+function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, newPositionKeys }) {
   const allPositions = [
     ...longs.map(p => ({ ...p, _type: 'long' })),
     ...shorts.map(p => ({ ...p, _type: 'short' })),
@@ -825,6 +834,8 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter })
     <div className="flex flex-col gap-2 px-2 sm:px-4">
       {allPositions.map((position, i) => {
         const tradeKey = `${position._type}-${position.ticker}-${position.openDate || i}`
+        const closedPrefix = position.status === 'closed' ? `closed-${position._type}` : position._type
+        const newKey = `${closedPrefix}|${position.ticker}|${position.openDate}`
         return (
           <PositionRow
             key={tradeKey}
@@ -833,6 +844,7 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter })
             expanded={expandedTicker === tradeKey}
             hidden={false}
             onToggle={() => onToggleTicker(tradeKey)}
+            isNew={newPositionKeys?.has(newKey)}
           />
         )
       })}
@@ -849,10 +861,11 @@ function filterClosed2026(positions) {
 }
 
 function mergePositions(defaults, livePositions) {
-  if (!livePositions || livePositions.length === 0) return defaults
+  if (!livePositions || livePositions.length === 0) return defaults.filter(p => !IGNORED_TICKERS.has(p.ticker))
 
   const liveByTicker = {}
   for (const pos of livePositions) {
+    if (IGNORED_TICKERS.has(pos.ticker)) continue
     if (!liveByTicker[pos.ticker]) liveByTicker[pos.ticker] = []
     liveByTicker[pos.ticker].push(pos)
   }
@@ -908,10 +921,10 @@ function Positions({ ibkrData }) {
 
   const longPositions = hasLive
     ? mergePositions(defaultLongPositions, ibkrData.longPositions)
-    : defaultLongPositions
+    : defaultLongPositions.filter(p => !IGNORED_TICKERS.has(p.ticker))
   const shortPositions = hasLive
     ? mergePositions(defaultShortPositions, ibkrData.shortPositions)
-    : defaultShortPositions
+    : defaultShortPositions.filter(p => !IGNORED_TICKERS.has(p.ticker))
 
   const liveClosedLong = filterClosed2026(ibkrData?.closedLongPositions || [])
   const liveClosedShort = filterClosed2026(ibkrData?.closedShortPositions || [])
@@ -932,6 +945,31 @@ function Positions({ ibkrData }) {
   // Group into individual trades for display
   const tradeLongs = groupIntoTrades(longPositions, closedLongPositions)
   const tradeShorts = groupIntoTrades(shortPositions, closedShortPositions)
+
+  // ── NEW tag tracking ──────────────────────────────────────────────────
+  // Compare current position keys against what was stored from the previous
+  // page load / sync. Positions not seen before get a pink "NEW" badge.
+  // On the next reload or sync, the tag goes away (keys are saved to localStorage).
+  const prevKeysRef = useRef(null)
+  if (prevKeysRef.current === null) {
+    const raw = localStorage.getItem('knownPositionKeys')
+    prevKeysRef.current = raw ? new Set(JSON.parse(raw)) : null
+  }
+
+  const newPositionKeys = useMemo(() => {
+    const allCurrent = [
+      ...longPositions.map(p => `long|${p.ticker}|${p.openDate}`),
+      ...shortPositions.map(p => `short|${p.ticker}|${p.openDate}`),
+      ...closedLongPositions.map(p => `closed-long|${p.ticker}|${p.openDate}`),
+      ...closedShortPositions.map(p => `closed-short|${p.ticker}|${p.openDate}`),
+    ]
+    const prev = prevKeysRef.current
+    // Save current keys for the next session
+    localStorage.setItem('knownPositionKeys', JSON.stringify(allCurrent))
+    // On very first load (no prev data), nothing is "new"
+    if (!prev) return new Set()
+    return new Set(allCurrent.filter(k => !prev.has(k)))
+  }, [longPositions, shortPositions, closedLongPositions, closedShortPositions])
 
   const [expandedTicker, setExpandedTicker] = useState(null)
   const [filter, setFilter] = useState('overview')
@@ -998,6 +1036,7 @@ function Positions({ ibkrData }) {
           expandedTicker={expandedTicker}
           onToggleTicker={handleToggleTicker}
           filter={filter}
+          newPositionKeys={newPositionKeys}
         />
       )}
 
