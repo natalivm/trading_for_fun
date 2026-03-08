@@ -24,7 +24,23 @@
     { "ticker": "AMAT", "status": "open", "entryPrice": 328.17405, "quantity": 2, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
     { "ticker": "CEG", "status": "open", "entryPrice": 303.37466665, "quantity": 6, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
     { "ticker": "GE", "status": "open", "entryPrice": 325.7789, "quantity": 1, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
-    { "ticker": "IREN", "status": "open", "entryPrice": 38.87225335, "quantity": 15, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 }
+    { "ticker": "IREN", "status": "open", "entryPrice": 38.87225335, "quantity": 15, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
+    { "ticker": "ALAB", "status": "open", "entryPrice": 148.7321375, "quantity": 8, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
+    { "ticker": "RIG", "status": "open", "entryPrice": 6.1473525, "quantity": 200, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
+    { "ticker": "ZBIO", "status": "open", "entryPrice": 27.46725, "quantity": 30, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
+    { "ticker": "DASH", "status": "open", "entryPrice": 169.249025, "quantity": 4, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
+    { "ticker": "NU", "status": "open", "entryPrice": 16.2043125, "quantity": 40, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
+    { "ticker": "TLN", "status": "open", "entryPrice": 373.25835, "quantity": 2, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
+    { "ticker": "BLCO", "status": "open", "entryPrice": 18.5939575, "quantity": 40, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
+    { "ticker": "LRCX", "status": "open", "entryPrice": 238.63035, "quantity": 2, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
+    { "ticker": "SITM", "status": "open", "entryPrice": 409.33915, "quantity": 2, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
+    { "ticker": "PINS", "status": "open", "entryPrice": 19.10487665, "quantity": 30, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
+    { "ticker": "ARRY", "status": "open", "entryPrice": 7.290503, "quantity": 100, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
+    { "ticker": "AU", "status": "open", "entryPrice": 115.30775, "quantity": 10, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
+    { "ticker": "COHR", "status": "open", "entryPrice": 250.37808, "quantity": 5, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
+    { "ticker": "BTCWEUR", "status": "open", "entryPrice": 15.0445, "quantity": 100, "openDate": "", "currency": "EUR", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
+    { "ticker": "OKLO", "status": "open", "entryPrice": 61.033525, "quantity": 20, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
+    { "ticker": "LRMR", "status": "open", "entryPrice": 5.302403, "quantity": 100, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 }
   ],
   "shortPositions": [
     { "ticker": "POWL", "status": "open", "entryPrice": 509.75406665, "quantity": 3, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
@@ -35,23 +51,6 @@
     { "ticker": "LITE", "status": "open", "entryPrice": 716.94986665, "quantity": 3, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
     { "ticker": "APP", "status": "open", "entryPrice": 447.75291665, "quantity": 6, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 }
   ],
-  "closedLongPositions": [
-    { "ticker": "ALAB", "status": "closed", "entryPrice": 148.7321375, "quantity": 8, "exitPrice": 118.51, "profitDollar": -241.78, "openDate": "", "closeDate": "2026-02-11", "currency": "USD" },
-    { "ticker": "RIG", "status": "closed", "entryPrice": 6.1473525, "quantity": 200, "exitPrice": 5.94, "profitDollar": -41.47, "openDate": "", "closeDate": "2026-02-17", "currency": "USD" },
-    { "ticker": "ZBIO", "status": "closed", "entryPrice": 27.46725, "quantity": 30, "exitPrice": 25.28, "profitDollar": -65.62, "openDate": "", "closeDate": "2026-02-17", "currency": "USD" },
-    { "ticker": "DASH", "status": "closed", "entryPrice": 169.249025, "quantity": 4, "exitPrice": 179.75, "profitDollar": 42.00, "openDate": "", "closeDate": "2026-02-24", "currency": "USD" },
-    { "ticker": "NU", "status": "closed", "entryPrice": 16.2043125, "quantity": 40, "exitPrice": 14.45, "profitDollar": -70.17, "openDate": "", "closeDate": "2026-02-24", "currency": "USD" },
-    { "ticker": "TLN", "status": "closed", "entryPrice": 373.25835, "quantity": 2, "exitPrice": 324.61, "profitDollar": -97.30, "openDate": "", "closeDate": "2026-02-24", "currency": "USD" },
-    { "ticker": "BLCO", "status": "closed", "entryPrice": 18.5939575, "quantity": 40, "exitPrice": 17.06, "profitDollar": -61.36, "openDate": "", "closeDate": "2026-02-25", "currency": "USD" },
-    { "ticker": "LRCX", "status": "closed", "entryPrice": 238.63035, "quantity": 2, "exitPrice": 199.69, "profitDollar": -77.88, "openDate": "", "closeDate": "2026-02-26", "currency": "USD" },
-    { "ticker": "SITM", "status": "closed", "entryPrice": 409.33915, "quantity": 2, "exitPrice": 328.00, "profitDollar": -162.68, "openDate": "", "closeDate": "2026-03-02", "currency": "USD" },
-    { "ticker": "PINS", "status": "closed", "entryPrice": 19.10487665, "quantity": 30, "exitPrice": 19.94, "profitDollar": 25.05, "openDate": "", "closeDate": "2026-03-03", "currency": "USD" },
-    { "ticker": "ARRY", "status": "closed", "entryPrice": 7.290503, "quantity": 100, "exitPrice": 6.80, "profitDollar": -49.05, "openDate": "", "closeDate": "2026-03-03", "currency": "USD" },
-    { "ticker": "AU", "status": "closed", "entryPrice": 115.30775, "quantity": 10, "exitPrice": 106.40, "profitDollar": -89.08, "openDate": "", "closeDate": "2026-03-03", "currency": "USD" },
-    { "ticker": "COHR", "status": "closed", "entryPrice": 250.37808, "quantity": 5, "exitPrice": 237.00, "profitDollar": -66.89, "openDate": "", "closeDate": "2026-03-04", "currency": "USD" },
-    { "ticker": "BTCWEUR", "status": "closed", "entryPrice": 15.0445, "quantity": 100, "exitPrice": 14.06, "profitDollar": -98.45, "openDate": "", "closeDate": "2026-03-04", "currency": "EUR" },
-    { "ticker": "OKLO", "status": "closed", "entryPrice": 61.033525, "quantity": 20, "exitPrice": 58.22, "profitDollar": -56.27, "openDate": "", "closeDate": "2026-03-05", "currency": "USD" },
-    { "ticker": "LRMR", "status": "closed", "entryPrice": 5.302403, "quantity": 100, "exitPrice": 5.35, "profitDollar": 4.76, "openDate": "", "closeDate": "2026-03-08", "currency": "USD" }
-  ],
+  "closedLongPositions": [],
   "closedShortPositions": []
 }
