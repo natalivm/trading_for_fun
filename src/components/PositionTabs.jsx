@@ -75,46 +75,81 @@ const Sparkline = memo(function Sparkline({ data, width = 200, height = 32 }) {
 
 // ── Expanded detail panel ────────────────────────────────────────────────
 
-const ExpandedDetail = memo(function ExpandedDetail({ history }) {
-  if (!history) {
-    return (
-      <div className="px-4 pb-3 sm:px-5 sm:pb-4">
-        <span className="text-[11px] text-slate-600 italic">Loading history...</span>
-      </div>
-    )
-  }
+function ExpandedDetail({ ticker, history }) {
+  const stats = usePriceStats(ticker)
 
-  if (history.length < 2) {
-    return (
-      <div className="px-4 pb-3 sm:px-5 sm:pb-4">
-        <span className="text-[11px] text-slate-600 italic">Not enough snapshots yet — history builds with each IBKR sync</span>
-      </div>
-    )
-  }
-
-  // Compute a fun stat: biggest single-day move
-  let biggestMove = 0
-  let biggestDate = ''
-  for (let i = 1; i < history.length; i++) {
-    const move = Math.abs(history[i].avg_cost - history[i - 1].avg_cost)
-    if (move > biggestMove) {
-      biggestMove = move
-      biggestDate = history[i].fetched_at?.slice(0, 10) || ''
+  const ibkrSection = (() => {
+    if (!history) {
+      return <span className="text-[11px] text-slate-600 italic">Loading history...</span>
     }
-  }
+    if (history.length < 2) {
+      return <span className="text-[11px] text-slate-600 italic">Not enough snapshots yet — history builds with each IBKR sync</span>
+    }
 
-  const firstPrice = history[0].avg_cost
-  const lastPrice = history[history.length - 1].avg_cost
-  const totalChange = lastPrice - firstPrice
-  const totalPct = firstPrice ? ((totalChange / firstPrice) * 100).toFixed(1) : '0'
+    // Compute a fun stat: biggest single-day move
+    let biggestMove = 0
+    let biggestDate = ''
+    for (let i = 1; i < history.length; i++) {
+      const move = Math.abs(history[i].avg_cost - history[i - 1].avg_cost)
+      if (move > biggestMove) {
+        biggestMove = move
+        biggestDate = history[i].fetched_at?.slice(0, 10) || ''
+      }
+    }
+
+    const firstPrice = history[0].avg_cost
+    const lastPrice = history[history.length - 1].avg_cost
+    const totalChange = lastPrice - firstPrice
+    const totalPct = firstPrice ? ((totalChange / firstPrice) * 100).toFixed(1) : '0'
+
+    return (
+      <div className="flex items-center gap-4">
+        <Sparkline data={history} width={160} height={28} />
+        <span className="text-[11px] text-slate-500">
+          {history.length} syncs tracked · avg cost moved {totalChange >= 0 ? '+' : ''}{totalPct}%
+          {biggestDate && ` · biggest swing $${biggestMove.toFixed(2)} on ${formatDate(biggestDate)}`}
+        </span>
+      </div>
+    )
+  })()
 
   return (
-    <div className="flex items-center gap-4 px-4 pb-3 sm:px-5 sm:pb-4 border-t border-slate-800/40 mt-1 pt-2">
-      <Sparkline data={history} width={160} height={28} />
-      <span className="text-[11px] text-slate-500">
-        {history.length} syncs tracked · avg cost moved {totalChange >= 0 ? '+' : ''}{totalPct}%
-        {biggestDate && ` · biggest swing $${biggestMove.toFixed(2)} on ${formatDate(biggestDate)}`}
-      </span>
+    <div className="px-4 pb-3 sm:px-5 sm:pb-4 border-t border-slate-800/40 mt-1 pt-2 flex flex-col gap-2">
+      {ibkrSection}
+      {stats && (
+        <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+          {stats.change1d != null && (
+            <span className={`text-[11px] font-semibold ${stats.change1d >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              1d {stats.change1d >= 0 ? '+' : ''}{stats.change1d.toFixed(2)}%
+            </span>
+          )}
+          {stats.change7d != null && (
+            <span className={`text-[11px] font-semibold ${stats.change7d >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              7d {stats.change7d >= 0 ? '+' : ''}{stats.change7d.toFixed(2)}%
+            </span>
+          )}
+          {stats.change30d != null && (
+            <span className={`text-[11px] font-semibold ${stats.change30d >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              30d {stats.change30d >= 0 ? '+' : ''}{stats.change30d.toFixed(2)}%
+            </span>
+          )}
+          {stats.ma7 != null && (
+            <span className="text-[11px] text-slate-500">
+              SMA7 ${stats.ma7.toFixed(2)}
+            </span>
+          )}
+          {stats.ma30 != null && (
+            <span className="text-[11px] text-slate-500">
+              SMA30 ${stats.ma30.toFixed(2)}
+            </span>
+          )}
+          {stats.volatility != null && (
+            <span className="text-[11px] text-slate-500">
+              vol {(stats.volatility * 100).toFixed(1)}%
+            </span>
+          )}
+        </div>
+      )}
     </div>
   )
 })
