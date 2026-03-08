@@ -532,7 +532,7 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
             ) : null}
             {/* Days holding – inline on mobile only */}
             <div className="flex-1 min-w-0 sm:hidden" />
-            <span className="text-[11px] text-slate-500 shrink-0 text-right sm:hidden">
+            <span className="text-[11px] text-blue-400 shrink-0 text-right sm:hidden">
               {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
             </span>
           </div>
@@ -551,15 +551,9 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
             NEW
           </span>
         )}
-        {(pct ?? 0) >= 0 ? (
-          <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
-            {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
-          </span>
-        ) : (
-          <span className="rounded-md bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-400">
-            {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
-          </span>
-        )}
+        <span className="rounded-md bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-400">
+          {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
+        </span>
         {isClosed && (
           <span className="rounded-md bg-slate-500/10 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
             CLOSED
@@ -849,7 +843,7 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, n
   })
 
   return (
-    <div className="flex flex-col gap-2 px-2 sm:px-4">
+    <div className="flex flex-col gap-2 px-2 sm:px-4 sm:items-center">
       {allPositions.map((position, i) => {
         const tradeKey = `${position._type}-${position.ticker}-${position.openDate || i}`
         const closedPrefix = position.status === 'closed' ? `closed-${position._type}` : position._type
@@ -1060,12 +1054,12 @@ function Positions({ ibkrData }) {
 
       {/* Bottom navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-800 bg-slate-950/90 backdrop-blur-lg pb-[env(safe-area-inset-bottom)]">
-        <div className="mx-auto flex max-w-5xl items-stretch justify-around">
+        <div className="mx-auto flex max-w-5xl items-stretch justify-around sm:justify-center sm:gap-2">
           {tabs.map(tab => (
             <button
               key={tab.key}
               onClick={() => setFilter(tab.key)}
-              className={`relative flex flex-1 flex-col items-center gap-0.5 py-3 text-xs font-semibold transition-colors ${
+              className={`relative flex flex-1 sm:flex-none flex-col items-center gap-0.5 py-3 sm:px-5 text-xs font-semibold transition-colors ${
                 filter === tab.key
                   ? 'text-emerald-400'
                   : 'text-slate-500 hover:text-slate-300'

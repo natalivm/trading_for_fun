@@ -41,7 +41,7 @@ function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-10 border-t border-slate-800 bg-slate-950/90 backdrop-blur-lg safe-bottom">
-      <div className="mx-auto flex max-w-5xl items-center justify-start gap-1 px-2 py-1">
+      <div className="mx-auto flex max-w-5xl items-center justify-around sm:justify-center sm:gap-2 px-2 py-1">
         {navItems.map((item, i) => (
           <button
             key={item.label}
