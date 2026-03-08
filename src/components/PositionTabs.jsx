@@ -252,6 +252,39 @@ const defaultClosedLongPositions = [
     closeDate: '2026-03-04',
   },
   {
+    ticker: 'APP',
+    status: 'closed',
+    entryPrice: (1 * 556 + 1 * 526.54 + 1 * 499 + 1 * 470.77 + 1 * 383.85) / 5,
+    quantity: 5,
+    exitPrice: (1 * 450 + 2 * 436.47 + 2 * 435.42) / 5,
+    profitDollar: ((1 * 450 + 2 * 436.47 + 2 * 435.42) / 5 - (1 * 556 + 1 * 526.54 + 1 * 499 + 1 * 470.77 + 1 * 383.85) / 5) * 5,
+    fees: 9 * FEE_PER_TRANSACTION, // 4 buys + 1 buy + 1 sell + 2 sells + 1 sell (hint: not grouped, just 9 fills)
+    openDate: '2026-01-30',
+    closeDate: '2026-02-26',
+  },
+  {
+    ticker: 'AMZN',
+    status: 'closed',
+    entryPrice: 208.20,
+    quantity: 3,
+    exitPrice: 207.40,
+    profitDollar: (207.40 - 208.20) * 3,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-02-20',
+    closeDate: '2026-02-27',
+  },
+  {
+    ticker: 'ADSK',
+    status: 'closed',
+    entryPrice: (4 * 235.4 + 2 * 246.82) / 6,
+    quantity: 6,
+    exitPrice: 252.92,
+    profitDollar: (252.92 - (4 * 235.4 + 2 * 246.82) / 6) * 6,
+    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
+    openDate: '2026-02-27',
+    closeDate: '2026-03-03',
+  },
+  {
     ticker: 'APH',
     status: 'closed',
     entryPrice: (2 * 149 + 33 * 145.3) / 35,
