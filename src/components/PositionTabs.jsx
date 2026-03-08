@@ -617,6 +617,140 @@ const defaultClosedLongPositions = [
     closeDate: '2026-01-06',
     currency: 'AUD',
   },
+  {
+    ticker: 'VRT',
+    status: 'closed',
+    entryPrice: 244.22,
+    quantity: 2,
+    exitPrice: 257.2,
+    profitDollar: (257.2 - 244.22) * 2,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-02-26',
+    closeDate: '2026-03-02',
+  },
+  {
+    ticker: 'VIK',
+    status: 'closed',
+    entryPrice: (10 * 77.17 + 10 * 76.04) / 20,
+    quantity: 20,
+    exitPrice: 77.5,
+    profitDollar: (77.5 - (10 * 77.17 + 10 * 76.04) / 20) * 20,
+    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
+    openDate: '2026-02-10',
+    closeDate: '2026-02-17',
+  },
+  {
+    ticker: 'SPY PS',
+    status: 'closed',
+    entryPrice: 4.20,   // net debit: bought 680P @ 7.58, sold 660P @ 3.38
+    quantity: 100,       // 1 options contract = 100 units
+    exitPrice: 5.62,     // net credit: sold 680P @ 7.39, bought 660P @ 1.77
+    profitDollar: (5.62 - 4.20) * 100,
+    fees: 3.50, // 4 option fills
+    openDate: '2026-02-04',
+    closeDate: '2026-02-17',
+  },
+  {
+    ticker: 'TMUS',
+    status: 'closed',
+    entryPrice: (1 * 197.7 + 2 * 200.53) / 3,
+    quantity: 3,
+    exitPrice: 218.28,
+    profitDollar: (218.28 - (1 * 197.7 + 2 * 200.53) / 3) * 3,
+    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
+    openDate: '2026-02-02',
+    closeDate: '2026-02-13',
+  },
+  {
+    ticker: 'SPXC',
+    status: 'closed',
+    entryPrice: 235.5,
+    quantity: 2,
+    exitPrice: 230.51,
+    profitDollar: (230.51 - 235.5) * 2,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-02-12',
+    closeDate: '2026-02-12',
+  },
+  {
+    ticker: 'TOI',
+    status: 'closed',
+    entryPrice: 135.22,
+    quantity: 30,
+    exitPrice: 85.78,
+    profitDollar: -1483.13,
+    fees: 0.93,
+    openDate: '2025-11-15',
+    closeDate: '2026-02-11',
+    currency: 'CAD',
+  },
+  {
+    ticker: 'TOI',
+    status: 'closed',
+    entryPrice: 153.81,
+    quantity: 30,
+    exitPrice: 111.52,
+    profitDollar: -1268.63,
+    fees: 1,
+    openDate: '2025-10-15',
+    closeDate: '2026-01-16',
+    currency: 'CAD',
+  },
+  {
+    ticker: 'VAL',
+    status: 'closed',
+    entryPrice: 59,
+    quantity: 10,
+    exitPrice: 62.06,
+    profitDollar: (62.06 - 59) * 10,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-02-05',
+    closeDate: '2026-02-06',
+  },
+  {
+    ticker: 'USAR',
+    status: 'closed',
+    entryPrice: 22.45,
+    quantity: 30,
+    exitPrice: 24.85,
+    profitDollar: (24.85 - 22.45) * 30,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-01-29',
+    closeDate: '2026-02-03',
+  },
+  {
+    ticker: 'TRMD',
+    status: 'closed',
+    entryPrice: (20 * 24.4 + 40 * 24.46) / 60,
+    quantity: 60,
+    exitPrice: 24.8,
+    profitDollar: (24.8 - (20 * 24.4 + 40 * 24.46) / 60) * 60,
+    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
+    openDate: '2026-01-28',
+    closeDate: '2026-02-03',
+  },
+  {
+    ticker: 'TBPH',
+    status: 'closed',
+    entryPrice: 20.41,
+    quantity: 100,
+    exitPrice: 19.34,
+    profitDollar: (19.34 - 20.41) * 100,
+    fees: 0.55, // $0.16 buy + $0.39 sell
+    openDate: '2026-01-20',
+    closeDate: '2026-01-28',
+  },
+  {
+    ticker: 'TWLO',
+    status: 'closed',
+    entryPrice: 140.68,
+    quantity: 3,
+    exitPrice: 138.25,
+    profitDollar: -7.29,
+    fees: 0.35,
+    openDate: '2025-12-20',
+    closeDate: '2026-01-09',
+  },
 ]
 
 const defaultClosedShortPositions = [
@@ -1349,7 +1483,9 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, n
   // For closed tab, split into significant (top 15 by abs PnL%) and others
   const MAX_VISIBLE_CLOSED = 15
   const isClosed = filter === 'closed'
-  const visiblePositions = isClosed && !showOthers && allPositions.length > MAX_VISIBLE_CLOSED
+  const canCollapse = isClosed && allPositions.length > MAX_VISIBLE_CLOSED
+  const hiddenCount = canCollapse ? allPositions.length - MAX_VISIBLE_CLOSED : 0
+  const visiblePositions = canCollapse && !showOthers
     ? (() => {
         // Sort by absolute PnL% descending to pick the most significant trades
         const sorted = [...allPositions].sort((a, b) => {
@@ -1362,7 +1498,6 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, n
         return allPositions.filter(p => topSet.has(p))
       })()
     : allPositions
-  const hiddenCount = allPositions.length - visiblePositions.length
 
   return (
     <div className="flex flex-col gap-2 px-2 sm:px-4 sm:max-w-3xl sm:mx-auto w-full">
@@ -1383,7 +1518,7 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, n
           />
         )
       })}
-      {isClosed && hiddenCount > 0 && !showOthers && (
+      {canCollapse && !showOthers && (
         <button
           onClick={() => setShowOthers(true)}
           className="w-full py-3 rounded-xl border border-zinc-700/50 bg-zinc-800/40 hover:bg-zinc-700/40 text-zinc-400 hover:text-zinc-200 text-sm font-medium transition-colors"
@@ -1391,7 +1526,7 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, n
           OTHERS ({hiddenCount} more)
         </button>
       )}
-      {isClosed && showOthers && hiddenCount > 0 && (
+      {canCollapse && showOthers && (
         <button
           onClick={() => setShowOthers(false)}
           className="w-full py-2 rounded-xl border border-zinc-700/50 bg-zinc-800/40 hover:bg-zinc-700/40 text-zinc-500 hover:text-zinc-300 text-xs font-medium transition-colors"
