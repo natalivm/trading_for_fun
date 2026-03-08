@@ -25,7 +25,7 @@
     { "ticker": "CEG", "status": "open", "entryPrice": 303.37466665, "quantity": 6, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
     { "ticker": "GE", "status": "open", "entryPrice": 325.7789, "quantity": 1, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
     { "ticker": "IREN", "status": "open", "entryPrice": 38.87225335, "quantity": 15, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
-    { "ticker": "ALAB", "status": "open", "entryPrice": 148.7321375, "quantity": 8, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
+    { "ticker": "ALAB", "status": "open", "entryPrice": 148.7321375, "quantity": 8, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": -241.78, "marketValue": 948.08 },
     { "ticker": "RIG", "status": "open", "entryPrice": 6.1473525, "quantity": 200, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
     { "ticker": "ZBIO", "status": "open", "entryPrice": 27.46725, "quantity": 30, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
     { "ticker": "DASH", "status": "open", "entryPrice": 169.249025, "quantity": 4, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },

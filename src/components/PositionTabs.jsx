@@ -82,7 +82,7 @@ const defaultLongPositions = [
   { ticker: 'THM', status: 'open', entryPrice: 2.29, quantity: 100, openDate: '2026-02-17', unrealizedPnL: (3.06 - 2.29) * 100, profitPercent: ((3.06 - 2.29) / 2.29) * 100 },
   { ticker: 'RIG', status: 'open', entryPrice: 6.15, quantity: 100, openDate: '2026-02-17', unrealizedPnL: (5.94 - 6.15) * 100, profitPercent: ((5.94 - 6.15) / 6.15) * 100 },
   { ticker: 'ZBIO', status: 'open', entryPrice: 27.41, quantity: 15, openDate: '2026-02-17', unrealizedPnL: (25.28 - 27.41) * 15, profitPercent: ((25.28 - 27.41) / 27.41) * 100 },
-  { ticker: 'ALAB', status: 'open', entryPrice: 101.62, quantity: 8, openDate: '2026-02-17', unrealizedPnL: (118.51 - 101.62) * 8, profitPercent: ((118.51 - 101.62) / 101.62) * 100 },
+  { ticker: 'ALAB', status: 'open', entryPrice: 148.73, quantity: 8, openDate: '2026-02-17', unrealizedPnL: (118.51 - 148.73) * 8, profitPercent: ((118.51 - 148.73) / 148.73) * 100 },
   { ticker: 'RIG', status: 'open', entryPrice: 6.14, quantity: 100, openDate: '2026-02-20', unrealizedPnL: (5.94 - 6.14) * 100, profitPercent: ((5.94 - 6.14) / 6.14) * 100 },
   { ticker: 'ZBIO', status: 'open', entryPrice: 27.52, quantity: 15, openDate: '2026-02-20', unrealizedPnL: (25.28 - 27.52) * 15, profitPercent: ((25.28 - 27.52) / 27.52) * 100 },
   { ticker: 'ENVA', status: 'open', entryPrice: 138, quantity: 5, openDate: '2026-02-23', unrealizedPnL: (137.58 - 138) * 5, profitPercent: ((137.58 - 138) / 138) * 100 },
