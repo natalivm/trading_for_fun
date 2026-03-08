@@ -550,6 +550,10 @@ const PortfolioOverview = memo(function PortfolioOverview({ allTrades, closedPos
 
 const PositionList = memo(function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, newPositionKeys }) {
   const [showOthers, setShowOthers] = useState(false)
+  // Auto-collapse the expanded list when switching tabs
+  useEffect(() => {
+    setShowOthers(false)
+  }, [filter])
   const allPositions = [
     ...longs.map(p => ({ ...p, _type: 'long' })),
     ...shorts.map(p => ({ ...p, _type: 'short' })),
@@ -572,8 +576,8 @@ const PositionList = memo(function PositionList({ longs, shorts, expandedTicker,
     return best
   }, { key: null, pct: 0 }).key
 
-  // For closed tab, split into significant (top 15 by abs PnL%) and others
-  const MAX_VISIBLE_CLOSED = 15
+  // For closed tab, show only the top 10 most significant trades by default (reduced from 15 for a more concise view)
+  const MAX_VISIBLE_CLOSED = 10
   const isClosed = filter === 'closed'
   const canCollapse = isClosed && allPositions.length > MAX_VISIBLE_CLOSED
   const hiddenCount = canCollapse ? allPositions.length - MAX_VISIBLE_CLOSED : 0
@@ -630,20 +634,22 @@ const PositionList = memo(function PositionList({ longs, shorts, expandedTicker,
   )
 })
 
-function Positions({ ibkrData }) {
-  const longPositions = useMemo(() => {
-    const hasLive = ibkrData?.longPositions
-    return hasLive
-      ? mergePositions(defaultLongPositions, ibkrData.longPositions)
-      : defaultLongPositions.filter(p => !IGNORED_TICKERS.has(p.ticker))
-  }, [ibkrData])
 
-  const shortPositions = useMemo(() => {
-    const hasLive = ibkrData?.shortPositions
-    return hasLive
+const Positions = memo(function Positions({ ibkrData }) {
+  const hasLive = ibkrData && (ibkrData.longPositions || ibkrData.shortPositions)
+
+  const longPositions = useMemo(
+    () => hasLive
+      ? mergePositions(defaultLongPositions, ibkrData.longPositions)
+      : defaultLongPositions.filter(p => !IGNORED_TICKERS.has(p.ticker)),
+    [hasLive, ibkrData]
+  )
+  const shortPositions = useMemo(
+    () => hasLive
       ? mergePositions(defaultShortPositions, ibkrData.shortPositions)
-      : defaultShortPositions.filter(p => !IGNORED_TICKERS.has(p.ticker))
-  }, [ibkrData])
+      : defaultShortPositions.filter(p => !IGNORED_TICKERS.has(p.ticker)),
+    [hasLive, ibkrData]
+  )
 
   const closedLongPositions = useMemo(() => {
     const liveClosedLong = filterClosed2026(ibkrData?.closedLongPositions || [])
@@ -678,31 +684,15 @@ function Positions({ ibkrData }) {
     [shortPositions, closedShortPositions]
   )
 
-  const allTrades = useMemo(() => [
-    ...tradeLongs.map(p => ({ ...p, _type: 'long' })),
-    ...tradeShorts.map(p => ({ ...p, _type: 'short' })),
-  ], [tradeLongs, tradeShorts])
-
-  const longCount = allTrades.filter(p => p._type === 'long' && p.status !== 'closed').length
-  const shortCount = allTrades.filter(p => p._type === 'short' && p.status !== 'closed').length
-  const closedCount = allTrades.filter(p => p.status === 'closed').length
-
-  const tabs = useMemo(() => [
-    { key: 'overview', label: 'Overview' },
-    { key: 'long', label: 'Long', count: longCount },
-    { key: 'short', label: 'Short', count: shortCount },
-    { key: 'closed', label: 'Closed', count: closedCount },
-  ], [longCount, shortCount, closedCount])
-
   // ── NEW tag tracking ──────────────────────────────────────────────────
   // Compare current position keys against what was stored from the previous
   // page load / sync. Positions not seen before get a pink "NEW" badge.
   // On the next reload or sync, the tag goes away (keys are saved to localStorage).
-  const prevKeysRef = useRef(null)
-  if (prevKeysRef.current === null) {
+  // Load previous keys once on mount (before they get overwritten).
+  const [prevKeys] = useState(() => {
     const raw = localStorage.getItem('knownPositionKeys')
-    prevKeysRef.current = raw ? new Set(JSON.parse(raw)) : null
-  }
+    return raw ? new Set(JSON.parse(raw)) : null
+  })
 
   const newPositionKeys = useMemo(() => {
     const allCurrent = [
@@ -711,13 +701,12 @@ function Positions({ ibkrData }) {
       ...closedLongPositions.map(p => `closed-long|${p.ticker}|${p.openDate}`),
       ...closedShortPositions.map(p => `closed-short|${p.ticker}|${p.openDate}`),
     ]
-    const prev = prevKeysRef.current
     // Save current keys for the next session
     localStorage.setItem('knownPositionKeys', JSON.stringify(allCurrent))
     // On very first load (no prev data), nothing is "new"
-    if (!prev) return new Set()
-    return new Set(allCurrent.filter(k => !prev.has(k)))
-  }, [longPositions, shortPositions, closedLongPositions, closedShortPositions])
+    if (!prevKeys) return new Set()
+    return new Set(allCurrent.filter(k => !prevKeys.has(k)))
+  }, [longPositions, shortPositions, closedLongPositions, closedShortPositions, prevKeys])
 
   const [expandedTicker, setExpandedTicker] = useState(null)
   const [filter, setFilter] = useState('overview')
@@ -735,6 +724,23 @@ function Positions({ ibkrData }) {
   const handleToggleTicker = useCallback((ticker) => {
     setExpandedTicker((prev) => (prev === ticker ? null : ticker))
   }, [])
+
+
+  const allTrades = useMemo(() => [
+    ...tradeLongs.map(p => ({ ...p, _type: 'long' })),
+    ...tradeShorts.map(p => ({ ...p, _type: 'short' })),
+  ], [tradeLongs, tradeShorts])
+
+  const longCount = useMemo(() => allTrades.filter(p => p._type === 'long' && p.status !== 'closed').length, [allTrades])
+  const shortCount = useMemo(() => allTrades.filter(p => p._type === 'short' && p.status !== 'closed').length, [allTrades])
+  const closedCount = useMemo(() => allTrades.filter(p => p.status === 'closed').length, [allTrades])
+
+  const tabs = useMemo(() => [
+    { key: 'overview', label: 'Overview' },
+    { key: 'long', label: 'Long', count: longCount },
+    { key: 'short', label: 'Short', count: shortCount },
+    { key: 'closed', label: 'Closed', count: closedCount },
+  ], [longCount, shortCount, closedCount])
 
   // ── Swipe navigation between tabs ──────────────────────────────────────
   const touchStart = useRef(null)
@@ -764,6 +770,11 @@ function Positions({ ibkrData }) {
     }
   }, [filter, tabs])
 
+  const closedPositionsAll = useMemo(
+    () => [...closedLongPositions, ...closedShortPositions],
+    [closedLongPositions, closedShortPositions]
+  )
+
   return (
     <div
       ref={contentRef}
@@ -772,7 +783,7 @@ function Positions({ ibkrData }) {
       onTouchEnd={handleTouchEnd}
     >
       {filter === 'overview' ? (
-        <PortfolioOverview allTrades={allTrades} closedPositions={[...closedLongPositions, ...closedShortPositions]} />
+        <PortfolioOverview allTrades={allTrades} closedPositions={closedPositionsAll} />
       ) : (
         <PositionList
           longs={tradeLongs}
@@ -812,6 +823,6 @@ function Positions({ ibkrData }) {
       </nav>
     </div>
   )
-}
+})
 
 export default Positions

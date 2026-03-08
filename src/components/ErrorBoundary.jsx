@@ -1,6 +1,6 @@
 import { Component } from 'react'
 
-export class ErrorBoundary extends Component {
+class ErrorBoundary extends Component {
   constructor(props) {
     super(props)
     this.state = { hasError: false, error: null }
@@ -18,16 +18,22 @@ export class ErrorBoundary extends Component {
     if (this.state.hasError) {
       return (
         <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 text-slate-100 p-8">
-          <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-8 max-w-md w-full text-center">
-            <h2 className="text-xl font-bold text-red-400 mb-2">Something went wrong</h2>
+          <div className="max-w-md w-full rounded-2xl border border-red-500/30 bg-slate-900/60 p-6 text-center">
+            <div className="mb-4 text-4xl">⚠️</div>
+            <h1 className="text-xl font-bold text-red-400 mb-2">Something went wrong</h1>
             <p className="text-sm text-slate-400 mb-4">
-              {this.state.error?.message || 'An unexpected error occurred.'}
+              An unexpected error occurred. Try refreshing the page.
             </p>
+            {this.state.error && (
+              <pre className="text-left text-xs text-slate-500 bg-slate-800/60 rounded-lg p-3 overflow-auto mb-4">
+                {this.state.error.message}
+              </pre>
+            )}
             <button
-              onClick={() => this.setState({ hasError: false, error: null })}
-              className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-700 transition-colors"
+              onClick={() => window.location.reload()}
+              className="rounded-xl bg-slate-800 hover:bg-slate-700 px-5 py-2 text-sm font-semibold text-slate-200 transition-colors"
             >
-              Try again
+              Reload page
             </button>
           </div>
         </div>

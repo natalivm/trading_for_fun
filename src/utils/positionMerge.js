@@ -1,11 +1,11 @@
-// ── Position merging: default data + live IBKR data ──────────────────────
-
 import { loadCachedPrices, saveCachedPrices, recordPriceSnapshot } from './storage'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 
 // Tickers to ignore during sync (leftovers, corporate actions, etc.)
-export const IGNORED_TICKERS = new Set(['EUGM'])
+const IGNORED_TICKERS = new Set(['EUGM'])
+
+export { IGNORED_TICKERS }
 
 export function mergePositions(defaults, livePositions) {
   if (!livePositions || livePositions.length === 0) return defaults.filter(p => !IGNORED_TICKERS.has(p.ticker))

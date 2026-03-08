@@ -1,14 +1,6 @@
-// ── Filter/grouping utilities for positions ──────────────────────────────
-
-// Filter to only include 2026 closed positions
-export function filterClosed2026(positions) {
-  return positions.filter((p) => {
-    const date = p.closeDate || p.openDate || ''
-    return date.startsWith('2026')
-  })
-}
-
-// ── Group fills with the same ticker+openDate into a single trade ────────
+// ── Group fills into trades ───────────────────────────────────────────────
+// A "trade" = positions with same ticker opened on the same date.
+// Closed positions are already complete trades — keep as individual cards.
 
 export function groupFills(positions) {
   const grouped = {}
@@ -59,8 +51,14 @@ export function groupFills(positions) {
   }))
 }
 
-// A "trade" = positions with same ticker opened on the same date.
-// Closed positions are already complete trades — keep as individual cards.
 export function groupIntoTrades(openPositions, closedPositions) {
   return [...groupFills(closedPositions), ...groupFills(openPositions)]
+}
+
+// Filter to only include 2026 closed positions
+export function filterClosed2026(positions) {
+  return positions.filter((p) => {
+    const date = p.closeDate || p.openDate || ''
+    return date.startsWith('2026')
+  })
 }

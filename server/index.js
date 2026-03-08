@@ -154,7 +154,7 @@ function transformPortfolio(acctId, positions, executions, pnlByConId = {}) {
   return { accountId: acctId, longPositions, shortPositions, closedLongPositions, closedShortPositions }
 }
 
-app.get('/api/portfolio', async (_req, res, next) => {
+app.get('/api/portfolio', async (_req, res) => {
   let result = null
 
   // Try live data from IB Gateway
