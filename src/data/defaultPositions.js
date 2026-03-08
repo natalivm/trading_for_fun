@@ -866,6 +866,183 @@ export const defaultClosedLongPositions = [
     openDate: '2026-01-09', // earliest visible buy
     closeDate: '2026-01-28',
   },
+  {
+    ticker: 'SE',
+    status: 'closed',
+    entryPrice: (10 * 85 + 5 * 81.31 + 2 * 79) / 17,
+    quantity: 17,
+    exitPrice: 87.94,
+    profitDollar: (87.94 - (10 * 85 + 5 * 81.31 + 2 * 79) / 17) * 17,
+    fees: 1.32, // 3 buys ($0.33+$0.35+$0.34) + 1 sell ($0.30)
+    openDate: '2026-03-03',
+    closeDate: '2026-03-03',
+  },
+  {
+    ticker: 'KGS',
+    status: 'closed',
+    entryPrice: (2 * 55.02 + 8 * 57.64 + 3 * 56.61) / 13,
+    quantity: 13,
+    exitPrice: 57.86,
+    profitDollar: (57.86 - (2 * 55.02 + 8 * 57.64 + 3 * 56.61) / 13) * 13,
+    fees: 1.35, // 3 buys ($0.34+$0.34+$0.34) + 1 sell ($0.33)
+    openDate: '2026-02-26',
+    closeDate: '2026-03-04',
+  },
+  {
+    ticker: 'INTU',
+    status: 'closed',
+    entryPrice: 359.65,
+    quantity: 2,
+    exitPrice: 398,
+    profitDollar: (398 - 359.65) * 2,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-02-24',
+    closeDate: '2026-02-26',
+  },
+  {
+    ticker: 'HCA',
+    status: 'closed',
+    entryPrice: 543.29,
+    quantity: 1,
+    exitPrice: 525,
+    profitDollar: (525 - 543.29) * 1,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-02-23',
+    closeDate: '2026-02-24',
+  },
+  {
+    ticker: 'HALO',
+    status: 'closed',
+    entryPrice: (10 * 79.61 + 10 * 81.6) / 20,
+    quantity: 20,
+    exitPrice: 80.43,
+    profitDollar: (80.43 - (10 * 79.61 + 10 * 81.6) / 20) * 20,
+    fees: 1.06, // 2 buys ($0.38+$0.35) + 1 sell ($0.33)
+    openDate: '2026-02-06',
+    closeDate: '2026-02-10',
+  },
+  {
+    ticker: 'MP',
+    status: 'closed',
+    entryPrice: 63.7,
+    quantity: 10,
+    exitPrice: 64,
+    profitDollar: (64 - 63.7) * 10,
+    fees: 0.68, // 1 buy ($0.36) + 1 sell ($0.32)
+    openDate: '2026-01-29',
+    closeDate: '2026-02-03',
+  },
+  {
+    ticker: 'INOD',
+    status: 'closed',
+    entryPrice: 64.71,
+    quantity: 10,
+    exitPrice: 62.77,
+    profitDollar: (62.77 - 64.71) * 10,
+    fees: 0.68, // 1 buy ($0.34) + 1 sell ($0.34)
+    openDate: '2026-01-29',
+    closeDate: '2026-01-29',
+  },
+  {
+    ticker: 'MSFT',
+    status: 'closed',
+    entryPrice: (2 * 449.9 + 1 * 434.9 + 1 * 422 + 1 * 401.69) / 5,
+    quantity: 5,
+    exitPrice: 392.6,
+    profitDollar: (392.6 - (2 * 449.9 + 1 * 434.9 + 1 * 422 + 1 * 401.69) / 5) * 5,
+    fees: 5 * FEE_PER_TRANSACTION, // 4 buys + 1 sell
+    openDate: '2026-01-28',
+    closeDate: '2026-02-27',
+  },
+  {
+    ticker: 'MSFT BF',
+    status: 'closed',
+    entryPrice: 9.53 - 4.45 - 4.39 + 2.07, // net debit: bought 485C @ 9.53, bought 512.5C @ 2.07, sold 2x 500C @ 4.45+4.39
+    quantity: 100, // 1 options contract = 100 units
+    exitPrice: 0,  // all expired worthless 30JAN26
+    profitDollar: -(9.53 - 4.45 - 4.39 + 2.07) * 100,
+    fees: 4.02, // 4 option fills ($0.99+$1.05+$0.99+$0.99)
+    openDate: '2026-01-28',
+    closeDate: '2026-01-30',
+  },
+  {
+    ticker: 'LLY',
+    status: 'closed',
+    entryPrice: (1 * 1069.08 + 1 * 1041.53) / 2,
+    quantity: 2,
+    exitPrice: 1062.97,
+    profitDollar: (1062.97 - (1 * 1069.08 + 1 * 1041.53) / 2) * 2,
+    fees: 1.05, // 2 buys ($0.35+$0.35) + 1 sell ($0.35)
+    openDate: '2026-01-02',
+    closeDate: '2026-01-06',
+  },
+  {
+    ticker: 'LLY',
+    status: 'closed',
+    entryPrice: 1068,
+    quantity: 10,
+    exitPrice: 1100.46,
+    profitDollar: (1100.46 - 1068) * 10,
+    fees: 1.03, // 2 buys ($0.34+$0.34) + 1 sell ($0.35)
+    openDate: '2026-01-06',
+    closeDate: '2026-01-07',
+  },
+  {
+    ticker: 'LLY',
+    status: 'closed',
+    entryPrice: 1100,
+    quantity: 3,
+    exitPrice: 1085,
+    profitDollar: (1085 - 1100) * 3,
+    fees: 0.54, // allocated from buy fills + 1 sell ($0.34)
+    openDate: '2026-01-07',
+    closeDate: '2026-01-13',
+  },
+  {
+    ticker: 'LLY',
+    status: 'closed',
+    entryPrice: (7 * 1100 + 3 * 1080) / 10,
+    quantity: 10,
+    exitPrice: 1030.82,
+    profitDollar: (1030.82 - (7 * 1100 + 3 * 1080) / 10) * 10,
+    fees: 1.19, // allocated from buy fills + 1 sell ($0.38 stop)
+    openDate: '2026-01-07',
+    closeDate: '2026-01-15',
+  },
+  {
+    ticker: 'LLY',
+    status: 'closed',
+    entryPrice: 1035,
+    quantity: 1,
+    exitPrice: 1036.12,
+    profitDollar: (1036.12 - 1035) * 1,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-01-28',
+    closeDate: '2026-01-30',
+  },
+  {
+    ticker: 'MOG A',
+    status: 'closed',
+    entryPrice: 234,
+    quantity: 4,
+    exitPrice: 254.56,
+    profitDollar: (254.56 - 234) * 4,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2025-12-01', // buy date unknown, estimated
+    closeDate: '2026-01-05',
+  },
+  {
+    ticker: 'LMN',
+    status: 'closed',
+    entryPrice: 26.56,
+    quantity: 40,
+    exitPrice: 25.97,
+    profitDollar: (25.97 - 26.56) * 40,
+    fees: 2, // 1 buy (~1 CA$) + 1 sell (1 CA$)
+    openDate: '2025-12-01', // buy date unknown, estimated
+    closeDate: '2026-01-12',
+    currency: 'CAD',
+  },
 ]
 
 export const defaultClosedShortPositions = [
