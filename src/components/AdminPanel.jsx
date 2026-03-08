@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
@@ -120,36 +120,36 @@ function AdminPanel() {
   const [detail, setDetail] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  const fetchSnapshots = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/history`)
-      if (res.ok) {
-        const data = await res.json()
-        setSnapshots(data)
-      }
-    } catch { /* ignore */ }
-    setLoading(false)
+  useEffect(() => {
+    let cancelled = false
+    async function fetchSnapshots() {
+      try {
+        const res = await fetch(`${API_BASE}/api/history`)
+        if (res.ok && !cancelled) {
+          const data = await res.json()
+          setSnapshots(data)
+        }
+      } catch { /* ignore */ }
+      if (!cancelled) setLoading(false)
+    }
+    fetchSnapshots()
+    return () => { cancelled = true }
   }, [])
 
   useEffect(() => {
-    fetchSnapshots()
-  }, [fetchSnapshots])
-
-  useEffect(() => {
-    if (!selectedId) {
-      setDetail(null)
-      return
-    }
+    if (!selectedId) return
+    let cancelled = false
     async function load() {
       try {
         const res = await fetch(`${API_BASE}/api/history/${selectedId}`)
-        if (res.ok) {
+        if (res.ok && !cancelled) {
           const data = await res.json()
           setDetail(data)
         }
       } catch { /* ignore */ }
     }
     load()
+    return () => { cancelled = true }
   }, [selectedId])
 
   if (loading) {
