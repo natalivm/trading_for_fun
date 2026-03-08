@@ -223,6 +223,16 @@ const defaultClosedLongPositions = [
     openDate: '2026-03-02',
     closeDate: '2026-03-04',
   },
+  {
+    ticker: 'AD',
+    status: 'closed',
+    entryPrice: 50.10,
+    quantity: 10,
+    exitPrice: 47.51,
+    profitDollar: (47.51 - 50.10) * 10,
+    openDate: '2026-01-23',
+    closeDate: '2026-01-26',
+  },
 ]
 
 const defaultClosedShortPositions = [
