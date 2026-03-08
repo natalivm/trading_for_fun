@@ -1,331 +1,324 @@
-// ── PriceHistoryManager ───────────────────────────────────────────────────
-// Robust price history tracking with:
-//   • Batch writes (flush once per minute)
-//   • Lazy loading (load ticker data only when accessed)
-//   • Smart compression (daily for 30 days, then weekly)
-//   • IndexedDB fallback when localStorage exceeds 5MB
-//   • Migration from old storage format
+// ── PriceHistoryManager ──────────────────────────────────────────────────
+// Efficient price history storage with:
+// - Batch writes: collect updates, write once per minute
+// - Lazy loading per ticker (only load when needed)
+// - Smart compression: 1 entry per week for data older than 30 days
+// - Fallback to IndexedDB when localStorage is full
+// - Data integrity checks with schema validation
+// - Export/import for archiving
 
-const LEGACY_KEY = 'priceHistory'
-const LS_KEY = 'phm_v2'
-const LS_MAX_BYTES = 5 * 1024 * 1024 // 5 MB
-const DAILY_RETENTION_DAYS = 30
-const FLUSH_INTERVAL_MS = 60_000 // 1 minute
+const PRICE_HISTORY_KEY_PREFIX = 'priceHistory_'
+const LEGACY_PRICE_HISTORY_KEY = 'priceHistory'
+const MAX_HISTORY_PER_TICKER = 90
+const BATCH_INTERVAL_MS = 60_000 // flush pending writes once per minute
+const COMPRESSION_THRESHOLD_DAYS = 30
 
-// ── IndexedDB helpers ─────────────────────────────────────────────────────
+// ── Schema validation ────────────────────────────────────────────────────
 
-function openIDB() {
-  return new Promise((resolve, reject) => {
-    if (typeof indexedDB === 'undefined') return reject(new Error('no idb'))
+function isValidEntry(entry) {
+  if (
+    !entry ||
+    typeof entry !== 'object' ||
+    typeof entry.date !== 'string' ||
+    !entry.date.match(/^\d{4}-\d{2}-\d{2}$/) ||
+    typeof entry.price !== 'number' ||
+    !isFinite(entry.price)
+  ) return false
+  // Verify it's a real calendar date (catches dates like 2026-02-31)
+  const d = new Date(entry.date + 'T00:00:00')
+  return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === entry.date
+}
+
+function isValidTicker(ticker) {
+  return typeof ticker === 'string' && ticker.length > 0 && ticker.length <= 20
+}
+
+// ── IndexedDB fallback ──────────────────────────────────────────────────
+
+let _idbPromise = null
+
+function getIDB() {
+  if (_idbPromise) return _idbPromise
+  _idbPromise = new Promise((resolve) => {
+    if (!('indexedDB' in globalThis)) return resolve(null)
     const req = indexedDB.open('priceHistory', 1)
-    req.onupgradeneeded = e => {
-      e.target.result.createObjectStore('tickers', { keyPath: 'ticker' })
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result
+      if (!db.objectStoreNames.contains('tickers')) {
+        db.createObjectStore('tickers', { keyPath: 'ticker' })
+      }
     }
-    req.onsuccess = e => resolve(e.target.result)
-    req.onerror = e => reject(e.target.error)
+    req.onsuccess = (e) => resolve(e.target.result)
+    req.onerror = () => resolve(null) // non-fatal — fall back gracefully
   })
+  return _idbPromise
 }
 
 async function idbGet(ticker) {
-  try {
-    const db = await openIDB()
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('tickers', 'readonly')
-      const req = tx.objectStore('tickers').get(ticker)
-      req.onsuccess = () => resolve(req.result?.data ?? null)
-      req.onerror = e => reject(e.target.error)
-    })
-  } catch { return null }
+  const db = await getIDB()
+  if (!db) return null
+  return new Promise((resolve) => {
+    const tx = db.transaction('tickers', 'readonly')
+    const req = tx.objectStore('tickers').get(ticker)
+    req.onsuccess = () => resolve(req.result?.entries ?? null)
+    req.onerror = () => resolve(null)
+  })
 }
 
-async function idbPut(ticker, data) {
-  try {
-    const db = await openIDB()
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('tickers', 'readwrite')
-      tx.objectStore('tickers').put({ ticker, data })
-      tx.oncomplete = () => resolve()
-      tx.onerror = e => reject(e.target.error)
-    })
-  } catch { /* silent */ }
+async function idbSet(ticker, entries) {
+  const db = await getIDB()
+  if (!db) return false
+  return new Promise((resolve) => {
+    const tx = db.transaction('tickers', 'readwrite')
+    tx.objectStore('tickers').put({ ticker, entries })
+    tx.oncomplete = () => resolve(true)
+    tx.onerror = () => resolve(false)
+  })
 }
 
 async function idbGetAll() {
-  try {
-    const db = await openIDB()
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('tickers', 'readonly')
-      const req = tx.objectStore('tickers').getAll()
-      req.onsuccess = () => {
-        const out = {}
-        for (const row of req.result) out[row.ticker] = row.data
-        resolve(out)
-      }
-      req.onerror = e => reject(e.target.error)
-    })
-  } catch { return {} }
+  const db = await getIDB()
+  if (!db) return {}
+  return new Promise((resolve) => {
+    const tx = db.transaction('tickers', 'readonly')
+    const req = tx.objectStore('tickers').getAll()
+    req.onsuccess = () => {
+      const result = {}
+      for (const row of req.result) result[row.ticker] = row.entries
+      resolve(result)
+    }
+    req.onerror = () => resolve({})
+  })
 }
 
-// ── Compression ───────────────────────────────────────────────────────────
+// ── Compression ──────────────────────────────────────────────────────────
 
-function compressEntries(entries) {
-  if (!entries || entries.length === 0) return []
+function compressOldEntries(entries) {
   const cutoff = new Date()
-  cutoff.setDate(cutoff.getDate() - DAILY_RETENTION_DAYS)
+  cutoff.setDate(cutoff.getDate() - COMPRESSION_THRESHOLD_DAYS)
   const cutoffStr = cutoff.toISOString().slice(0, 10)
 
-  // Split into recent (keep daily) and old (compress to weekly)
   const recent = entries.filter(e => e.date >= cutoffStr)
   const old = entries.filter(e => e.date < cutoffStr)
 
-  // Compress old entries to weekly averages
-  const weekBuckets = {}
+  if (old.length === 0) return entries
+
+  // Keep one entry per week (the last one in each week)
+  const byWeek = {}
   for (const e of old) {
     const d = new Date(e.date + 'T00:00:00')
-    // ISO week start (Monday)
-    const dow = d.getDay() || 7 // 1=Mon ... 7=Sun
-    const weekStart = new Date(d)
-    weekStart.setDate(d.getDate() - (dow - 1))
-    const key = weekStart.toISOString().slice(0, 10)
-    if (!weekBuckets[key]) weekBuckets[key] = []
-    weekBuckets[key].push(e.price)
+    const day = d.getDay()
+    // ISO week: align to Monday
+    const monday = new Date(d)
+    monday.setDate(d.getDate() - ((day + 6) % 7))
+    const weekKey = monday.toISOString().slice(0, 10)
+    if (!byWeek[weekKey] || e.date > byWeek[weekKey].date) {
+      byWeek[weekKey] = e
+    }
   }
 
-  const compressed = Object.entries(weekBuckets).map(([date, prices]) => ({
-    date,
-    price: prices.reduce((a, b) => a + b, 0) / prices.length,
-    weekly: true,
-  })).sort((a, b) => a.date.localeCompare(b.date))
-
-  return [...compressed, ...recent]
+  return [...Object.values(byWeek).sort((a, b) => a.date.localeCompare(b.date)), ...recent]
 }
 
-// ── PriceHistoryManager class ─────────────────────────────────────────────
+// ── PriceHistoryManager class ────────────────────────────────────────────
 
 class PriceHistoryManager {
   constructor() {
-    this._cache = {}       // ticker -> entries[]
-    this._dirty = new Set() // tickers with unsaved changes
-    this._loaded = new Set() // tickers whose data has been loaded
-    this._useIDB = false
+    this._pendingWrites = {} // ticker -> entries (dirty)
+    this._loadedTickers = {} // ticker -> entries (clean cache)
+    this._useIDB = {} // ticker -> bool (whether stored in IndexedDB)
     this._flushTimer = null
-    this._migrated = false
+    this._migratedLegacy = false
   }
 
-  // ── Init / migration ────────────────────────────────────────────────────
+  // ── Migration from legacy flat storage ────────────────────────────────
 
-  async _ensureMigrated() {
-    if (this._migrated) return
-    this._migrated = true
+  _migrateLegacy() {
+    if (this._migratedLegacy) return
+    this._migratedLegacy = true
     try {
-      const legacy = localStorage.getItem(LEGACY_KEY)
-      if (!legacy) return
-      const data = JSON.parse(legacy)
-      for (const [ticker, entries] of Object.entries(data)) {
-        if (!Array.isArray(entries)) continue
-        // Legacy format: { date, price }
-        this._cache[ticker] = entries.map(e => ({ date: e.date, price: e.price }))
-        this._dirty.add(ticker)
-        this._loaded.add(ticker)
+      const raw = localStorage.getItem(LEGACY_PRICE_HISTORY_KEY)
+      if (!raw) return
+      const legacy = JSON.parse(raw)
+      if (typeof legacy !== 'object' || Array.isArray(legacy)) return
+      for (const [ticker, entries] of Object.entries(legacy)) {
+        if (!isValidTicker(ticker)) continue
+        const valid = Array.isArray(entries) ? entries.filter(isValidEntry) : []
+        if (valid.length > 0) {
+          // Only write if no per-ticker key exists yet
+          const key = PRICE_HISTORY_KEY_PREFIX + ticker
+          if (!localStorage.getItem(key)) {
+            try {
+              localStorage.setItem(key, JSON.stringify(valid))
+            } catch {
+              // Quota exceeded — will fall back to IndexedDB on next read
+            }
+          }
+        }
       }
-      await this._flush()
-      localStorage.removeItem(LEGACY_KEY)
-    } catch { /* ignore migration errors */ }
+      // Remove legacy key after migration
+      localStorage.removeItem(LEGACY_PRICE_HISTORY_KEY)
+    } catch {
+      // Migration failure is non-fatal
+    }
   }
 
-  // ── Load ticker lazily ──────────────────────────────────────────────────
+  // ── Load history for a single ticker ─────────────────────────────────
 
-  async _load(ticker) {
-    if (this._loaded.has(ticker)) return
-    this._loaded.add(ticker)
+  async loadTicker(ticker) {
+    if (!isValidTicker(ticker)) return []
+    if (this._loadedTickers[ticker]) return this._loadedTickers[ticker]
+    if (this._pendingWrites[ticker]) return this._pendingWrites[ticker]
+
+    this._migrateLegacy()
+
     // Try localStorage first
     try {
-      const raw = localStorage.getItem(`${LS_KEY}_${ticker}`)
+      const raw = localStorage.getItem(PRICE_HISTORY_KEY_PREFIX + ticker)
       if (raw) {
-        this._cache[ticker] = JSON.parse(raw)
-        return
+        const entries = JSON.parse(raw)
+        if (Array.isArray(entries)) {
+          const valid = entries.filter(isValidEntry)
+          this._loadedTickers[ticker] = valid
+          return valid
+        }
       }
-    } catch { /* fall through */ }
+    } catch {
+      // Ignore parse errors
+    }
+
     // Try IndexedDB
-    const idbData = await idbGet(ticker)
-    if (idbData) {
-      this._cache[ticker] = idbData
-    }
-  }
-
-  // ── Persist one ticker ──────────────────────────────────────────────────
-
-  async _persist(ticker) {
-    const entries = this._cache[ticker] || []
-    const json = JSON.stringify(entries)
-    const key = `${LS_KEY}_${ticker}`
-
-    // Check localStorage size budget
-    if (!this._useIDB) {
-      try {
-        let used = 0
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i)
-          used += (localStorage.getItem(k) || '').length * 2 // rough byte estimate
-        }
-        if (used + json.length * 2 > LS_MAX_BYTES) {
-          this._useIDB = true
-        }
-      } catch { this._useIDB = true }
+    const idbEntries = await idbGet(ticker)
+    if (idbEntries && Array.isArray(idbEntries)) {
+      const valid = idbEntries.filter(isValidEntry)
+      this._loadedTickers[ticker] = valid
+      this._useIDB[ticker] = true
+      return valid
     }
 
-    if (this._useIDB) {
-      await idbPut(ticker, entries)
-      // Also clear from localStorage to free space
-      try { localStorage.removeItem(key) } catch { /* ignore */ }
-    } else {
-      try {
-        localStorage.setItem(key, json)
-      } catch {
-        // localStorage full – switch to IDB
-        this._useIDB = true
-        await idbPut(ticker, entries)
-      }
-    }
+    this._loadedTickers[ticker] = []
+    return []
   }
 
-  // ── Batch flush ─────────────────────────────────────────────────────────
+  // ── Record a price snapshot ──────────────────────────────────────────
 
-  async _flush() {
-    if (this._dirty.size === 0) return
-    const tickers = [...this._dirty]
-    this._dirty.clear()
-    for (const ticker of tickers) {
-      await this._persist(ticker)
-    }
-  }
+  async recordPrice(ticker, price) {
+    if (!isValidTicker(ticker)) return
+    if (typeof price !== 'number' || !isFinite(price)) return
 
-  _scheduleFlush() {
-    if (this._flushTimer) return
-    this._flushTimer = setTimeout(async () => {
-      this._flushTimer = null
-      await this._flush()
-    }, FLUSH_INTERVAL_MS)
-  }
-
-  // ── Public API ──────────────────────────────────────────────────────────
-
-  /** Record a price snapshot for today (one entry per day, last write wins). */
-  async record(ticker, price) {
-    await this._ensureMigrated()
-    await this._load(ticker)
     const today = new Date().toISOString().slice(0, 10)
-    if (!this._cache[ticker]) this._cache[ticker] = []
-    const entries = this._cache[ticker]
-    const last = entries[entries.length - 1]
+    const entries = await this.loadTicker(ticker)
+    const copy = [...entries]
+
+    const last = copy[copy.length - 1]
     if (last && last.date === today) {
-      last.price = price
+      copy[copy.length - 1] = { date: today, price }
     } else {
-      entries.push({ date: today, price })
+      copy.push({ date: today, price })
     }
-    this._dirty.add(ticker)
-    this._scheduleFlush()
+
+    // Trim and compress
+    const compressed = compressOldEntries(copy)
+    const trimmed = compressed.length > MAX_HISTORY_PER_TICKER
+      ? compressed.slice(-MAX_HISTORY_PER_TICKER)
+      : compressed
+
+    this._loadedTickers[ticker] = trimmed
+    this._pendingWrites[ticker] = trimmed
+
+    this._scheduleBatchFlush()
   }
 
-  /** Get the most recent recorded price for a ticker, or null. */
-  async getPrice(ticker) {
-    await this._ensureMigrated()
-    await this._load(ticker)
-    const entries = this._cache[ticker]
-    if (!entries || entries.length === 0) return null
-    return entries[entries.length - 1].price
+  // ── Batch flush ──────────────────────────────────────────────────────
+
+  _scheduleBatchFlush() {
+    if (this._flushTimer) return
+    this._flushTimer = setTimeout(() => {
+      this._flushTimer = null
+      this.flushPendingWrites()
+    }, BATCH_INTERVAL_MS)
   }
 
-  /**
-   * Get price entries for a ticker between two dates (inclusive).
-   * @param {string} ticker
-   * @param {string} startDate  ISO date string e.g. '2025-01-01'
-   * @param {string} endDate    ISO date string e.g. '2025-12-31'
-   */
+  async flushPendingWrites() {
+    const pending = { ...this._pendingWrites }
+    this._pendingWrites = {}
+
+    for (const [ticker, entries] of Object.entries(pending)) {
+      await this._writeTicker(ticker, entries)
+    }
+  }
+
+  async _writeTicker(ticker, entries) {
+    // If already stored in IndexedDB, keep it there
+    if (this._useIDB[ticker]) {
+      await idbSet(ticker, entries)
+      return
+    }
+
+    try {
+      localStorage.setItem(PRICE_HISTORY_KEY_PREFIX + ticker, JSON.stringify(entries))
+    } catch (e) {
+      // localStorage quota exceeded — fall back to IndexedDB
+      if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+        this._useIDB[ticker] = true
+        await idbSet(ticker, entries)
+      }
+    }
+  }
+
+  // ── Query API ────────────────────────────────────────────────────────
+
+  async getPrice(ticker, date) {
+    const entries = await this.loadTicker(ticker)
+    if (!date) {
+      const last = entries[entries.length - 1]
+      return last ? last.price : null
+    }
+    const entry = entries.find(e => e.date === date)
+    return entry ? entry.price : null
+  }
+
   async getPriceRange(ticker, startDate, endDate) {
-    await this._ensureMigrated()
-    await this._load(ticker)
-    const entries = this._cache[ticker] || []
-    return entries.filter(e => (!startDate || e.date >= startDate) && (!endDate || e.date <= endDate))
+    const entries = await this.loadTicker(ticker)
+    return entries.filter(e => e.date >= startDate && e.date <= endDate)
   }
 
-  /**
-   * Get average price over the last `days` days.
-   */
-  async getAveragePrice(ticker, days) {
-    const cutoff = new Date()
-    cutoff.setDate(cutoff.getDate() - days)
-    const startDate = cutoff.toISOString().slice(0, 10)
-    const entries = await this.getPriceRange(ticker, startDate, null)
-    if (entries.length === 0) return null
-    return entries.reduce((sum, e) => sum + e.price, 0) / entries.length
+  async getAveragePrice(ticker, startDate, endDate) {
+    const range = await this.getPriceRange(ticker, startDate, endDate)
+    if (range.length === 0) return null
+    return range.reduce((sum, e) => sum + e.price, 0) / range.length
   }
 
-  /**
-   * Return all history for a ticker (compressed).
-   */
-  async getHistory(ticker) {
-    await this._ensureMigrated()
-    await this._load(ticker)
-    return compressEntries(this._cache[ticker] || [])
-  }
+  // ── Export / Import ──────────────────────────────────────────────────
 
-  /** Force-compress all loaded tickers and persist. */
-  async compress() {
-    for (const ticker of this._loaded) {
-      if (this._cache[ticker]) {
-        this._cache[ticker] = compressEntries(this._cache[ticker])
-        this._dirty.add(ticker)
-      }
-    }
-    await this._flush()
-  }
-
-  /** Export all data as a JSON-serialisable object (for backups). */
   async exportAll() {
-    await this._ensureMigrated()
-    // Load all tickers from IDB/LS
-    let all = {}
-    try {
-      const idbAll = await idbGetAll()
-      all = { ...idbAll }
-    } catch { /* ignore */ }
-    // Overlay with localStorage-based keys
-    try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i)
-        if (k && k.startsWith(`${LS_KEY}_`)) {
-          const ticker = k.slice(LS_KEY.length + 1)
-          try { all[ticker] = JSON.parse(localStorage.getItem(k)) } catch { /* ignore */ }
-        }
+    const lsData = {}
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && key.startsWith(PRICE_HISTORY_KEY_PREFIX)) {
+        const ticker = key.slice(PRICE_HISTORY_KEY_PREFIX.length)
+        try {
+          lsData[ticker] = JSON.parse(localStorage.getItem(key))
+        } catch { /* skip */ }
       }
-    } catch { /* ignore */ }
-    // Merge with in-memory cache
-    for (const [ticker, entries] of Object.entries(this._cache)) {
-      all[ticker] = entries
     }
-    return all
+    const idbData = await idbGetAll()
+    return { ...idbData, ...lsData }
   }
 
-  /**
-   * Import data from a previously-exported object.
-   * Merges with existing data (deduplicates by date).
-   */
   async importAll(data) {
-    if (!data || typeof data !== 'object') return
+    if (typeof data !== 'object' || Array.isArray(data)) return
     for (const [ticker, entries] of Object.entries(data)) {
-      if (!Array.isArray(entries)) continue
-      await this._load(ticker)
-      const existing = this._cache[ticker] || []
-      const dateMap = new Map(existing.map(e => [e.date, e]))
-      for (const e of entries) {
-        if (e.date && e.price != null) dateMap.set(e.date, e)
+      if (!isValidTicker(ticker)) continue
+      const valid = Array.isArray(entries) ? entries.filter(isValidEntry) : []
+      if (valid.length > 0) {
+        this._loadedTickers[ticker] = valid
+        await this._writeTicker(ticker, valid)
       }
-      this._cache[ticker] = [...dateMap.values()].sort((a, b) => a.date.localeCompare(b.date))
-      this._dirty.add(ticker)
     }
-    await this._flush()
   }
 }
+
+// ── Singleton ────────────────────────────────────────────────────────────
 
 export const priceHistoryManager = new PriceHistoryManager()

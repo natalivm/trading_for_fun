@@ -12,22 +12,17 @@ export function saveCachedPrices(prices) {
   localStorage.setItem(PRICE_CACHE_KEY, JSON.stringify(prices))
 }
 
-/**
- * @deprecated Use priceHistoryManager.getHistory(ticker) instead.
- * Kept for backward compatibility – returns the in-memory snapshot synchronously
- * if already loaded, otherwise returns an empty object.
- */
-export function loadPriceHistory() {
-  // Legacy callers expect a synchronous { [ticker]: [{date,price}] } object.
-  // Return what the manager has already loaded into its cache.
-  return priceHistoryManager._cache || {}
+// Delegate to PriceHistoryManager — fire-and-forget (async internally batched)
+export function recordPriceSnapshot(ticker, price) {
+  priceHistoryManager.recordPrice(ticker, price)
 }
 
-/**
- * Record a price snapshot – delegates to PriceHistoryManager which batches
- * writes and handles the IndexedDB fallback automatically.
- */
-export function recordPriceSnapshot(ticker, price) {
-  // Fire-and-forget; errors are swallowed inside the manager.
-  priceHistoryManager.record(ticker, price)
+// Backward-compatible helper: load history for a single ticker synchronously
+// from localStorage (without async). Returns [] if not yet available.
+export function loadPriceHistoryForTicker(ticker) {
+  try {
+    const raw = localStorage.getItem('priceHistory_' + ticker)
+    if (raw) return JSON.parse(raw) || []
+  } catch { /* ignore */ }
+  return []
 }

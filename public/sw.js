@@ -93,7 +93,7 @@ async function checkForNotification() {
         });
       });
     }
-  } catch (err) {
+  } catch {
     // Silently fail - notification is non-critical
   }
 }
