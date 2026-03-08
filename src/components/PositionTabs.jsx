@@ -466,7 +466,7 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
       } ${expanded ? 'bg-slate-800/60 ring-1 ring-slate-700/50' : ''}`}
     >
       <div
-        className="flex flex-wrap items-center gap-2 sm:gap-3 px-4 py-3 sm:px-5 sm:py-4"
+        className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 px-4 py-3 sm:px-5 sm:py-4"
         onClick={onToggle}
       >
         {/* Status indicator */}
@@ -479,7 +479,7 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
         )}
 
         {/* Trade label */}
-        <span className={`text-xs font-bold uppercase tracking-wide shrink-0 ${
+        <span className={`text-xs font-bold uppercase tracking-wide shrink-0 w-10 ${
           isClosed
             ? (isShort ? 'text-pink-400' : 'text-blue-400')
             : isLong ? 'text-emerald-400/70' : 'text-pink-400/70'
@@ -488,9 +488,11 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
         </span>
 
         {/* Ticker + Shares */}
-        <span className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-100 shrink-0">
+        <span className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-100 shrink-0 w-28 sm:w-32">
           {position.ticker}
-          <span className="text-xs sm:text-sm font-normal text-slate-400 ml-1.5">
+          <span className={`text-xs sm:text-sm font-normal ml-1.5 ${
+            isClosed ? (isShort ? 'text-pink-400/70' : 'text-blue-400/70') : 'text-slate-400'
+          }`}>
             x{position.quantity}
           </span>
         </span>
@@ -503,13 +505,15 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
         )}
 
         {/* Avg Price + Current/Exit Price */}
-        <span className="text-sm sm:text-base font-bold text-blue-400 shrink-0">
+        <span className={`text-sm sm:text-base font-bold shrink-0 w-20 sm:w-24 text-right ${
+          isClosed ? (isShort ? 'text-pink-400/70' : 'text-blue-400/70') : 'text-blue-400'
+        }`}>
           {sym}{position.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
         {isClosed && position.exitPrice != null ? (
           <>
-            <span className="text-xs text-slate-500 shrink-0">→</span>
-            <span className="text-sm sm:text-base font-bold text-amber-400 shrink-0">
+            <span className={`text-xs shrink-0 ${isShort ? 'text-pink-400/40' : 'text-blue-400/40'}`}>→</span>
+            <span className={`text-sm sm:text-base font-bold shrink-0 ${isShort ? 'text-pink-400' : 'text-blue-400'}`}>
               {sym}{position.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </>
@@ -520,19 +524,14 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
         ) : null}
 
         {/* PnL badge */}
-        {(pct || pnlDollar) && (
-          <span className={`rounded-md px-2 py-0.5 text-xs sm:text-sm font-bold shrink-0 ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+        {(pct || pnlDollar) ? (
+          <span className={`rounded-md px-2 py-0.5 text-xs sm:text-sm font-bold shrink-0 w-full sm:w-auto sm:min-w-[10rem] text-center ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
             {pct !== null && <>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</>}
             {pct !== null && pnlDollar !== null && ' '}
             {pnlDollar !== null && <>{pnlDollar >= 0 ? '+' : '-'}{sym}{Math.abs(pnlDollar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
           </span>
-        )}
-
-        {/* Fees badge */}
-        {position.fees != null && position.fees > 0 && (
-          <span className="rounded-md px-2 py-0.5 text-xs font-bold shrink-0 bg-slate-500/15 text-slate-400">
-            fees -{sym}{position.fees.toFixed(2)}
-          </span>
+        ) : (
+          <span className="hidden sm:block shrink-0 sm:min-w-[10rem]" />
         )}
 
         {/* Spacer */}
