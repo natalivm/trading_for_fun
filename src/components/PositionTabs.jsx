@@ -251,6 +251,72 @@ const defaultClosedLongPositions = [
     openDate: '2026-02-17',
     closeDate: '2026-03-04',
   },
+  {
+    ticker: 'APH',
+    status: 'closed',
+    entryPrice: (2 * 149 + 33 * 145.3) / 35,
+    quantity: 35,
+    exitPrice: (15 * 148.02 + 20 * 146.001) / 35,
+    profitDollar: ((15 * 148.02 + 20 * 146.001) / 35 - (2 * 149 + 33 * 145.3) / 35) * 35,
+    fees: 5 * FEE_PER_TRANSACTION, // 3 buys + 2 sells
+    openDate: '2026-01-14',
+    closeDate: '2026-01-28',
+  },
+  {
+    ticker: 'APH',
+    status: 'closed',
+    entryPrice: (2 * 145 + 4 * 141.5) / 6,
+    quantity: 6,
+    exitPrice: 143.78,
+    profitDollar: (143.78 - (2 * 145 + 4 * 141.5) / 6) * 6,
+    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
+    openDate: '2026-01-28',
+    closeDate: '2026-01-28',
+  },
+  {
+    ticker: 'APH',
+    status: 'closed',
+    entryPrice: (1 * 144.24 + 2 * 145.1) / 3,
+    quantity: 3,
+    exitPrice: 146.4,
+    profitDollar: (146.4 - (1 * 144.24 + 2 * 145.1) / 3) * 3,
+    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
+    openDate: '2026-01-30',
+    closeDate: '2026-02-03',
+  },
+  {
+    ticker: 'APH',
+    status: 'closed',
+    entryPrice: (10 * 141.75 + 5 * 130.1 + 2 * 135.6 + 2 * 130) / 19,
+    quantity: 19,
+    exitPrice: (9 * 130.37 + 10 * 136.56) / 19,
+    profitDollar: ((9 * 130.37 + 10 * 136.56) / 19 - (10 * 141.75 + 5 * 130.1 + 2 * 135.6 + 2 * 130) / 19) * 19,
+    fees: 6 * FEE_PER_TRANSACTION, // 4 buys + 2 sells
+    openDate: '2026-02-04',
+    closeDate: '2026-03-05',
+  },
+  {
+    ticker: 'ASML',
+    status: 'closed',
+    entryPrice: 1455.42,
+    quantity: 1,
+    exitPrice: 1489.38,
+    profitDollar: (1489.38 - 1455.42) * 1,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-02-20',
+    closeDate: '2026-02-24',
+  },
+  {
+    ticker: 'ASML',
+    status: 'closed',
+    entryPrice: 1405.5,
+    quantity: 2,
+    exitPrice: 1403,
+    profitDollar: (1403 - 1405.5) * 2,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-03-04',
+    closeDate: '2026-03-04',
+  },
 ]
 
 const defaultClosedShortPositions = [
