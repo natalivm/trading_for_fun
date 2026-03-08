@@ -57,7 +57,7 @@ function Header({ portfolio }) {
             <div className="flex items-baseline gap-1.5">
               <span className="text-[10px] sm:text-[11px] font-medium uppercase tracking-wider text-slate-600">Profit</span>
               <span className={`text-base sm:text-lg font-bold tabular-nums ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                {isPositive ? '+' : '-'}${Math.abs(profit).toLocaleString()}
+                {isPositive ? '+' : '-'}${Math.abs(profit).toLocaleString(undefined, { maximumFractionDigits: 0 })}
               </span>
             </div>
 
@@ -65,7 +65,7 @@ function Header({ portfolio }) {
               <div className="flex items-baseline gap-1.5">
                 <span className="text-[10px] sm:text-[11px] font-medium uppercase tracking-wider text-slate-600">Daily</span>
                 <span className={`text-base sm:text-lg font-bold tabular-nums ${dailyPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {dailyPositive ? '+' : '-'}${Math.abs(dailyPnL).toLocaleString()}
+                  {dailyPositive ? '+' : '-'}${Math.abs(dailyPnL).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                 </span>
                 {dailyPct !== null && (
                   <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${dailyPositive ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
