@@ -1,15 +1,9 @@
-function Card({ title, subtitle, children, accent = 'emerald' }) {
-  const accentStyles = {
-    emerald: 'border-emerald-500/20 hover:border-emerald-500/40',
-    blue: 'border-blue-500/20 hover:border-blue-500/40',
-    amber: 'border-amber-500/20 hover:border-amber-500/40',
-    rose: 'border-rose-500/20 hover:border-rose-500/40',
-    violet: 'border-violet-500/20 hover:border-violet-500/40',
-  }
+import { ACCENT_STYLES } from '../utils/constants'
 
+function Card({ title, subtitle, children, accent = 'emerald' }) {
   return (
     <div
-      className={`rounded-2xl border bg-slate-900/60 p-4 transition sm:p-5 ${accentStyles[accent] || accentStyles.emerald}`}
+      className={`rounded-2xl border bg-slate-900/60 p-4 transition sm:p-5 ${ACCENT_STYLES[accent] || ACCENT_STYLES.emerald}`}
     >
       {title && (
         <div className="mb-3">

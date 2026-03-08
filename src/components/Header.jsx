@@ -1,4 +1,4 @@
-import { calcMyCapital, calcCurrentlyInvested, calcProfit, calcDailyPnL } from './PositionTabs'
+import { calcMyCapital, calcCurrentlyInvested, calcProfit, calcDailyPnL } from '../utils/positionCalcs'
 
 function Header({ portfolio }) {
   const myCapital = calcMyCapital()
