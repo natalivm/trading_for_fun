@@ -29,6 +29,48 @@ function toUSD(amount, currency) {
 // Tickers to ignore during sync (leftovers, corporate actions, etc.)
 const IGNORED_TICKERS = new Set(['EUGM'])
 
+// ── Price persistence ─────────────────────────────────────────────────
+// Save last known market prices to localStorage so we can show current price
+// even when IBKR returns null/zero. Also keep a rolling price history.
+
+const PRICE_CACHE_KEY = 'cachedPrices'
+const PRICE_HISTORY_KEY = 'priceHistory'
+const MAX_HISTORY_PER_TICKER = 90 // keep ~90 entries per ticker
+
+function loadCachedPrices() {
+  try {
+    return JSON.parse(localStorage.getItem(PRICE_CACHE_KEY)) || {}
+  } catch { return {} }
+}
+
+function saveCachedPrices(prices) {
+  localStorage.setItem(PRICE_CACHE_KEY, JSON.stringify(prices))
+}
+
+function loadPriceHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(PRICE_HISTORY_KEY)) || {}
+  } catch { return {} }
+}
+
+function recordPriceSnapshot(ticker, price) {
+  const history = loadPriceHistory()
+  if (!history[ticker]) history[ticker] = []
+  const today = TODAY
+  const last = history[ticker][history[ticker].length - 1]
+  // Only add one entry per day
+  if (last && last.date === today) {
+    last.price = price
+  } else {
+    history[ticker].push({ date: today, price })
+  }
+  // Trim old entries
+  if (history[ticker].length > MAX_HISTORY_PER_TICKER) {
+    history[ticker] = history[ticker].slice(-MAX_HISTORY_PER_TICKER)
+  }
+  localStorage.setItem(PRICE_HISTORY_KEY, JSON.stringify(history))
+}
+
 const defaultLongPositions = [
   { ticker: 'FTNT', status: 'open', entryPrice: 84.46, quantity: 10, openDate: '2026-01-12', unrealizedPnL: (83.50 - 84.46) * 10, profitPercent: ((83.50 - 84.46) / 84.46) * 100 },
   { ticker: 'ANET', status: 'open', entryPrice: 148.83, quantity: 20, openDate: '2026-01-29', profitPercent: -10.5, unrealizedPnL: -318.67 },
@@ -870,6 +912,7 @@ function filterClosed2026(positions) {
 function mergePositions(defaults, livePositions) {
   if (!livePositions || livePositions.length === 0) return defaults.filter(p => !IGNORED_TICKERS.has(p.ticker))
 
+  const cachedPrices = loadCachedPrices()
   const liveByTicker = {}
   for (const pos of livePositions) {
     if (IGNORED_TICKERS.has(pos.ticker)) continue
@@ -890,16 +933,30 @@ function mergePositions(defaults, livePositions) {
             ...live,
             openDate: def.openDate || live.openDate || '',
           }
-          // If live provides marketValue but zero P/L, recalculate from price
           const liveQty = live.quantity || def.quantity || 0
           const liveEntry = live.entryPrice || def.entryPrice || 0
+
           if (live.marketValue && liveQty && liveEntry) {
+            // IBKR delivered fresh data — use it and cache the price
             const currentPrice = live.marketValue / liveQty
+            cachedPrices[live.ticker] = { price: currentPrice, marketValue: live.marketValue, qty: liveQty, updatedAt: TODAY }
+            recordPriceSnapshot(live.ticker, currentPrice)
             if (!live.unrealizedPnL) {
               entry.unrealizedPnL = (currentPrice - liveEntry) * liveQty
             }
             if (!live.profitPercent) {
               entry.profitPercent = ((currentPrice - liveEntry) / liveEntry) * 100
+            }
+          } else if (cachedPrices[live.ticker || def.ticker] && liveQty && liveEntry) {
+            // IBKR returned null/zero — restore last known price
+            const cached = cachedPrices[live.ticker || def.ticker]
+            const restoredPrice = cached.price
+            entry.marketValue = restoredPrice * liveQty
+            if (!entry.unrealizedPnL) {
+              entry.unrealizedPnL = (restoredPrice - liveEntry) * liveQty
+            }
+            if (!entry.profitPercent) {
+              entry.profitPercent = ((restoredPrice - liveEntry) / liveEntry) * 100
             }
           }
           // Still fall back to manual defaults if nothing else available
@@ -919,6 +976,9 @@ function mergePositions(defaults, livePositions) {
       merged.push(...entries)
     }
   }
+
+  // Persist updated price cache
+  saveCachedPrices(cachedPrices)
 
   return merged
 }
