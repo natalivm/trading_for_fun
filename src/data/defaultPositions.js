@@ -1,5 +1,8 @@
 import { FEE_PER_TRANSACTION } from '../utils/constants'
 
+// ── Tickers to ignore during sync ────────────────────────────────────────
+export const IGNORED_TICKERS = new Set(['EUGM'])
+
 export const defaultLongPositions = [
   { ticker: 'FTNT', status: 'open', entryPrice: 84.46, quantity: 10, openDate: '2026-01-12', unrealizedPnL: (83.50 - 84.46) * 10, profitPercent: ((83.50 - 84.46) / 84.46) * 100 },
   { ticker: 'ANET', status: 'open', entryPrice: 148.83, quantity: 20, openDate: '2026-01-29', profitPercent: -10.5, unrealizedPnL: -318.67 },

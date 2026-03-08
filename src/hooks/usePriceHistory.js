@@ -1,51 +1,34 @@
-import { useState, useEffect, useRef } from 'react'
-import { priceHistoryManager } from '../utils/priceHistory'
+import { useMemo, useState, useEffect, useRef } from 'react'
+import { priceHistoryManager } from '../utils/priceHistoryManager'
 import { getPriceStats } from '../utils/priceStats'
 
 // ── usePrice ─────────────────────────────────────────────────────────────
-// Get the latest recorded price for a ticker, with automatic refresh when
-// new snapshots are recorded.
+// Get the latest recorded price for a ticker (synchronous read).
 
 export function usePrice(ticker) {
-  const [price, setPrice] = useState(null)
-
-  useEffect(() => {
-    if (!ticker) return
-    let cancelled = false
-    priceHistoryManager.getPrice(ticker).then(p => {
-      if (!cancelled) setPrice(p)
-    })
-    return () => { cancelled = true }
-  }, [ticker])
-
-  return price
+  return useMemo(
+    () => (ticker ? priceHistoryManager.getPrice(ticker) : null),
+    [ticker]
+  )
 }
 
 // ── usePriceHistory ───────────────────────────────────────────────────────
 // Get historical price entries for a ticker over the last `days` days.
 
 export function usePriceHistory(ticker, days = 30) {
-  const [history, setHistory] = useState([])
-
-  useEffect(() => {
-    if (!ticker) return
-    let cancelled = false
+  return useMemo(() => {
+    if (!ticker) return []
     const cutoff = new Date()
     cutoff.setDate(cutoff.getDate() - days)
     const cutoffStr = cutoff.toISOString().slice(0, 10)
-    priceHistoryManager.getPriceRange(
-      ticker,
-      cutoffStr,
-      new Date().toISOString().slice(0, 10)
-    ).then(entries => { if (!cancelled) setHistory(entries) })
-    return () => { cancelled = true }
+    const today = new Date().toISOString().slice(0, 10)
+    return priceHistoryManager.getPriceRange(ticker, cutoffStr, today)
   }, [ticker, days])
-
-  return history
 }
 
 // ── usePriceStats ─────────────────────────────────────────────────────────
 // Get volatility, moving averages, and price change percentages.
+// Refreshes every 5 minutes.
 
 export function usePriceStats(ticker) {
   const [stats, setStats] = useState(null)
@@ -53,23 +36,48 @@ export function usePriceStats(ticker) {
 
   useEffect(() => {
     if (!ticker) return
-    let cancelled = false
 
-    async function fetch() {
-      const data = await getPriceStats(ticker)
-      if (!cancelled) setStats(data)
+    function refresh() {
+      setStats(getPriceStats(ticker))
     }
 
-    fetch()
+    refresh()
 
-    // Refresh stats every 5 minutes
-    timerRef.current = setInterval(fetch, 5 * 60_000)
+    timerRef.current = setInterval(refresh, 5 * 60_000)
 
     return () => {
-      cancelled = true
       clearInterval(timerRef.current)
     }
   }, [ticker])
 
   return stats
+}
+
+// ── usePriceHistoryActions ────────────────────────────────────────────────
+// Stable references to record/export/import actions.
+
+import { useCallback } from 'react'
+
+export function usePriceHistoryActions() {
+  const record = useCallback((ticker, price) => {
+    priceHistoryManager.record(ticker, price)
+  }, [])
+
+  const exportData = useCallback(() => {
+    return priceHistoryManager.exportData()
+  }, [])
+
+  const importData = useCallback((json) => {
+    priceHistoryManager.importData(json)
+  }, [])
+
+  const getAllEntries = useCallback((ticker) => {
+    return priceHistoryManager.getAllEntries(ticker)
+  }, [])
+
+  const getAveragePrice = useCallback((ticker) => {
+    return priceHistoryManager.getAveragePrice(ticker)
+  }, [])
+
+  return { record, exportData, importData, getAllEntries, getAveragePrice }
 }

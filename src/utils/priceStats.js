@@ -1,62 +1,114 @@
-// ── Price Analytics ──────────────────────────────────────────────────────
-// Provides volatility metrics, moving averages, and price change percentages.
+// ── Price Statistics Utilities ──────────────────────────────────────────
+// Functions for analyzing price history entries ({ date, price }[]).
 
-import { priceHistoryManager } from './priceHistory'
-
-// ── Daily high/low/average ────────────────────────────────────────────────
-
-export async function getDailyStats(ticker, date) {
-  const entries = await priceHistoryManager.loadTicker(ticker)
-  const dayEntries = entries.filter(e => e.date === date)
-  if (dayEntries.length === 0) return null
-  const prices = dayEntries.map(e => e.price)
-  return {
-    high: Math.max(...prices),
-    low: Math.min(...prices),
-    average: prices.reduce((s, p) => s + p, 0) / prices.length,
+/**
+ * Calculate annualized volatility (standard deviation of log returns × √252).
+ * Requires at least 2 entries.
+ * Returns null if insufficient data.
+ */
+export function calcVolatility(entries) {
+  if (!entries || entries.length < 2) return null
+  const returns = []
+  for (let i = 1; i < entries.length; i++) {
+    if (entries[i - 1].price > 0) {
+      returns.push(Math.log(entries[i].price / entries[i - 1].price))
+    }
   }
+  if (returns.length < 2) return null
+  const mean = returns.reduce((s, r) => s + r, 0) / returns.length
+  const variance = returns.reduce((s, r) => s + (r - mean) ** 2, 0) / (returns.length - 1)
+  return Math.sqrt(variance) * Math.sqrt(252)
 }
 
-// ── Moving averages ───────────────────────────────────────────────────────
+/**
+ * Calculate Simple Moving Average (SMA) over a rolling window.
+ * Returns an array of { date, value } starting at index (period - 1).
+ */
+export function calcSMA(entries, period) {
+  if (!entries || entries.length < period || period < 1) return []
+  const result = []
+  for (let i = period - 1; i < entries.length; i++) {
+    const slice = entries.slice(i - period + 1, i + 1)
+    const avg = slice.reduce((s, e) => s + e.price, 0) / period
+    result.push({ date: entries[i].date, value: avg })
+  }
+  return result
+}
 
-export async function getMovingAverage(ticker, days) {
-  const entries = await priceHistoryManager.loadTicker(ticker)
-  if (entries.length === 0) return null
+/**
+ * Calculate Exponential Moving Average (EMA) seeded from the first SMA.
+ * Returns an array of { date, value } starting at index (period - 1).
+ */
+export function calcEMA(entries, period) {
+  if (!entries || entries.length < period || period < 1) return []
+  const k = 2 / (period + 1)
+  const result = []
+
+  const firstSMA = entries.slice(0, period).reduce((s, e) => s + e.price, 0) / period
+  result.push({ date: entries[period - 1].date, value: firstSMA })
+
+  for (let i = period; i < entries.length; i++) {
+    const ema = entries[i].price * k + result[result.length - 1].value * (1 - k)
+    result.push({ date: entries[i].date, value: ema })
+  }
+  return result
+}
+
+/**
+ * Calculate the maximum drawdown from peak to trough.
+ * Returns a value between 0 and 1 (e.g. 0.2 = 20% drawdown).
+ * Returns null if fewer than 2 entries.
+ */
+export function calcMaxDrawdown(entries) {
+  if (!entries || entries.length < 2) return null
+  let peak = entries[0].price
+  let maxDrawdown = 0
+  for (const e of entries) {
+    if (e.price > peak) peak = e.price
+    const drawdown = peak > 0 ? (peak - e.price) / peak : 0
+    if (drawdown > maxDrawdown) maxDrawdown = drawdown
+  }
+  return maxDrawdown
+}
+
+/**
+ * Calculate the total return from first to last entry.
+ * Returns null if fewer than 2 entries or first price is zero.
+ */
+export function calcTotalReturn(entries) {
+  if (!entries || entries.length < 2) return null
+  const first = entries[0].price
+  if (first <= 0) return null
+  return (entries[entries.length - 1].price - first) / first
+}
+
+// ── Aggregate stats helpers (used by usePriceStats) ───────────────────────
+
+import { priceHistoryManager } from './priceHistoryManager'
+
+function getRecentEntries(ticker, days) {
+  const all = priceHistoryManager.getAllEntries(ticker)
   const cutoff = new Date()
   cutoff.setDate(cutoff.getDate() - days)
   const cutoffStr = cutoff.toISOString().slice(0, 10)
-  const recent = entries.filter(e => e.date >= cutoffStr)
+  return all.filter(e => e.date >= cutoffStr).sort((a, b) => a.date.localeCompare(b.date))
+}
+
+export function getMovingAverage(ticker, days) {
+  const recent = getRecentEntries(ticker, days)
   if (recent.length === 0) return null
   return recent.reduce((s, e) => s + e.price, 0) / recent.length
 }
 
-// ── Volatility ────────────────────────────────────────────────────────────
-// Annualized standard deviation of daily log returns
-
-export async function getVolatility(ticker, days = 30) {
-  const entries = await priceHistoryManager.loadTicker(ticker)
-  const cutoff = new Date()
-  cutoff.setDate(cutoff.getDate() - days)
-  const cutoffStr = cutoff.toISOString().slice(0, 10)
-  const recent = entries.filter(e => e.date >= cutoffStr).sort((a, b) => a.date.localeCompare(b.date))
-  if (recent.length < 2) return null
-
-  const logReturns = []
-  for (let i = 1; i < recent.length; i++) {
-    logReturns.push(Math.log(recent[i].price / recent[i - 1].price))
-  }
-  const mean = logReturns.reduce((s, r) => s + r, 0) / logReturns.length
-  const variance = logReturns.reduce((s, r) => s + (r - mean) ** 2, 0) / (logReturns.length - 1)
-  const dailyVol = Math.sqrt(variance)
-  return dailyVol * Math.sqrt(252) // annualize
+export function getVolatility(ticker, days = 30) {
+  const recent = getRecentEntries(ticker, days)
+  return calcVolatility(recent)
 }
 
-// ── Price change percentage ───────────────────────────────────────────────
-
-export async function getPriceChange(ticker, days = 1) {
-  const entries = await priceHistoryManager.loadTicker(ticker)
-  if (entries.length < 2) return null
-  const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date))
+export function getPriceChange(ticker, days = 1) {
+  const all = priceHistoryManager.getAllEntries(ticker)
+  if (all.length < 2) return null
+  const sorted = [...all].sort((a, b) => a.date.localeCompare(b.date))
   const latest = sorted[sorted.length - 1]
   const cutoff = new Date(latest.date + 'T00:00:00')
   cutoff.setDate(cutoff.getDate() - days)
@@ -66,16 +118,16 @@ export async function getPriceChange(ticker, days = 1) {
   return ((latest.price - prior.price) / prior.price) * 100
 }
 
-// ── All stats in one call ─────────────────────────────────────────────────
-
-export async function getPriceStats(ticker) {
-  const [ma7, ma30, volatility, change1d, change7d, change30d] = await Promise.all([
-    getMovingAverage(ticker, 7),
-    getMovingAverage(ticker, 30),
-    getVolatility(ticker, 30),
-    getPriceChange(ticker, 1),
-    getPriceChange(ticker, 7),
-    getPriceChange(ticker, 30),
-  ])
-  return { ma7, ma30, volatility, change1d, change7d, change30d }
+/**
+ * Get all key stats for a ticker in one call (used by usePriceStats hook).
+ */
+export function getPriceStats(ticker) {
+  return {
+    ma7: getMovingAverage(ticker, 7),
+    ma30: getMovingAverage(ticker, 30),
+    volatility: getVolatility(ticker, 30),
+    change1d: getPriceChange(ticker, 1),
+    change7d: getPriceChange(ticker, 7),
+    change30d: getPriceChange(ticker, 30),
+  }
 }

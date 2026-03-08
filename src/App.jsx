@@ -1,6 +1,5 @@
 import Header from './components/Header'
 import Positions from './components/PositionTabs'
-import IBKRStatus from './components/IBKRStatus'
 import NotificationBanner from './components/NotificationBanner'
 import InstallPrompt from './components/InstallPrompt'
 import ErrorBoundary from './components/ErrorBoundary'
