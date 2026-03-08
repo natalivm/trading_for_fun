@@ -861,9 +861,9 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, n
     if (filter === 'closed') return p.status === 'closed'
     return true
   }).sort((a, b) => {
-    const dateA = a.openDate || ''
-    const dateB = b.openDate || ''
-    return dateB.localeCompare(dateA) // newest first
+    const pctA = calcPnlPercent(a, a._type === 'short') ?? 0
+    const pctB = calcPnlPercent(b, b._type === 'short') ?? 0
+    return pctB - pctA // biggest gainer first, biggest loser last
   })
 
   return (
