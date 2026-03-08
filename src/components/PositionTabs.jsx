@@ -193,6 +193,26 @@ const defaultClosedLongPositions = [
     openDate: '2026-01-26',
     closeDate: '2026-02-04',
   },
+  {
+    ticker: 'CRDO',
+    status: 'closed',
+    entryPrice: 113.54,
+    quantity: 2,
+    exitPrice: 105,
+    profitDollar: (105 - 113.54) * 2,
+    openDate: '2026-03-02',
+    closeDate: '2026-03-04',
+  },
+  {
+    ticker: 'CRDO',
+    status: 'closed',
+    entryPrice: 299,
+    quantity: 4,
+    exitPrice: 105,
+    profitDollar: (105 - 299) * 4,
+    openDate: '2026-03-02',
+    closeDate: '2026-03-04',
+  },
 ]
 
 const defaultClosedShortPositions = [
