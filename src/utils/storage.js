@@ -1,4 +1,4 @@
-import priceHistoryManager from './priceHistoryManager'
+import { priceHistoryManager } from './priceHistory'
 
 const PRICE_CACHE_KEY = 'cachedPrices'
 
@@ -12,14 +12,17 @@ export function saveCachedPrices(prices) {
   localStorage.setItem(PRICE_CACHE_KEY, JSON.stringify(prices))
 }
 
-// Backward-compatible: loads from legacy localStorage key
-export function loadPriceHistory() {
-  try {
-    return JSON.parse(localStorage.getItem('priceHistory')) || {}
-  } catch { return {} }
+// Delegate to PriceHistoryManager — fire-and-forget (async internally batched)
+export function recordPriceSnapshot(ticker, price) {
+  priceHistoryManager.recordPrice(ticker, price)
 }
 
-// Routes to PriceHistoryManager for batched, compressed storage
-export function recordPriceSnapshot(ticker, price) {
-  priceHistoryManager.record(ticker, price)
+// Backward-compatible helper: load history for a single ticker synchronously
+// from localStorage (without async). Returns [] if not yet available.
+export function loadPriceHistoryForTicker(ticker) {
+  try {
+    const raw = localStorage.getItem('priceHistory_' + ticker)
+    if (raw) return JSON.parse(raw) || []
+  } catch { /* ignore */ }
+  return []
 }

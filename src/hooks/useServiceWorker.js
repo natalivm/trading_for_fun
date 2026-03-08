@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const BASE_PATH = '/trading_for_fun/';
 
 export function useServiceWorker() {
   const [registration, setRegistration] = useState(null);
   const [updateAvailable, setUpdateAvailable] = useState(null);
+  const updateIntervalRef = useRef(null);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
@@ -28,7 +29,7 @@ export function useServiceWorker() {
         setRegistration(reg);
 
         // Check for updates periodically (every 30 minutes)
-        setInterval(() => reg.update(), 30 * 60 * 1000);
+        updateIntervalRef.current = setInterval(() => reg.update(), 30 * 60 * 1000);
       })
       .catch(() => {
         // Service worker registration failed - non-critical
@@ -36,6 +37,7 @@ export function useServiceWorker() {
 
     return () => {
       navigator.serviceWorker.removeEventListener('message', handleMessage);
+      clearInterval(updateIntervalRef.current);
     };
   }, []);
 

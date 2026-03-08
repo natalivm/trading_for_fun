@@ -10,22 +10,21 @@ import { useInstallPrompt } from './hooks/useInstallPrompt'
 
 function App() {
   const { updateAvailable, dismissUpdate } = useServiceWorker()
-  const { portfolio, loading, error, connected, refresh } = useIBKR()
+  const { portfolio } = useIBKR()
   const { canInstall, install } = useInstallPrompt()
 
   return (
-    <div className="flex min-h-screen min-h-dvh flex-col bg-slate-950 text-slate-100">
-      <Header portfolio={portfolio} />
-      <NotificationBanner update={updateAvailable} onDismiss={dismissUpdate} />
-      <IBKRStatus connected={connected} loading={loading} error={error} onRefresh={refresh} portfolio={portfolio} />
+    <ErrorBoundary>
+      <div className="flex min-h-screen min-h-dvh flex-col bg-slate-950 text-slate-100">
+        <Header portfolio={portfolio} />
+        <NotificationBanner update={updateAvailable} onDismiss={dismissUpdate} />
 
-      <main className="flex-1 overflow-y-auto scrollbar-hide pb-8 pt-2">
-        <InstallPrompt canInstall={canInstall} onInstall={install} />
-        <ErrorBoundary>
+        <main className="flex-1 overflow-y-auto scrollbar-hide pb-8 pt-2">
+          <InstallPrompt canInstall={canInstall} onInstall={install} />
           <Positions ibkrData={portfolio} />
-        </ErrorBoundary>
-      </main>
-    </div>
+        </main>
+      </div>
+    </ErrorBoundary>
   )
 }
 

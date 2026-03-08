@@ -1,25 +1,6 @@
-// ── PnL calculation helpers ──────────────────────────────────────────────
-
-export function calcPnlPercent(position, isShort = false) {
-  if (position.profitPercent != null && position.profitPercent !== 0) {
-    return position.profitPercent
-  }
-  if (position.status === 'closed' && position.exitPrice && position.entryPrice) {
-    const raw = ((position.exitPrice - position.entryPrice) / position.entryPrice) * 100
-    return isShort ? -raw : raw
-  }
-  const totalCost = (position.entryPrice || 0) * (position.quantity || 0)
-  if (totalCost > 0) {
-    const pnl = position.unrealizedPnL || position.realizedPnL || position.profitDollar
-    if (pnl != null) return (pnl / totalCost) * 100
-    if (position.marketValue) return ((position.marketValue - totalCost) / totalCost) * 100
-  }
-  return null
-}
-
-// ── Group fills into trades ──────────────────────────────────────────────
+// ── Group fills into trades ───────────────────────────────────────────────
 // A "trade" = positions with same ticker opened on the same date.
-// Closed positions are already complete trades — kept as individual cards.
+// Closed positions are already complete trades — keep as individual cards.
 
 export function groupFills(positions) {
   const grouped = {}
@@ -64,7 +45,7 @@ export function groupFills(positions) {
     unrealizedPnL: g._totalUnrealizedPnL || undefined,
     realizedPnL: g._totalRealizedPnL || undefined,
     profitDollar: g._hasProfitDollar ? g._totalProfitDollar : undefined,
-    profitPercent: undefined,
+    profitPercent: undefined, // recalculated from aggregated values
     fees: g._totalFees || undefined,
     marketValue: g._totalMarketValue || undefined,
   }))
@@ -72,4 +53,12 @@ export function groupFills(positions) {
 
 export function groupIntoTrades(openPositions, closedPositions) {
   return [...groupFills(closedPositions), ...groupFills(openPositions)]
+}
+
+// Filter to only include 2026 closed positions
+export function filterClosed2026(positions) {
+  return positions.filter((p) => {
+    const date = p.closeDate || p.openDate || ''
+    return date.startsWith('2026')
+  })
 }
