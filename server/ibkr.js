@@ -13,7 +13,7 @@ const CLIENT_ID = Number(process.env.TWS_CLIENT_ID) || 1
 
 let ib = null
 let connected = false
-let accountId = null
+let _accountId = null
 
 // ── Connection ──────────────────────────────────────────────────────────
 
@@ -36,7 +36,7 @@ export function connect() {
 
     ib.on(EventName.disconnected, () => {
       connected = false
-      accountId = null
+      _accountId = null
       console.log('Disconnected from IB Gateway')
     })
 
@@ -58,7 +58,7 @@ export function disconnect() {
     ib.disconnect()
     ib = null
     connected = false
-    accountId = null
+    _accountId = null
   }
 }
 
@@ -96,7 +96,7 @@ export function getAccounts() {
         ? accountsList.split(',').map(a => a.trim()).filter(Boolean)
         : Array.isArray(accountsList) ? accountsList : []
       if (accounts.length > 0) {
-        accountId = accounts[0]
+        _accountId = accounts[0]
       }
       resolve({ accounts })
     }
