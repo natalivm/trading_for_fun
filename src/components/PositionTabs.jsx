@@ -537,7 +537,7 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
           </span>
 
           {/* Entry Price → Current/Exit Price */}
-          <div className="flex items-center justify-end gap-1.5 whitespace-nowrap min-w-0">
+          <div className="flex items-center justify-start gap-1.5 whitespace-nowrap min-w-0">
             <span className={`text-sm font-bold ${
               isShort ? 'text-pink-400/40' : 'text-blue-400/40'
             }`}>
