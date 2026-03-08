@@ -538,22 +538,20 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
 
           {/* Entry Price → Current/Exit Price */}
           <div className="flex items-center justify-start gap-1.5 whitespace-nowrap min-w-0">
-            <span className={`text-sm font-bold ${
-              isShort ? 'text-pink-400/40' : 'text-blue-400/40'
-            }`}>
+            <span className="text-sm font-bold text-pink-400">
               {sym}{position.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
             {isClosed && position.exitPrice != null ? (
               <>
-                <span className={`text-xs ${isShort ? 'text-pink-400/40' : 'text-blue-400/40'}`}>→</span>
-                <span className={`text-sm font-bold ${isShort ? 'text-pink-400' : 'text-blue-400'}`}>
+                <span className="text-xs text-slate-500">→</span>
+                <span className={`text-sm font-bold ${(pct ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                   {sym}{position.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </>
             ) : currentPrice != null ? (
               <>
-                <span className={`text-xs ${isShort ? 'text-pink-400/30' : 'text-blue-400/30'}`}>→</span>
-                <span className={`text-sm font-bold ${isShort ? 'text-pink-300' : 'text-blue-300'}`}>
+                <span className="text-xs text-slate-500">→</span>
+                <span className={`text-sm font-bold ${(pct ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                   {sym}{currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </>
