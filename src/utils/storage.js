@@ -22,6 +22,12 @@ export function loadPriceHistory() {
   } catch { return {} }
 }
 
+// Backward-compatible helper: load history for a single ticker synchronously.
+// Returns [] if not yet available.
+export function loadPriceHistoryForTicker(ticker) {
+  return priceHistoryManager.getAllEntries(ticker)
+}
+
 /**
  * Record a price snapshot for today.
  * Delegates to PriceHistoryManager which handles batching, compression,

@@ -122,7 +122,7 @@ function AdminPanel() {
 
   useEffect(() => {
     let cancelled = false
-    async function fetchSnapshots() {
+    async function load() {
       try {
         const res = await fetch(`${API_BASE}/api/history`)
         if (res.ok && !cancelled) {
@@ -132,7 +132,7 @@ function AdminPanel() {
       } catch { /* ignore */ }
       if (!cancelled) setLoading(false)
     }
-    fetchSnapshots()
+    load()
     return () => { cancelled = true }
   }, [])
 

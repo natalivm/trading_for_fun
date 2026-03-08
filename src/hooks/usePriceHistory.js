@@ -1,58 +1,83 @@
-import { useCallback } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { priceHistoryManager } from '../utils/priceHistoryManager'
+import { getPriceStats } from '../utils/priceStats'
 
-/**
- * React hook providing access to the price history system.
- *
- * Usage:
- *   const { record, getPrice, getPriceRange, getAveragePrice, getAllEntries, exportData, importData } = usePriceHistory()
- *
- * All returned functions are stable references (useCallback with no deps).
- */
-export function usePriceHistory() {
-  /** Record today's price for a ticker. */
+// ── usePrice ─────────────────────────────────────────────────────────────
+// Get the latest recorded price for a ticker (synchronous read).
+
+export function usePrice(ticker) {
+  return useMemo(
+    () => (ticker ? priceHistoryManager.getPrice(ticker) : null),
+    [ticker]
+  )
+}
+
+// ── usePriceHistory ───────────────────────────────────────────────────────
+// Get historical price entries for a ticker over the last `days` days.
+
+export function usePriceHistory(ticker, days = 30) {
+  return useMemo(() => {
+    if (!ticker) return []
+    const cutoff = new Date()
+    cutoff.setDate(cutoff.getDate() - days)
+    const cutoffStr = cutoff.toISOString().slice(0, 10)
+    const today = new Date().toISOString().slice(0, 10)
+    return priceHistoryManager.getPriceRange(ticker, cutoffStr, today)
+  }, [ticker, days])
+}
+
+// ── usePriceStats ─────────────────────────────────────────────────────────
+// Get volatility, moving averages, and price change percentages.
+// Refreshes every 5 minutes.
+
+export function usePriceStats(ticker) {
+  const [stats, setStats] = useState(null)
+  const timerRef = useRef(null)
+
+  useEffect(() => {
+    if (!ticker) return
+
+    function refresh() {
+      setStats(getPriceStats(ticker))
+    }
+
+    refresh()
+
+    timerRef.current = setInterval(refresh, 5 * 60_000)
+
+    return () => {
+      clearInterval(timerRef.current)
+    }
+  }, [ticker])
+
+  return stats
+}
+
+// ── usePriceHistoryActions ────────────────────────────────────────────────
+// Stable references to record/export/import actions.
+
+import { useCallback } from 'react'
+
+export function usePriceHistoryActions() {
   const record = useCallback((ticker, price) => {
     priceHistoryManager.record(ticker, price)
   }, [])
 
-  /** Get the latest recorded price for a ticker, or null. */
-  const getPrice = useCallback((ticker) => {
-    return priceHistoryManager.getPrice(ticker)
-  }, [])
-
-  /**
-   * Get price entries within a date range.
-   * @param {string} ticker
-   * @param {string} fromDate - YYYY-MM-DD (inclusive)
-   * @param {string} toDate   - YYYY-MM-DD (inclusive)
-   * @returns {{ date: string, price: number }[]}
-   */
-  const getPriceRange = useCallback((ticker, fromDate, toDate) => {
-    return priceHistoryManager.getPriceRange(ticker, fromDate, toDate)
-  }, [])
-
-  /** Get the arithmetic average price across all history for a ticker, or null. */
-  const getAveragePrice = useCallback((ticker) => {
-    return priceHistoryManager.getAveragePrice(ticker)
-  }, [])
-
-  /** Get all recorded entries for a ticker in chronological order. */
-  const getAllEntries = useCallback((ticker) => {
-    return priceHistoryManager.getAllEntries(ticker)
-  }, [])
-
-  /** Export all price history as a JSON string for archiving / download. */
   const exportData = useCallback(() => {
     return priceHistoryManager.exportData()
   }, [])
 
-  /**
-   * Import price history from a previously exported JSON string.
-   * Merges with existing data; newer entries win on duplicate dates.
-   */
   const importData = useCallback((json) => {
     priceHistoryManager.importData(json)
   }, [])
 
-  return { record, getPrice, getPriceRange, getAveragePrice, getAllEntries, exportData, importData }
+  const getAllEntries = useCallback((ticker) => {
+    return priceHistoryManager.getAllEntries(ticker)
+  }, [])
+
+  const getAveragePrice = useCallback((ticker) => {
+    return priceHistoryManager.getAveragePrice(ticker)
+  }, [])
+
+  return { record, exportData, importData, getAllEntries, getAveragePrice }
 }

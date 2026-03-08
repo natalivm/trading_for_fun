@@ -2,10 +2,15 @@ import { useState, memo } from 'react'
 import PositionRow from './PositionRow'
 import { calcPnlPercent } from './helpers'
 
-const MAX_VISIBLE_CLOSED = 15
+// For closed tab, show only the top 10 most significant trades by default
+const MAX_VISIBLE_CLOSED = 10
 
 function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, newPositionKeys }) {
-  const [showOthers, setShowOthers] = useState(false)
+  // Track which filter tab was active when the user clicked "OTHERS".
+  // If the current filter differs, showOthers is implicitly false (auto-collapse on tab switch).
+  const [showOthersFilter, setShowOthersFilter] = useState(null)
+  const showOthers = showOthersFilter === filter
+
   const allPositions = [
     ...longs.map(p => ({ ...p, _type: 'long' })),
     ...shorts.map(p => ({ ...p, _type: 'short' })),
@@ -63,7 +68,7 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, n
       })}
       {canCollapse && !showOthers && (
         <button
-          onClick={() => setShowOthers(true)}
+          onClick={() => setShowOthersFilter(filter)}
           className="w-full py-3 rounded-xl border border-zinc-700/50 bg-zinc-800/40 hover:bg-zinc-700/40 text-zinc-400 hover:text-zinc-200 text-sm font-medium transition-colors"
         >
           OTHERS ({hiddenCount} more)
@@ -71,7 +76,7 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, n
       )}
       {canCollapse && showOthers && (
         <button
-          onClick={() => setShowOthers(false)}
+          onClick={() => setShowOthersFilter(null)}
           className="w-full py-2 rounded-xl border border-zinc-700/50 bg-zinc-800/40 hover:bg-zinc-700/40 text-zinc-500 hover:text-zinc-300 text-xs font-medium transition-colors"
         >
           Hide others

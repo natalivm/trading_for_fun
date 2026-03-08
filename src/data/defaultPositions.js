@@ -1,10 +1,9 @@
 import { FEE_PER_TRANSACTION } from '../utils/constants'
 
 // ── Tickers to ignore during sync ────────────────────────────────────────
-// Tickers to ignore during sync (leftovers, corporate actions, etc.)
-const IGNORED_TICKERS = new Set(['EUGM'])
+export const IGNORED_TICKERS = new Set(['EUGM'])
 
-const defaultLongPositions = [
+export const defaultLongPositions = [
   { ticker: 'FTNT', status: 'open', entryPrice: 84.46, quantity: 10, openDate: '2026-01-12', unrealizedPnL: (83.50 - 84.46) * 10, profitPercent: ((83.50 - 84.46) / 84.46) * 100 },
   { ticker: 'ANET', status: 'open', entryPrice: 148.83, quantity: 20, openDate: '2026-01-29', profitPercent: -10.5, unrealizedPnL: -318.67 },
   { ticker: 'SOFI', status: 'open', entryPrice: 23.17, quantity: 100, openDate: '2026-01-30', profitPercent: -19.9, unrealizedPnL: -461.31 },
@@ -59,7 +58,7 @@ const defaultLongPositions = [
   { ticker: 'IREN', status: 'open', entryPrice: 38.87, quantity: 15, openDate: '2026-03-05', unrealizedPnL: (36.71 - 38.87) * 15, profitPercent: ((36.71 - 38.87) / 38.87) * 100 },
 ]
 
-const defaultShortPositions = [
+export const defaultShortPositions = [
   { ticker: 'LITE', status: 'open', entryPrice: 716.95, quantity: 3, exitPrice: 500, openDate: '2026-02-26', profitPercent: 20.8, unrealizedPnL: 446.85 },
   { ticker: 'APP', status: 'open', entryPrice: 447.75, quantity: 6, openDate: '2026-02-26', unrealizedPnL: (447.75 - 499.17) * 6, profitPercent: ((447.75 - 499.17) / 447.75) * 100 },
   { ticker: 'CAT', status: 'open', entryPrice: 742, quantity: 1, openDate: '2026-03-02', profitPercent: 8.54, unrealizedPnL: 63.43 },
@@ -70,7 +69,7 @@ const defaultShortPositions = [
   { ticker: 'CRWD', status: 'open', entryPrice: 398.61, quantity: 10, openDate: '2026-03-05', unrealizedPnL: (398.61 - 428.70) * 10, profitPercent: ((398.61 - 428.70) / 398.61) * 100 },
 ]
 
-const defaultClosedLongPositions = [
+export const defaultClosedLongPositions = [
   {
     ticker: 'ANET',
     status: 'closed',
@@ -683,7 +682,7 @@ const defaultClosedLongPositions = [
   },
 ]
 
-const defaultClosedShortPositions = [
+export const defaultClosedShortPositions = [
   {
     ticker: 'DELL',
     status: 'closed',
@@ -742,5 +741,3 @@ const defaultClosedShortPositions = [
     closeDate: '2026-03-05',
   },
 ]
-
-export { IGNORED_TICKERS, defaultLongPositions, defaultShortPositions, defaultClosedLongPositions, defaultClosedShortPositions }

@@ -11,28 +11,29 @@ class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    console.error('ErrorBoundary caught:', error, info)
+    console.error('ErrorBoundary caught an error:', error, info)
   }
 
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
-          <div className="max-w-md rounded-2xl border border-red-500/20 bg-slate-900/80 p-6 text-center">
-            <div className="mb-3 flex justify-center">
-              <svg className="h-10 w-10 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-              </svg>
-            </div>
-            <h2 className="mb-2 text-lg font-bold text-slate-100">Something went wrong</h2>
-            <p className="mb-4 text-sm text-slate-400">
-              {this.state.error?.message || 'An unexpected error occurred.'}
+        <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 text-slate-100 p-8">
+          <div className="max-w-md w-full rounded-2xl border border-red-500/30 bg-slate-900/60 p-6 text-center">
+            <div className="mb-4 text-4xl">⚠️</div>
+            <h1 className="text-xl font-bold text-red-400 mb-2">Something went wrong</h1>
+            <p className="text-sm text-slate-400 mb-4">
+              An unexpected error occurred. Try refreshing the page.
             </p>
+            {this.state.error && (
+              <pre className="text-left text-xs text-slate-500 bg-slate-800/60 rounded-lg p-3 overflow-auto mb-4">
+                {this.state.error.message}
+              </pre>
+            )}
             <button
-              onClick={() => this.setState({ hasError: false, error: null })}
-              className="rounded-xl bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-400 ring-1 ring-emerald-500/20 transition hover:bg-emerald-500/25"
+              onClick={() => window.location.reload()}
+              className="rounded-xl bg-slate-800 hover:bg-slate-700 px-5 py-2 text-sm font-semibold text-slate-200 transition-colors"
             >
-              Try again
+              Reload page
             </button>
           </div>
         </div>

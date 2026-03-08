@@ -81,3 +81,53 @@ export function calcTotalReturn(entries) {
   if (first <= 0) return null
   return (entries[entries.length - 1].price - first) / first
 }
+
+// ── Aggregate stats helpers (used by usePriceStats) ───────────────────────
+
+import { priceHistoryManager } from './priceHistoryManager'
+
+function getRecentEntries(ticker, days) {
+  const all = priceHistoryManager.getAllEntries(ticker)
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - days)
+  const cutoffStr = cutoff.toISOString().slice(0, 10)
+  return all.filter(e => e.date >= cutoffStr).sort((a, b) => a.date.localeCompare(b.date))
+}
+
+export function getMovingAverage(ticker, days) {
+  const recent = getRecentEntries(ticker, days)
+  if (recent.length === 0) return null
+  return recent.reduce((s, e) => s + e.price, 0) / recent.length
+}
+
+export function getVolatility(ticker, days = 30) {
+  const recent = getRecentEntries(ticker, days)
+  return calcVolatility(recent)
+}
+
+export function getPriceChange(ticker, days = 1) {
+  const all = priceHistoryManager.getAllEntries(ticker)
+  if (all.length < 2) return null
+  const sorted = [...all].sort((a, b) => a.date.localeCompare(b.date))
+  const latest = sorted[sorted.length - 1]
+  const cutoff = new Date(latest.date + 'T00:00:00')
+  cutoff.setDate(cutoff.getDate() - days)
+  const cutoffStr = cutoff.toISOString().slice(0, 10)
+  const prior = [...sorted].reverse().find(e => e.date <= cutoffStr)
+  if (!prior) return null
+  return ((latest.price - prior.price) / prior.price) * 100
+}
+
+/**
+ * Get all key stats for a ticker in one call (used by usePriceStats hook).
+ */
+export function getPriceStats(ticker) {
+  return {
+    ma7: getMovingAverage(ticker, 7),
+    ma30: getMovingAverage(ticker, 30),
+    volatility: getVolatility(ticker, 30),
+    change1d: getPriceChange(ticker, 1),
+    change7d: getPriceChange(ticker, 7),
+    change30d: getPriceChange(ticker, 30),
+  }
+}
