@@ -471,10 +471,17 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
     ? 'border-pink-500/20 hover:border-pink-500/40'
     : 'border-blue-500/20 hover:border-blue-500/40'
 
-  // Current market price (derived from marketValue / quantity)
-  const currentPrice = !isClosed && position.marketValue && position.quantity
-    ? position.marketValue / position.quantity
-    : null
+  // Current market price (derived from marketValue / quantity, or from unrealizedPnL)
+  let currentPrice = null
+  if (!isClosed && position.quantity) {
+    if (position.marketValue) {
+      currentPrice = position.marketValue / position.quantity
+    } else if (position.unrealizedPnL != null && position.entryPrice) {
+      currentPrice = isShort
+        ? position.entryPrice - position.unrealizedPnL / position.quantity
+        : position.entryPrice + position.unrealizedPnL / position.quantity
+    }
+  }
 
   // PnL dollar amount
   const pnlDollar = position.unrealizedPnL || position.realizedPnL || position.profitDollar
