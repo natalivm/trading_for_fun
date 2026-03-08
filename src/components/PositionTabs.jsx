@@ -1590,6 +1590,16 @@ function Positions({ ibkrData }) {
 
   const [expandedTicker, setExpandedTicker] = useState(null)
   const [filter, setFilter] = useState('overview')
+  const contentRef = useRef(null)
+
+  // Scroll to top when switching tabs so cards are visible
+  useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.scrollIntoView({ behavior: 'instant', block: 'start' })
+    } else {
+      window.scrollTo(0, 0)
+    }
+  }, [filter])
 
   function handleToggleTicker(ticker) {
     setExpandedTicker((prev) => (prev === ticker ? null : ticker))
@@ -1640,6 +1650,7 @@ function Positions({ ibkrData }) {
 
   return (
     <div
+      ref={contentRef}
       className="mx-auto max-w-5xl pb-20 min-h-[calc(100dvh-8rem)]"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
