@@ -516,6 +516,83 @@ const defaultClosedLongPositions = [
     openDate: '2026-02-27',
     closeDate: '2026-02-27',
   },
+  {
+    ticker: 'ZETA',
+    status: 'closed',
+    entryPrice: 23.66,
+    quantity: 50,
+    exitPrice: 22.853,
+    profitDollar: (22.853 - 23.66) * 50,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-01-13',
+    closeDate: '2026-01-14',
+  },
+  {
+    ticker: 'ZETA',
+    status: 'closed',
+    entryPrice: 21.4,
+    quantity: 10,
+    exitPrice: 20,
+    profitDollar: (20 - 21.4) * 10,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-01-22',
+    closeDate: '2026-01-27',
+  },
+  {
+    ticker: 'WDC',
+    status: 'closed',
+    entryPrice: 265,
+    quantity: 1,
+    exitPrice: 283.5,
+    profitDollar: (283.5 - 265) * 1,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-01-29',
+    closeDate: '2026-01-29',
+  },
+  {
+    ticker: 'WDC',
+    status: 'closed',
+    entryPrice: (265 + 259.34 + 283.67 + 267) / 4,
+    quantity: 4,
+    exitPrice: 272,
+    profitDollar: (272 - (265 + 259.34 + 283.67 + 267) / 4) * 4,
+    fees: 5 * FEE_PER_TRANSACTION, // 4 buys + 1 sell
+    openDate: '2026-01-30',
+    closeDate: '2026-02-06',
+  },
+  {
+    ticker: 'W',
+    status: 'closed',
+    entryPrice: (10 * 94.4 + 2 * 89.8) / 12,
+    quantity: 12,
+    exitPrice: 92.3,
+    profitDollar: (92.3 - (10 * 94.4 + 2 * 89.8) / 12) * 12,
+    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
+    openDate: '2026-02-04',
+    closeDate: '2026-02-09',
+  },
+  {
+    ticker: 'WWD',
+    status: 'closed',
+    entryPrice: 388.5,
+    quantity: 2,
+    exitPrice: 392.86,
+    profitDollar: (392.86 - 388.5) * 2,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-02-11',
+    closeDate: '2026-02-18',
+  },
+  {
+    ticker: 'WDAY',
+    status: 'closed',
+    entryPrice: (4 * 126 + 4 * 122.15 + 4 * 116) / 12,
+    quantity: 12,
+    exitPrice: 131.07,
+    profitDollar: (131.07 - (4 * 126 + 4 * 122.15 + 4 * 116) / 12) * 12,
+    fees: 4 * FEE_PER_TRANSACTION, // 3 buys + 1 sell
+    openDate: '2026-02-24',
+    closeDate: '2026-02-27',
+  },
 ]
 
 const defaultClosedShortPositions = [
