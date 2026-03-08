@@ -30,11 +30,11 @@ function toUSD(amount, currency) {
 const IGNORED_TICKERS = new Set(['EUGM'])
 
 const defaultLongPositions = [
-  { ticker: 'FTNT', status: 'open', entryPrice: 84.46, quantity: 10, openDate: '2026-01-12' },
+  { ticker: 'FTNT', status: 'open', entryPrice: 84.46, quantity: 10, openDate: '2026-01-12', unrealizedPnL: (83.50 - 84.46) * 10, profitPercent: ((83.50 - 84.46) / 84.46) * 100 },
   { ticker: 'ANET', status: 'open', entryPrice: 148.83, quantity: 20, openDate: '2026-01-29', profitPercent: -10.5, unrealizedPnL: -318.67 },
   { ticker: 'SOFI', status: 'open', entryPrice: 23.17, quantity: 100, openDate: '2026-01-30', profitPercent: -19.9, unrealizedPnL: -461.31 },
-  { ticker: 'RDDT', status: 'open', entryPrice: 181.30, quantity: 3, openDate: '2026-02-03' },
-  { ticker: 'ENVA', status: 'open', entryPrice: 156, quantity: 5, openDate: '2026-02-10' },
+  { ticker: 'RDDT', status: 'open', entryPrice: 181.30, quantity: 3, openDate: '2026-02-03', unrealizedPnL: (138.40 - 181.30) * 3, profitPercent: ((138.40 - 181.30) / 181.30) * 100 },
+  { ticker: 'ENVA', status: 'open', entryPrice: 156, quantity: 5, openDate: '2026-02-10', unrealizedPnL: (137.58 - 156) * 5, profitPercent: ((137.58 - 156) / 156) * 100 },
   { ticker: 'CEG', status: 'open', entryPrice: 280.17, quantity: 2, openDate: '2026-02-12', profitPercent: 5.04, unrealizedPnL: 91.79 },
   { ticker: 'CEG', status: 'open', entryPrice: 310.77, quantity: 2, openDate: '2026-02-12' },
   { ticker: 'THM', status: 'open', entryPrice: 2.29, quantity: 100, openDate: '2026-02-17', profitPercent: 7.41, unrealizedPnL: 63.37 },
@@ -43,7 +43,7 @@ const defaultLongPositions = [
   { ticker: 'ALAB', status: 'open', entryPrice: 101.62, quantity: 8, openDate: '2026-02-17' },
   { ticker: 'RIG', status: 'open', entryPrice: 6.14, quantity: 100, openDate: '2026-02-20' },
   { ticker: 'ZBIO', status: 'open', entryPrice: 27.52, quantity: 15, openDate: '2026-02-20' },
-  { ticker: 'ENVA', status: 'open', entryPrice: 138, quantity: 5, openDate: '2026-02-23' },
+  { ticker: 'ENVA', status: 'open', entryPrice: 138, quantity: 5, openDate: '2026-02-23', unrealizedPnL: (137.58 - 138) * 5, profitPercent: ((137.58 - 138) / 138) * 100 },
   { ticker: 'DASH', status: 'open', entryPrice: 164.14, quantity: 2, openDate: '2026-02-24' },
   { ticker: 'NU', status: 'open', entryPrice: 16.53, quantity: 20, openDate: '2026-02-24' },
   { ticker: 'TLN', status: 'open', entryPrice: 373.26, quantity: 2, openDate: '2026-02-24' },
@@ -86,15 +86,15 @@ const defaultLongPositions = [
 
 const defaultShortPositions = [
   { ticker: 'LITE', status: 'open', entryPrice: 716.95, quantity: 3, exitPrice: 500, openDate: '2026-02-26', profitPercent: 20.8, unrealizedPnL: 446.85 },
-  { ticker: 'APP', status: 'open', entryPrice: 447.75, quantity: 6, openDate: '2026-02-26' },
+  { ticker: 'APP', status: 'open', entryPrice: 447.75, quantity: 6, openDate: '2026-02-26', unrealizedPnL: (447.75 - 499.17) * 6, profitPercent: ((447.75 - 499.17) / 447.75) * 100 },
   { ticker: 'CAT', status: 'open', entryPrice: 742, quantity: 1, openDate: '2026-03-02', profitPercent: 8.54, unrealizedPnL: 63.43 },
-  { ticker: 'MDB', status: 'open', entryPrice: 239.80, quantity: 2, openDate: '2026-03-03' },
-  { ticker: 'MDB', status: 'open', entryPrice: 239.18, quantity: 2, openDate: '2026-03-03' },
-  { ticker: 'MDB', status: 'open', entryPrice: 253.35, quantity: 2, openDate: '2026-03-03' },
+  { ticker: 'MDB', status: 'open', entryPrice: 239.80, quantity: 2, openDate: '2026-03-03', unrealizedPnL: (239.80 - 269.95) * 2, profitPercent: ((239.80 - 269.95) / 239.80) * 100 },
+  { ticker: 'MDB', status: 'open', entryPrice: 239.18, quantity: 2, openDate: '2026-03-03', unrealizedPnL: (239.18 - 269.95) * 2, profitPercent: ((239.18 - 269.95) / 239.18) * 100 },
+  { ticker: 'MDB', status: 'open', entryPrice: 253.35, quantity: 2, openDate: '2026-03-03', unrealizedPnL: (253.35 - 269.95) * 2, profitPercent: ((253.35 - 269.95) / 253.35) * 100 },
   { ticker: 'POWL', status: 'open', entryPrice: 521, quantity: 2, openDate: '2026-03-04', profitPercent: 4.07, unrealizedPnL: 62.26 },
   { ticker: 'POWL', status: 'open', entryPrice: 487.26, quantity: 1, openDate: '2026-03-07' },
-  { ticker: 'CRDO', status: 'open', entryPrice: 113.93, quantity: 5, openDate: '2026-03-05' },
-  { ticker: 'CRWD', status: 'open', entryPrice: 398.61, quantity: 10, openDate: '2026-03-05' },
+  { ticker: 'CRDO', status: 'open', entryPrice: 113.93, quantity: 5, openDate: '2026-03-05', unrealizedPnL: (113.93 - 109.11) * 5, profitPercent: ((113.93 - 109.11) / 113.93) * 100 },
+  { ticker: 'CRWD', status: 'open', entryPrice: 398.61, quantity: 10, openDate: '2026-03-05', unrealizedPnL: (398.61 - 428.70) * 10, profitPercent: ((398.61 - 428.70) / 398.61) * 100 },
 ]
 
 const defaultClosedLongPositions = [
