@@ -1,20 +1,17 @@
-import { useState, memo } from 'react'
+import { useState, useMemo, memo } from 'react'
 import PositionRow from './PositionRow'
 import { calcPnlPercent } from './helpers'
 
 // For closed tab, show only the top 10 most significant trades by default
 const MAX_VISIBLE_CLOSED = 10
 
-function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, newPositionKeys }) {
+function PositionList({ allTrades, expandedTicker, onToggleTicker, filter }) {
   // Track which filter tab was active when the user clicked "OTHERS".
   // If the current filter differs, showOthers is implicitly false (auto-collapse on tab switch).
   const [showOthersFilter, setShowOthersFilter] = useState(null)
   const showOthers = showOthersFilter === filter
 
-  const allPositions = [
-    ...longs.map(p => ({ ...p, _type: 'long' })),
-    ...shorts.map(p => ({ ...p, _type: 'short' })),
-  ].filter(p => {
+  const allPositions = useMemo(() => allTrades.filter(p => {
     if (filter === 'long') return p._type === 'long' && p.status !== 'closed'
     if (filter === 'short') return p._type === 'short' && p.status !== 'closed'
     if (filter === 'closed') return p.status === 'closed'
@@ -23,7 +20,7 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, n
     const pctA = calcPnlPercent(a, a._type === 'short') ?? 0
     const pctB = calcPnlPercent(b, b._type === 'short') ?? 0
     return pctB - pctA
-  })
+  }), [allTrades, filter])
 
   const topGainerTicker = allPositions.reduce((best, p) => {
     if (p.status === 'closed') return best
@@ -51,8 +48,6 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, n
     <div className="flex flex-col gap-2 px-2 sm:px-4 sm:max-w-3xl sm:mx-auto w-full">
       {visiblePositions.map((position, i) => {
         const tradeKey = `${position._type}-${position.ticker}-${position.openDate || i}`
-        const closedPrefix = position.status === 'closed' ? `closed-${position._type}` : position._type
-        const newKey = `${closedPrefix}|${position.ticker}|${position.openDate}`
         return (
           <PositionRow
             key={tradeKey}
@@ -61,7 +56,6 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, n
             expanded={expandedTicker === tradeKey}
             hidden={false}
             onToggle={() => onToggleTicker(tradeKey)}
-            isNew={newPositionKeys?.has(newKey)}
             isTopGainer={tradeKey === topGainerTicker}
           />
         )

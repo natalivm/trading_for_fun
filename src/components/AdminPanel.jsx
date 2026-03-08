@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+import { API_BASE } from '../utils/apiClient'
 
 function formatDateTime(dateStr) {
   if (!dateStr) return ''

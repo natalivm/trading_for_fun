@@ -63,27 +63,6 @@ function Positions({ ibkrData }) {
     [shortPositions, closedShortPositions]
   )
 
-  // ── NEW tag tracking ──────────────────────────────────────────────────
-  // Load previous session's position keys once (lazy state initializer).
-  // Using useState ensures prevKeys is a stable value, not a ref — so it
-  // can safely be used inside useMemo without triggering react-hooks/refs.
-  const [prevKeys] = useState(() => {
-    const raw = localStorage.getItem('knownPositionKeys')
-    return raw ? new Set(JSON.parse(raw)) : null
-  })
-
-  const newPositionKeys = useMemo(() => {
-    const allCurrent = [
-      ...longPositions.map(p => `long|${p.ticker}|${p.openDate}`),
-      ...shortPositions.map(p => `short|${p.ticker}|${p.openDate}`),
-      ...closedLongPositions.map(p => `closed-long|${p.ticker}|${p.openDate}`),
-      ...closedShortPositions.map(p => `closed-short|${p.ticker}|${p.openDate}`),
-    ]
-    localStorage.setItem('knownPositionKeys', JSON.stringify(allCurrent))
-    if (!prevKeys) return new Set()
-    return new Set(allCurrent.filter(k => !prevKeys.has(k)))
-  }, [longPositions, shortPositions, closedLongPositions, closedShortPositions, prevKeys])
-
   const [expandedTicker, setExpandedTicker] = useState(null)
   const [filter, setFilter] = useState('overview')
   const contentRef = useRef(null)
@@ -105,18 +84,15 @@ function Positions({ ibkrData }) {
     ...tradeShorts.map(p => ({ ...p, _type: 'short' })),
   ], [tradeLongs, tradeShorts])
 
-  const longCount = useMemo(
-    () => allTrades.filter(p => p._type === 'long' && p.status !== 'closed').length,
-    [allTrades]
-  )
-  const shortCount = useMemo(
-    () => allTrades.filter(p => p._type === 'short' && p.status !== 'closed').length,
-    [allTrades]
-  )
-  const closedCount = useMemo(
-    () => allTrades.filter(p => p.status === 'closed').length,
-    [allTrades]
-  )
+  const { longCount, shortCount, closedCount } = useMemo(() => {
+    let l = 0, s = 0, c = 0
+    for (const p of allTrades) {
+      if (p.status === 'closed') { c++; continue }
+      if (p._type === 'long') l++
+      else s++
+    }
+    return { longCount: l, shortCount: s, closedCount: c }
+  }, [allTrades])
 
   const tabs = useMemo(() => [
     { key: 'overview', label: 'Overview' },
@@ -168,12 +144,10 @@ function Positions({ ibkrData }) {
         <PortfolioOverview allTrades={allTrades} closedPositions={closedPositionsAll} />
       ) : (
         <PositionList
-          longs={tradeLongs}
-          shorts={tradeShorts}
+          allTrades={allTrades}
           expandedTicker={expandedTicker}
           onToggleTicker={handleToggleTicker}
           filter={filter}
-          newPositionKeys={newPositionKeys}
         />
       )}
 

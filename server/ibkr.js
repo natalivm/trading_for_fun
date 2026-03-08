@@ -5,7 +5,7 @@
  * Replaces the previous Client Portal REST approach.
  */
 
-import { IBApi, EventName, SecType } from '@stoqey/ib'
+import { IBApi, EventName } from '@stoqey/ib'
 
 const TWS_HOST = process.env.TWS_HOST || '127.0.0.1'
 const TWS_PORT = Number(process.env.TWS_PORT) || 4001
@@ -13,7 +13,6 @@ const CLIENT_ID = Number(process.env.TWS_CLIENT_ID) || 1
 
 let ib = null
 let connected = false
-let _accountId = null
 
 // ── Connection ──────────────────────────────────────────────────────────
 
@@ -36,7 +35,6 @@ export function connect() {
 
     ib.on(EventName.disconnected, () => {
       connected = false
-      _accountId = null
       console.log('Disconnected from IB Gateway')
     })
 
@@ -58,7 +56,6 @@ export function disconnect() {
     ib.disconnect()
     ib = null
     connected = false
-    _accountId = null
   }
 }
 
@@ -95,9 +92,6 @@ export function getAccounts() {
       const accounts = typeof accountsList === 'string'
         ? accountsList.split(',').map(a => a.trim()).filter(Boolean)
         : Array.isArray(accountsList) ? accountsList : []
-      if (accounts.length > 0) {
-        _accountId = accounts[0]
-      }
       resolve({ accounts })
     }
 
