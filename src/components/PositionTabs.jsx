@@ -77,9 +77,9 @@ const defaultLongPositions = [
   { ticker: 'SOFI', status: 'open', entryPrice: 23.17, quantity: 100, openDate: '2026-01-30', profitPercent: -19.9, unrealizedPnL: -461.31 },
   { ticker: 'RDDT', status: 'open', entryPrice: 181.30, quantity: 3, openDate: '2026-02-03', unrealizedPnL: (138.40 - 181.30) * 3, profitPercent: ((138.40 - 181.30) / 181.30) * 100 },
   { ticker: 'ENVA', status: 'open', entryPrice: 156, quantity: 5, openDate: '2026-02-10', unrealizedPnL: (137.58 - 156) * 5, profitPercent: ((137.58 - 156) / 156) * 100 },
-  { ticker: 'CEG', status: 'open', entryPrice: 280.17, quantity: 2, openDate: '2026-02-12', profitPercent: 5.04, unrealizedPnL: 91.79 },
-  { ticker: 'CEG', status: 'open', entryPrice: 310.77, quantity: 2, openDate: '2026-02-12' },
-  { ticker: 'THM', status: 'open', entryPrice: 2.29, quantity: 100, openDate: '2026-02-17', profitPercent: 7.41, unrealizedPnL: 63.37 },
+  { ticker: 'CEG', status: 'open', entryPrice: 280.17, quantity: 2, openDate: '2026-02-12', unrealizedPnL: (318.67 - 280.17) * 2, profitPercent: ((318.67 - 280.17) / 280.17) * 100 },
+  { ticker: 'CEG', status: 'open', entryPrice: 310.77, quantity: 2, openDate: '2026-02-12', unrealizedPnL: (318.67 - 310.77) * 2, profitPercent: ((318.67 - 310.77) / 310.77) * 100 },
+  { ticker: 'THM', status: 'open', entryPrice: 2.29, quantity: 100, openDate: '2026-02-17', unrealizedPnL: (3.06 - 2.29) * 100, profitPercent: ((3.06 - 2.29) / 2.29) * 100 },
   { ticker: 'RIG', status: 'open', entryPrice: 6.15, quantity: 100, openDate: '2026-02-17', unrealizedPnL: (5.94 - 6.15) * 100, profitPercent: ((5.94 - 6.15) / 6.15) * 100 },
   { ticker: 'ZBIO', status: 'open', entryPrice: 27.41, quantity: 15, openDate: '2026-02-17', unrealizedPnL: (25.28 - 27.41) * 15, profitPercent: ((25.28 - 27.41) / 27.41) * 100 },
   { ticker: 'ALAB', status: 'open', entryPrice: 101.62, quantity: 8, openDate: '2026-02-17', unrealizedPnL: (118.51 - 101.62) * 8, profitPercent: ((118.51 - 101.62) / 101.62) * 100 },
@@ -90,15 +90,15 @@ const defaultLongPositions = [
   { ticker: 'NU', status: 'open', entryPrice: 16.53, quantity: 20, openDate: '2026-02-24', unrealizedPnL: (14.45 - 16.53) * 20, profitPercent: ((14.45 - 16.53) / 16.53) * 100 },
   { ticker: 'TLN', status: 'open', entryPrice: 373.26, quantity: 2, openDate: '2026-02-24', unrealizedPnL: (324.61 - 373.26) * 2, profitPercent: ((324.61 - 373.26) / 373.26) * 100 },
   { ticker: 'DASH', status: 'open', entryPrice: 174.35, quantity: 2, openDate: '2026-02-25', unrealizedPnL: (179.75 - 174.35) * 2, profitPercent: ((179.75 - 174.35) / 174.35) * 100 },
-  { ticker: 'THM', status: 'open', entryPrice: 2.93, quantity: 100, openDate: '2026-02-25' },
+  { ticker: 'THM', status: 'open', entryPrice: 2.93, quantity: 100, openDate: '2026-02-25', unrealizedPnL: (3.06 - 2.93) * 100, profitPercent: ((3.06 - 2.93) / 2.93) * 100 },
   { ticker: 'BLCO', status: 'open', entryPrice: 18.59, quantity: 40, openDate: '2026-02-25', unrealizedPnL: (17.06 - 18.59) * 40, profitPercent: ((17.06 - 18.59) / 18.59) * 100 },
   { ticker: 'NU', status: 'open', entryPrice: 15.88, quantity: 20, openDate: '2026-02-26', unrealizedPnL: (14.45 - 15.88) * 20, profitPercent: ((14.45 - 15.88) / 15.88) * 100 },
   { ticker: 'LRCX', status: 'open', entryPrice: 238.63, quantity: 2, openDate: '2026-02-26', unrealizedPnL: (199.69 - 238.63) * 2, profitPercent: ((199.69 - 238.63) / 238.63) * 100 },
   { ticker: 'SITM', status: 'open', entryPrice: 408.60, quantity: 1, openDate: '2026-03-02', unrealizedPnL: (328 - 408.60) * 1, profitPercent: ((328 - 408.60) / 408.60) * 100 },
-  { ticker: 'CEG', status: 'open', entryPrice: 319.18, quantity: 2, openDate: '2026-03-03' },
+  { ticker: 'CEG', status: 'open', entryPrice: 319.18, quantity: 2, openDate: '2026-03-03', unrealizedPnL: (318.67 - 319.18) * 2, profitPercent: ((318.67 - 319.18) / 319.18) * 100 },
   { ticker: 'NOW', status: 'open', entryPrice: 108.53, quantity: 10, openDate: '2026-03-03', profitPercent: 14.5, unrealizedPnL: 157.03 },
   { ticker: 'MELI', status: 'open', entryPrice: 1652, quantity: 1, openDate: '2026-03-03', profitPercent: 7.94, unrealizedPnL: 131.25 },
-  { ticker: 'THM', status: 'open', entryPrice: 3.32, quantity: 100, openDate: '2026-03-03' },
+  { ticker: 'THM', status: 'open', entryPrice: 3.32, quantity: 100, openDate: '2026-03-03', unrealizedPnL: (3.06 - 3.32) * 100, profitPercent: ((3.06 - 3.32) / 3.32) * 100 },
   { ticker: 'PINS', status: 'open', entryPrice: 19.10, quantity: 30, openDate: '2026-03-03', unrealizedPnL: (19.94 - 19.10) * 30, profitPercent: ((19.94 - 19.10) / 19.10) * 100 },
   { ticker: 'LRMR', status: 'open', entryPrice: 5.30, quantity: 100, openDate: '2026-03-03', unrealizedPnL: (5.35 - 5.30) * 100, profitPercent: ((5.35 - 5.30) / 5.30) * 100 },
   { ticker: 'ARRY', status: 'open', entryPrice: 7.29, quantity: 100, openDate: '2026-03-03', unrealizedPnL: (6.80 - 7.29) * 100, profitPercent: ((6.80 - 7.29) / 7.29) * 100 },
@@ -131,8 +131,8 @@ const defaultShortPositions = [
   { ticker: 'APP', status: 'open', entryPrice: 447.75, quantity: 6, openDate: '2026-02-26', unrealizedPnL: (447.75 - 499.17) * 6, profitPercent: ((447.75 - 499.17) / 447.75) * 100 },
   { ticker: 'CAT', status: 'open', entryPrice: 742, quantity: 1, openDate: '2026-03-02', profitPercent: 8.54, unrealizedPnL: 63.43 },
   { ticker: 'MDB', status: 'open', entryPrice: 244.11, quantity: 6, openDate: '2026-03-03', unrealizedPnL: (244.11 - 269.95) * 6, profitPercent: ((244.11 - 269.95) / 244.11) * 100 },
-  { ticker: 'POWL', status: 'open', entryPrice: 521, quantity: 2, openDate: '2026-03-04', profitPercent: 4.07, unrealizedPnL: 62.26 },
-  { ticker: 'POWL', status: 'open', entryPrice: 487.26, quantity: 1, openDate: '2026-03-07' },
+  { ticker: 'POWL', status: 'open', entryPrice: 521, quantity: 2, openDate: '2026-03-04', unrealizedPnL: (521 - 489) * 2, profitPercent: ((521 - 489) / 521) * 100 },
+  { ticker: 'POWL', status: 'open', entryPrice: 487.26, quantity: 1, openDate: '2026-03-07', unrealizedPnL: (487.26 - 489) * 1, profitPercent: ((487.26 - 489) / 487.26) * 100 },
   { ticker: 'CRDO', status: 'open', entryPrice: 113.93, quantity: 5, openDate: '2026-03-05', unrealizedPnL: (113.93 - 109.11) * 5, profitPercent: ((113.93 - 109.11) / 113.93) * 100 },
   { ticker: 'CRWD', status: 'open', entryPrice: 398.61, quantity: 10, openDate: '2026-03-05', unrealizedPnL: (398.61 - 428.70) * 10, profitPercent: ((398.61 - 428.70) / 398.61) * 100 },
 ]
@@ -471,10 +471,17 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
     ? 'border-pink-500/20 hover:border-pink-500/40'
     : 'border-blue-500/20 hover:border-blue-500/40'
 
-  // Current market price (derived from marketValue / quantity)
-  const currentPrice = !isClosed && position.marketValue && position.quantity
-    ? position.marketValue / position.quantity
-    : null
+  // Current market price (derived from marketValue / quantity, or from unrealizedPnL)
+  let currentPrice = null
+  if (!isClosed && position.quantity) {
+    if (position.marketValue) {
+      currentPrice = position.marketValue / position.quantity
+    } else if (position.unrealizedPnL != null && position.entryPrice) {
+      currentPrice = isShort
+        ? position.entryPrice - position.unrealizedPnL / position.quantity
+        : position.entryPrice + position.unrealizedPnL / position.quantity
+    }
+  }
 
   // PnL dollar amount
   const pnlDollar = position.unrealizedPnL || position.realizedPnL || position.profitDollar
