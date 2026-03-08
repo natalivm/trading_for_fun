@@ -88,9 +88,7 @@ const defaultShortPositions = [
   { ticker: 'LITE', status: 'open', entryPrice: 716.95, quantity: 3, exitPrice: 500, openDate: '2026-02-26', profitPercent: 20.8, unrealizedPnL: 446.85 },
   { ticker: 'APP', status: 'open', entryPrice: 447.75, quantity: 6, openDate: '2026-02-26', unrealizedPnL: (447.75 - 499.17) * 6, profitPercent: ((447.75 - 499.17) / 447.75) * 100 },
   { ticker: 'CAT', status: 'open', entryPrice: 742, quantity: 1, openDate: '2026-03-02', profitPercent: 8.54, unrealizedPnL: 63.43 },
-  { ticker: 'MDB', status: 'open', entryPrice: 239.80, quantity: 2, openDate: '2026-03-03', unrealizedPnL: (239.80 - 269.95) * 2, profitPercent: ((239.80 - 269.95) / 239.80) * 100 },
-  { ticker: 'MDB', status: 'open', entryPrice: 239.18, quantity: 2, openDate: '2026-03-03', unrealizedPnL: (239.18 - 269.95) * 2, profitPercent: ((239.18 - 269.95) / 239.18) * 100 },
-  { ticker: 'MDB', status: 'open', entryPrice: 253.35, quantity: 2, openDate: '2026-03-03', unrealizedPnL: (253.35 - 269.95) * 2, profitPercent: ((253.35 - 269.95) / 253.35) * 100 },
+  { ticker: 'MDB', status: 'open', entryPrice: 244.11, quantity: 6, openDate: '2026-03-03', unrealizedPnL: (244.11 - 269.95) * 6, profitPercent: ((244.11 - 269.95) / 244.11) * 100 },
   { ticker: 'POWL', status: 'open', entryPrice: 521, quantity: 2, openDate: '2026-03-04', profitPercent: 4.07, unrealizedPnL: 62.26 },
   { ticker: 'POWL', status: 'open', entryPrice: 487.26, quantity: 1, openDate: '2026-03-07' },
   { ticker: 'CRDO', status: 'open', entryPrice: 113.93, quantity: 5, openDate: '2026-03-05', unrealizedPnL: (113.93 - 109.11) * 5, profitPercent: ((113.93 - 109.11) / 113.93) * 100 },
@@ -491,6 +489,7 @@ function GlowDot({ color }) {
     green: 'bg-emerald-400 shadow-emerald-400/60',
     red: 'bg-red-400 shadow-red-400/60',
     pink: 'bg-pink-400 shadow-pink-400/60',
+    blue: 'bg-blue-400 shadow-blue-400/60',
   }
   return (
     <span className="relative flex h-3 w-3 shrink-0">
@@ -587,11 +586,9 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
   const sym = ccySym(position.currency)
   const pct = calcPnlPercent(position, isShort)
 
-  const borderColor = isClosed
-    ? (isShort ? 'border-pink-500/20 hover:border-pink-500/40' : 'border-blue-500/20 hover:border-blue-500/40')
-    : isLong
-      ? 'border-emerald-500/20 hover:border-emerald-500/40'
-      : 'border-pink-500/20 hover:border-pink-500/40'
+  const borderColor = isShort
+    ? 'border-pink-500/20 hover:border-pink-500/40'
+    : 'border-blue-500/20 hover:border-blue-500/40'
 
   // Current market price (derived from marketValue / quantity)
   const currentPrice = !isClosed && position.marketValue && position.quantity
@@ -636,14 +633,12 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         ) : (
-          <GlowDot color={isLong ? 'green' : 'pink'} />
+          <GlowDot color={isLong ? 'blue' : 'pink'} />
         )}
 
         {/* Trade label */}
         <span className={`text-xs font-bold uppercase tracking-wide shrink-0 w-10 ${
-          isClosed
-            ? (isShort ? 'text-pink-400' : 'text-blue-400')
-            : isLong ? 'text-emerald-400/70' : 'text-pink-400/70'
+          isShort ? 'text-pink-400' : 'text-blue-400'
         }`}>
           {isClosed ? (isShort ? 'Short' : 'Long') : isLong ? 'Long' : 'Short'}
         </span>
@@ -652,7 +647,7 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
         <span className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-100 shrink-0 w-28 sm:w-32">
           {position.ticker}
           <span className={`text-xs sm:text-sm font-normal ml-1.5 ${
-            isClosed ? (isShort ? 'text-pink-400/70' : 'text-blue-400/70') : 'text-slate-400'
+            isShort ? 'text-pink-400/70' : 'text-blue-400/70'
           }`}>
             x{position.quantity}
           </span>
@@ -667,7 +662,7 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
 
         {/* Avg Price + Current/Exit Price */}
         <span className={`text-sm sm:text-base font-bold shrink-0 w-20 sm:w-24 text-right ${
-          isClosed ? (isShort ? 'text-pink-400/70' : 'text-blue-400/70') : 'text-blue-400'
+          isShort ? 'text-pink-400/70' : 'text-blue-400/70'
         }`}>
           {sym}{position.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
@@ -679,7 +674,7 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
             </span>
           </>
         ) : currentPrice != null ? (
-          <span className="text-sm sm:text-base font-bold text-amber-400 shrink-0">
+          <span className={`text-sm sm:text-base font-bold shrink-0 ${isShort ? 'text-pink-400' : 'text-blue-400'}`}>
             {sym}{currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         ) : null}
