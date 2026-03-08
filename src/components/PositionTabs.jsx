@@ -14,6 +14,9 @@ function daysBetween(a, b) {
   return Math.floor((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000)
 }
 
+// ── Fee rule: deduct $0.35 per transaction (each buy fill or sell fill counts as one transaction)
+const FEE_PER_TRANSACTION = 0.35
+
 // ── Hardcoded fallback data ─────────────────────────────────────────────
 
 const CCY_SYMBOLS = { USD: '$', EUR: '€', CAD: 'C$', GBP: '£', CHF: 'CHF ' }
@@ -192,6 +195,205 @@ const defaultClosedLongPositions = [
     fees: 1.05,
     openDate: '2026-01-26',
     closeDate: '2026-02-04',
+  },
+  {
+    ticker: 'CRDO',
+    status: 'closed',
+    entryPrice: (2 * 113.54 + 4 * 99.53) / 6,
+    quantity: 6,
+    exitPrice: 105.70,
+    profitDollar: (105.70 - (2 * 113.54 + 4 * 99.53) / 6) * 6,
+    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
+    openDate: '2026-03-02',
+    closeDate: '2026-03-04',
+  },
+  {
+    ticker: 'CRDO',
+    status: 'closed',
+    entryPrice: (2 * 132.66 + 1 * 121.55 + 3 * 130.90) / 6,
+    quantity: 6,
+    exitPrice: 130.35,
+    profitDollar: (130.35 - (2 * 132.66 + 1 * 121.55 + 3 * 130.90) / 6) * 6,
+    fees: 4 * FEE_PER_TRANSACTION, // 3 buys + 1 sell
+    openDate: '2026-02-10',
+    closeDate: '2026-02-18',
+  },
+  {
+    ticker: 'NVDA',
+    status: 'closed',
+    entryPrice: 173.39,
+    quantity: 1,
+    exitPrice: 182.63,
+    profitDollar: (182.63 - 173.39) * 1,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-03-02',
+    closeDate: '2026-03-04',
+  },
+  {
+    ticker: 'AD',
+    status: 'closed',
+    entryPrice: 50.10,
+    quantity: 10,
+    exitPrice: 47.51,
+    profitDollar: (47.51 - 50.10) * 10,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-01-23',
+    closeDate: '2026-01-26',
+  },
+  {
+    ticker: 'GOOG',
+    status: 'closed',
+    entryPrice: (1 * 301.64 + 1 * 299) / 2,
+    quantity: 2,
+    exitPrice: 304.75,
+    profitDollar: (304.75 - (1 * 301.64 + 1 * 299) / 2) * 2,
+    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
+    openDate: '2026-02-17',
+    closeDate: '2026-03-04',
+  },
+  {
+    ticker: 'APP',
+    status: 'closed',
+    entryPrice: (1 * 556 + 1 * 526.54 + 1 * 499 + 1 * 470.77 + 1 * 383.85) / 5,
+    quantity: 5,
+    exitPrice: (1 * 450 + 2 * 436.47 + 2 * 435.42) / 5,
+    profitDollar: ((1 * 450 + 2 * 436.47 + 2 * 435.42) / 5 - (1 * 556 + 1 * 526.54 + 1 * 499 + 1 * 470.77 + 1 * 383.85) / 5) * 5,
+    fees: 9 * FEE_PER_TRANSACTION, // 4 buys + 1 buy + 1 sell + 2 sells + 1 sell (hint: not grouped, just 9 fills)
+    openDate: '2026-01-30',
+    closeDate: '2026-02-26',
+  },
+  {
+    ticker: 'AMZN',
+    status: 'closed',
+    entryPrice: 208.20,
+    quantity: 3,
+    exitPrice: 207.40,
+    profitDollar: (207.40 - 208.20) * 3,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-02-20',
+    closeDate: '2026-02-27',
+  },
+  {
+    ticker: 'ADSK',
+    status: 'closed',
+    entryPrice: (4 * 235.4 + 2 * 246.82) / 6,
+    quantity: 6,
+    exitPrice: 252.92,
+    profitDollar: (252.92 - (4 * 235.4 + 2 * 246.82) / 6) * 6,
+    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
+    openDate: '2026-02-27',
+    closeDate: '2026-03-03',
+  },
+  {
+    ticker: 'ALSTI',
+    status: 'closed',
+    entryPrice: (15 * 65.51333 + 8 * 64.1) / 23,
+    quantity: 23,
+    exitPrice: (4 * 55 + 2 * 55.9 + 2 * 57 + 2 * 58 + 2 * 59 + 11 * 55.6) / 23,
+    profitDollar: ((4 * 55 + 2 * 55.9 + 2 * 57 + 2 * 58 + 2 * 59 + 11 * 55.6) / 23 - (15 * 65.51333 + 8 * 64.1) / 23) * 23,
+    fees: 8 * FEE_PER_TRANSACTION, // 2 buys + 6 sells
+    openDate: '2025-10-13',
+    closeDate: '2026-01-14',
+    currency: 'EUR',
+  },
+  {
+    ticker: 'AUGO',
+    status: 'closed',
+    entryPrice: (3 * 73.945 + 1 * 73.64) / 4,
+    quantity: 4,
+    exitPrice: 74,
+    profitDollar: (74 - (3 * 73.945 + 1 * 73.64) / 4) * 4,
+    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
+    openDate: '2026-01-29',
+    closeDate: '2026-01-29',
+  },
+  {
+    ticker: 'AU',
+    status: 'closed',
+    entryPrice: 88.82,
+    quantity: 10,
+    exitPrice: 104.02,
+    profitDollar: (104.02 - 88.82) * 10,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-02-02',
+    closeDate: '2026-02-06',
+  },
+  {
+    ticker: 'BE',
+    status: 'closed',
+    entryPrice: (2 * 146.7 + 2 * 140 + 2 * 136.5 + 2 * 150.73 + 6 * 145 + 2 * 157 + 3 * 174.32 + 2 * 165.13) / 21,
+    quantity: 21,
+    exitPrice: (7 * 159.61 + 14 * 165.36) / 21,
+    profitDollar: ((7 * 159.61 + 14 * 165.36) / 21 - (2 * 146.7 + 2 * 140 + 2 * 136.5 + 2 * 150.73 + 6 * 145 + 2 * 157 + 3 * 174.32 + 2 * 165.13) / 21) * 21,
+    fees: 10 * FEE_PER_TRANSACTION, // 8 buys + 2 sells
+    openDate: '2026-02-12',
+    closeDate: '2026-02-26',
+  },
+  {
+    ticker: 'APH',
+    status: 'closed',
+    entryPrice: (2 * 149 + 33 * 145.3) / 35,
+    quantity: 35,
+    exitPrice: (15 * 148.02 + 20 * 146.001) / 35,
+    profitDollar: ((15 * 148.02 + 20 * 146.001) / 35 - (2 * 149 + 33 * 145.3) / 35) * 35,
+    fees: 5 * FEE_PER_TRANSACTION, // 3 buys + 2 sells
+    openDate: '2026-01-14',
+    closeDate: '2026-01-28',
+  },
+  {
+    ticker: 'APH',
+    status: 'closed',
+    entryPrice: (2 * 145 + 4 * 141.5) / 6,
+    quantity: 6,
+    exitPrice: 143.78,
+    profitDollar: (143.78 - (2 * 145 + 4 * 141.5) / 6) * 6,
+    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
+    openDate: '2026-01-28',
+    closeDate: '2026-01-28',
+  },
+  {
+    ticker: 'APH',
+    status: 'closed',
+    entryPrice: (1 * 144.24 + 2 * 145.1) / 3,
+    quantity: 3,
+    exitPrice: 146.4,
+    profitDollar: (146.4 - (1 * 144.24 + 2 * 145.1) / 3) * 3,
+    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
+    openDate: '2026-01-30',
+    closeDate: '2026-02-03',
+  },
+  {
+    ticker: 'APH',
+    status: 'closed',
+    entryPrice: (10 * 141.75 + 5 * 130.1 + 2 * 135.6 + 2 * 130) / 19,
+    quantity: 19,
+    exitPrice: (9 * 130.37 + 10 * 136.56) / 19,
+    profitDollar: ((9 * 130.37 + 10 * 136.56) / 19 - (10 * 141.75 + 5 * 130.1 + 2 * 135.6 + 2 * 130) / 19) * 19,
+    fees: 6 * FEE_PER_TRANSACTION, // 4 buys + 2 sells
+    openDate: '2026-02-04',
+    closeDate: '2026-03-05',
+  },
+  {
+    ticker: 'ASML',
+    status: 'closed',
+    entryPrice: 1455.42,
+    quantity: 1,
+    exitPrice: 1489.38,
+    profitDollar: (1489.38 - 1455.42) * 1,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-02-20',
+    closeDate: '2026-02-24',
+  },
+  {
+    ticker: 'ASML',
+    status: 'closed',
+    entryPrice: 1405.5,
+    quantity: 2,
+    exitPrice: 1403,
+    profitDollar: (1403 - 1405.5) * 2,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-03-04',
+    closeDate: '2026-03-04',
   },
 ]
 
