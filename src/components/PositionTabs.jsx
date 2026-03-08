@@ -512,13 +512,13 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
 
   return (
     <div className={`${hidden ? 'scale-95 opacity-0 max-h-0 overflow-hidden !p-0 !m-0' : 'scale-100 opacity-100'} transition-all duration-300 ease-in-out w-full`}>
-      <div className="flex items-center gap-3">
+      <div>
         {/* 3-section card */}
         <div
-          className={`group cursor-pointer rounded-2xl border transition-all duration-300 ease-in-out flex-1 min-w-0 ${borderColor} ${expanded ? 'ring-1 ring-slate-700/50' : ''}`}
+          className={`group cursor-pointer rounded-2xl border transition-all duration-300 ease-in-out ${borderColor} ${expanded ? 'ring-1 ring-slate-700/50' : ''}`}
           onClick={onToggle}
         >
-          <div className="grid grid-cols-3 gap-[1px] bg-slate-700/30 rounded-2xl overflow-hidden">
+          <div className="grid grid-cols-2 sm:grid-cols-[1fr_1fr_auto] gap-[1px] bg-slate-700/30 rounded-2xl overflow-hidden">
             {/* Section 1: Status + Ticker + Quantity */}
             <div className={`${sectionBase} flex items-center gap-2`}>
               {isClosed ? (
@@ -551,8 +551,17 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
               )}
             </div>
 
-            {/* Section 3: PnL */}
-            <div className={`${sectionBase} flex items-center gap-2 whitespace-nowrap`}>
+            {/* Section 3: PnL + Date */}
+            <div className={`${sectionBase} col-span-2 sm:col-span-1 flex items-center justify-end gap-2 whitespace-nowrap`}>
+              {!isClosed && days !== null && days <= 1 ? (
+                <span className="rounded-md bg-pink-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-pink-400">
+                  NEW
+                </span>
+              ) : (
+                <span className="rounded-md bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-400">
+                  {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
+                </span>
+              )}
               {(pct || pnlDollar) ? (
                 <span className={`rounded-md px-1.5 py-0.5 text-sm font-bold ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
                   {pct !== null && <>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</>}
@@ -564,18 +573,6 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
           </div>
         </div>
 
-        {/* External tag – right side */}
-        <div className="hidden sm:flex flex-col items-start gap-1.5 shrink-0 min-w-[5rem]">
-          {!isClosed && days !== null && days <= 1 ? (
-            <span className="rounded-md bg-pink-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-pink-400">
-              NEW
-            </span>
-          ) : (
-            <span className="rounded-md bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-400">
-              {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
-            </span>
-          )}
-        </div>
       </div>
 
       {/* Expanded detail */}
@@ -1077,7 +1074,7 @@ function Positions({ ibkrData }) {
 
   return (
     <div
-      className="mx-auto max-w-5xl pb-20"
+      className="mx-auto max-w-5xl pb-20 min-h-[calc(100dvh-8rem)]"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
