@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
@@ -955,8 +955,40 @@ function Positions({ ibkrData }) {
     { key: 'closed', label: 'Closed', count: closedCount },
   ]
 
+  // ── Swipe navigation between tabs ──────────────────────────────────────
+  const touchStart = useRef(null)
+  const touchStartY = useRef(null)
+
+  const handleTouchStart = useCallback((e) => {
+    touchStart.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+  }, [])
+
+  const handleTouchEnd = useCallback((e) => {
+    if (touchStart.current === null) return
+    const deltaX = e.changedTouches[0].clientX - touchStart.current
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current
+    touchStart.current = null
+    touchStartY.current = null
+
+    // Only trigger if horizontal swipe is dominant and exceeds threshold
+    if (Math.abs(deltaX) < 50 || Math.abs(deltaY) > Math.abs(deltaX)) return
+
+    const tabKeys = tabs.map(t => t.key)
+    const currentIdx = tabKeys.indexOf(filter)
+    if (deltaX < 0 && currentIdx < tabKeys.length - 1) {
+      setFilter(tabKeys[currentIdx + 1])
+    } else if (deltaX > 0 && currentIdx > 0) {
+      setFilter(tabKeys[currentIdx - 1])
+    }
+  }, [filter, tabs])
+
   return (
-    <div className="mx-auto max-w-5xl pb-20">
+    <div
+      className="mx-auto max-w-5xl pb-20"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       {filter === 'overview' ? (
         <PortfolioOverview allTrades={allTrades} closedPositions={[...closedLongPositions, ...closedShortPositions]} />
       ) : (
