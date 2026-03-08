@@ -460,7 +460,24 @@ function ExpandedDetail({ ticker, history }) {
 
 // ── Position card ────────────────────────────────────────────────────────
 
-function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
+function FireIcon() {
+  return (
+    <span className="relative flex h-4 w-4 shrink-0 fire-icon">
+      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+        <path d="M12 2c0 4-4 6-4 10a4 4 0 0 0 8 0c0-4-4-6-4-10z" fill="url(#fire-grad)" />
+        <path d="M12 9c0 2-1.5 3-1.5 5a1.5 1.5 0 0 0 3 0c0-2-1.5-3-1.5-5z" fill="#FDE68A" />
+        <defs>
+          <linearGradient id="fire-grad" x1="12" y1="2" x2="12" y2="22" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#FBBF24" />
+            <stop offset="1" stopColor="#EF4444" />
+          </linearGradient>
+        </defs>
+      </svg>
+    </span>
+  )
+}
+
+function PositionRow({ position, type, expanded, onToggle, hidden, isNew, isTopGainer }) {
   const isLong = type === 'long'
   const isShort = type === 'short'
   const isClosed = position.status === 'closed'
@@ -515,7 +532,7 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
       <div>
         {/* 3-section card */}
         <div
-          className={`group cursor-pointer rounded-2xl border transition-all duration-300 ease-in-out ${borderColor} ${expanded ? 'ring-1 ring-slate-700/50' : ''}`}
+          className={`group cursor-pointer rounded-2xl border transition-all duration-300 ease-in-out ${borderColor} ${expanded ? 'ring-1 ring-slate-700/50' : ''} ${isTopGainer ? 'top-gainer-card ring-1 ring-amber-500/30 border-amber-500/40 hover:border-amber-500/60' : ''}`}
           onClick={onToggle}
         >
           <div className="grid grid-cols-2 sm:grid-cols-[1fr_1fr_auto] gap-[1px] bg-slate-700/30 rounded-2xl overflow-hidden">
@@ -526,6 +543,8 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
                   <svg className={`h-3 w-3 shrink-0 ${isShort ? 'text-pink-400' : 'text-blue-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
+                ) : isTopGainer ? (
+                  <FireIcon />
                 ) : (
                   <GlowDot color={isLong ? 'blue' : 'pink'} />
                 )}
@@ -889,6 +908,14 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, n
     return pctB - pctA // biggest gainer first, biggest loser last
   })
 
+  // Find the open position with the highest profit
+  const topGainerTicker = allPositions.reduce((best, p) => {
+    if (p.status === 'closed') return best
+    const pct = calcPnlPercent(p, p._type === 'short') ?? 0
+    if (pct > 0 && pct > (best.pct ?? 0)) return { key: `${p._type}-${p.ticker}-${p.openDate}`, pct }
+    return best
+  }, { key: null, pct: 0 }).key
+
   return (
     <div className="flex flex-col gap-2 px-2 sm:px-4 sm:max-w-3xl sm:mx-auto w-full">
       {allPositions.map((position, i) => {
@@ -904,6 +931,7 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, n
             hidden={false}
             onToggle={() => onToggleTicker(tradeKey)}
             isNew={newPositionKeys?.has(newKey)}
+            isTopGainer={tradeKey === topGainerTicker}
           />
         )
       })}
