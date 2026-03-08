@@ -28,7 +28,7 @@
     { "ticker": "ALAB", "status": "open", "entryPrice": 148.7321375, "quantity": 8, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": -241.78, "marketValue": 948.08 },
     { "ticker": "RIG", "status": "open", "entryPrice": 6.1473525, "quantity": 200, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
     { "ticker": "ZBIO", "status": "open", "entryPrice": 27.46725, "quantity": 30, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
-    { "ticker": "DASH", "status": "open", "entryPrice": 169.249025, "quantity": 4, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
+    { "ticker": "DASH", "status": "open", "entryPrice": 169.249025, "quantity": 4, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 42.00, "marketValue": 719.00 },
     { "ticker": "NU", "status": "open", "entryPrice": 16.2043125, "quantity": 40, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
     { "ticker": "TLN", "status": "open", "entryPrice": 373.25835, "quantity": 2, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
     { "ticker": "BLCO", "status": "open", "entryPrice": 18.5939575, "quantity": 40, "openDate": "", "currency": "USD", "dailyPnL": 0, "unrealizedPnL": 0, "marketValue": 0 },
