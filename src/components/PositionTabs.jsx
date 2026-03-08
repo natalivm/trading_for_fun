@@ -213,6 +213,16 @@ const defaultClosedLongPositions = [
     openDate: '2026-02-10',
     closeDate: '2026-02-18',
   },
+  {
+    ticker: 'NVDA',
+    status: 'closed',
+    entryPrice: 173.39,
+    quantity: 1,
+    exitPrice: 182.63,
+    profitDollar: (182.63 - 173.39) * 1,
+    openDate: '2026-03-02',
+    closeDate: '2026-03-04',
+  },
 ]
 
 const defaultClosedShortPositions = [
