@@ -50,7 +50,9 @@ function Positions({ ibkrData }) {
   }, [ibkrData])
 
   // Keep the calculation helpers in sync (use raw positions for accuracy)
-  setPositionData({ longPositions, shortPositions, closedLongPositions, closedShortPositions })
+  useEffect(() => {
+    setPositionData({ longPositions, shortPositions, closedLongPositions, closedShortPositions })
+  }, [longPositions, shortPositions, closedLongPositions, closedShortPositions])
 
   const tradeLongs = useMemo(
     () => groupIntoTrades(longPositions, closedLongPositions),
