@@ -457,33 +457,35 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
   }, [expanded, position.ticker])
 
   return (
-    <div className={`flex items-center gap-3 ${hidden ? 'scale-95 opacity-0 max-h-0 overflow-hidden !p-0 !m-0' : 'scale-100 opacity-100'} transition-all duration-300 ease-in-out`}>
-      {/* Card – 70% width on desktop */}
+    <div className={`flex items-center gap-3 ${hidden ? 'scale-95 opacity-0 max-h-0 overflow-hidden !p-0 !m-0' : 'scale-100 opacity-100'} transition-all duration-300 ease-in-out w-full`}>
+      {/* Card */}
       <div
-        className={`group cursor-pointer rounded-2xl border bg-slate-900/60 transition-all duration-300 ease-in-out w-full sm:w-[70%] shrink-0 ${borderColor} ${expanded ? 'bg-slate-800/60 ring-1 ring-slate-700/50' : ''}`}
+        className={`group cursor-pointer rounded-2xl border bg-slate-900/60 transition-all duration-300 ease-in-out w-full sm:flex-1 min-w-0 ${borderColor} ${expanded ? 'bg-slate-800/60 ring-1 ring-slate-700/50' : ''}`}
       >
         <div
-          className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2.5"
+          className="grid grid-cols-[auto_auto_1fr_auto_auto] items-center gap-x-2 px-3 py-2 sm:px-4 sm:py-2.5"
           onClick={onToggle}
         >
           {/* Status indicator */}
-          {isClosed ? (
-            <svg className={`h-3 w-3 shrink-0 ${isShort ? 'text-pink-400' : 'text-blue-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          ) : (
-            <GlowDot color={isLong ? 'blue' : 'pink'} />
-          )}
+          <div className="flex items-center gap-2 col-span-1">
+            {isClosed ? (
+              <svg className={`h-3 w-3 shrink-0 ${isShort ? 'text-pink-400' : 'text-blue-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <GlowDot color={isLong ? 'blue' : 'pink'} />
+            )}
 
-          {/* Trade label */}
-          <span className={`text-xs font-bold uppercase tracking-wide shrink-0 w-10 ${
-            isShort ? 'text-pink-400' : 'text-blue-400'
-          }`}>
-            {isClosed ? (isShort ? 'Short' : 'Long') : isLong ? 'Long' : 'Short'}
-          </span>
+            {/* Trade label */}
+            <span className={`text-xs font-bold uppercase tracking-wide ${
+              isShort ? 'text-pink-400' : 'text-blue-400'
+            }`}>
+              {isClosed ? (isShort ? 'Short' : 'Long') : isLong ? 'Long' : 'Short'}
+            </span>
+          </div>
 
           {/* Ticker + Shares */}
-          <span className="text-base sm:text-lg font-extrabold tracking-tight text-slate-100 shrink-0 w-24 sm:w-28">
+          <span className="text-base sm:text-lg font-extrabold tracking-tight text-slate-100 whitespace-nowrap">
             {position.ticker}
             <span className={`text-xs font-normal ml-1 ${
               isShort ? 'text-pink-400/70' : 'text-blue-400/70'
@@ -492,50 +494,43 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
             </span>
           </span>
 
-          {/* NEW badge – only shown inline on mobile, external on desktop */}
-          {isNew && (
-            <span className="rounded-md bg-pink-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-pink-400 shrink-0 sm:hidden">
-              NEW
+          {/* Prices – pushed right */}
+          <span className="flex items-center justify-end gap-1.5 whitespace-nowrap overflow-hidden">
+            <span className={`text-sm font-bold ${
+              isShort ? 'text-pink-400/40' : 'text-blue-400/40'
+            }`}>
+              {sym}{position.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
-          )}
-
-          {/* Avg Price + Current/Exit Price */}
-          <span className={`text-sm font-bold shrink-0 w-18 sm:w-20 text-right ${
-            isShort ? 'text-pink-400/40' : 'text-blue-400/40'
-          }`}>
-            {sym}{position.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {isClosed && position.exitPrice != null ? (
+              <>
+                <span className={`text-xs ${isShort ? 'text-pink-400/40' : 'text-blue-400/40'}`}>→</span>
+                <span className={`text-sm font-bold ${isShort ? 'text-pink-400' : 'text-blue-400'}`}>
+                  {sym}{position.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </>
+            ) : currentPrice != null ? (
+              <>
+                <span className={`text-xs ${isShort ? 'text-pink-400/30' : 'text-blue-400/30'}`}>→</span>
+                <span className={`text-sm font-bold ${isShort ? 'text-pink-300' : 'text-blue-300'}`}>
+                  {sym}{currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </>
+            ) : null}
           </span>
-          {isClosed && position.exitPrice != null ? (
-            <>
-              <span className={`text-xs shrink-0 ${isShort ? 'text-pink-400/40' : 'text-blue-400/40'}`}>→</span>
-              <span className={`text-sm font-bold shrink-0 ${isShort ? 'text-pink-400' : 'text-blue-400'}`}>
-                {sym}{position.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </>
-          ) : currentPrice != null ? (
-            <>
-              <span className={`text-xs shrink-0 ${isShort ? 'text-pink-400/30' : 'text-blue-400/30'}`}>→</span>
-              <span className={`text-sm font-bold shrink-0 ${isShort ? 'text-pink-300' : 'text-blue-300'}`}>
-                {sym}{currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            </>
-          ) : null}
 
           {/* PnL */}
-          <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto shrink-0">
-            {(pct || pnlDollar) ? (
-              <span className={`rounded-md px-1.5 py-0.5 text-sm font-bold text-left ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
-                {pct !== null && <>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</>}
-                {pct !== null && pnlDollar !== null && ' '}
-                {pnlDollar !== null && <>{pnlDollar >= 0 ? '+' : '-'}{sym}{Math.abs(pnlDollar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
-              </span>
-            ) : null}
-            {/* Days holding – inline on mobile only */}
-            <div className="flex-1 min-w-0 sm:hidden" />
-            <span className="text-[11px] text-blue-400 shrink-0 text-right sm:hidden">
-              {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
+          {(pct || pnlDollar) ? (
+            <span className={`rounded-md px-1.5 py-0.5 text-sm font-bold whitespace-nowrap ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+              {pct !== null && <>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</>}
+              {pct !== null && pnlDollar !== null && ' '}
+              {pnlDollar !== null && <>{pnlDollar >= 0 ? '+' : '-'}{sym}{Math.abs(pnlDollar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
             </span>
-          </div>
+          ) : <span />}
+
+          {/* Days holding – visible on mobile too */}
+          <span className="text-[11px] text-blue-400 whitespace-nowrap text-right sm:hidden">
+            {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
+          </span>
         </div>
 
         {/* Expanded detail */}
@@ -545,7 +540,7 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
       </div>
 
       {/* External tags – right side, desktop only */}
-      <div className="hidden sm:flex flex-col items-start gap-1.5 min-w-[5rem]">
+      <div className="hidden sm:flex flex-col items-start gap-1.5 shrink-0 min-w-[5rem]">
         {isNew && (
           <span className="rounded-md bg-pink-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-pink-400">
             NEW
@@ -843,7 +838,7 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, n
   })
 
   return (
-    <div className="flex flex-col gap-2 px-2 sm:px-4 sm:items-center">
+    <div className="flex flex-col gap-2 px-2 sm:px-4 sm:max-w-3xl sm:mx-auto w-full">
       {allPositions.map((position, i) => {
         const tradeKey = `${position._type}-${position.ticker}-${position.openDate || i}`
         const closedPrefix = position.status === 'closed' ? `closed-${position._type}` : position._type
