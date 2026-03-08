@@ -240,6 +240,17 @@ const defaultClosedLongPositions = [
     openDate: '2026-01-23',
     closeDate: '2026-01-26',
   },
+  {
+    ticker: 'GOOG',
+    status: 'closed',
+    entryPrice: (1 * 301.64 + 1 * 299) / 2,
+    quantity: 2,
+    exitPrice: 304.75,
+    profitDollar: (304.75 - (1 * 301.64 + 1 * 299) / 2) * 2,
+    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
+    openDate: '2026-02-17',
+    closeDate: '2026-03-04',
+  },
 ]
 
 const defaultClosedShortPositions = [
