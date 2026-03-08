@@ -167,7 +167,7 @@ const PositionRow = memo(function PositionRow({ position, type, expanded, onTogg
       {/* Expanded detail */}
       {expanded && (
         <div className={`mt-1 rounded-2xl border ${borderColor} bg-slate-900/60 overflow-hidden`}>
-          <ExpandedDetail ticker={position.ticker} history={history} />
+          <ExpandedDetail history={history} />
         </div>
       )}
     </div>
