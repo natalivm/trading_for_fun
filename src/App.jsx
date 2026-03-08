@@ -19,13 +19,6 @@ function App() {
 
       <main className="flex-1 overflow-y-auto scrollbar-hide pb-8 pt-2">
         <InstallPrompt canInstall={canInstall} onInstall={install} />
-        <IBKRStatus
-          connected={connected}
-          loading={loading}
-          error={error}
-          onRefresh={refresh}
-          portfolio={portfolio}
-        />
         <Positions ibkrData={portfolio} />
       </main>
     </div>
