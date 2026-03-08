@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react'
 import { API_BASE } from '../utils/apiClient'
 import { ccySym, toUSD } from '../utils/constants'
-import { setPositionData } from '../utils/positionCalcs'
-import { mergePositions, IGNORED_TICKERS } from '../utils/positionMerge'
-import { groupIntoTrades, filterClosed2026 } from '../utils/positionFilters'
+import { setPositionData, calcPnlPercent } from '../utils/positionCalcs'
+import { filterClosed2026, groupIntoTrades } from '../utils/positionFilters'
+import { IGNORED_TICKERS, mergePositions } from '../utils/positionMerge'
 import {
   defaultLongPositions,
   defaultShortPositions,
@@ -24,28 +24,9 @@ function daysBetween(a, b) {
   return Math.floor((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000)
 }
 
-// ── Helper: calculate % gain/loss ───────────────────────────────────────
-
-function calcPnlPercent(position, isShort = false) {
-  if (position.profitPercent != null && position.profitPercent !== 0) {
-    return position.profitPercent
-  }
-  if (position.status === 'closed' && position.exitPrice && position.entryPrice) {
-    const raw = ((position.exitPrice - position.entryPrice) / position.entryPrice) * 100
-    return isShort ? -raw : raw
-  }
-  const totalCost = (position.entryPrice || 0) * (position.quantity || 0)
-  if (totalCost > 0) {
-    const pnl = position.unrealizedPnL || position.realizedPnL || position.profitDollar
-    if (pnl != null) return (pnl / totalCost) * 100
-    if (position.marketValue) return ((position.marketValue - totalCost) / totalCost) * 100
-  }
-  return null
-}
-
 // ── Components ──────────────────────────────────────────────────────────
 
-function GlowDot({ color }) {
+const GlowDot = memo(function GlowDot({ color }) {
   const colors = {
     green: 'bg-emerald-400 shadow-emerald-400/60',
     red: 'bg-red-400 shadow-red-400/60',
@@ -58,11 +39,11 @@ function GlowDot({ color }) {
       <span className={`relative inline-flex h-3 w-3 rounded-full ${colors[color]}`} />
     </span>
   )
-}
+})
 
 // ── Sparkline SVG ────────────────────────────────────────────────────────
 
-function Sparkline({ data, width = 200, height = 32 }) {
+const Sparkline = memo(function Sparkline({ data, width = 200, height = 32 }) {
   if (!data || data.length < 2) return null
   const values = data.map(d => d.avg_cost)
   const min = Math.min(...values)
@@ -90,7 +71,7 @@ function Sparkline({ data, width = 200, height = 32 }) {
       />
     </svg>
   )
-}
+})
 
 // ── Expanded detail panel ────────────────────────────────────────────────
 
@@ -171,11 +152,11 @@ function ExpandedDetail({ ticker, history }) {
       )}
     </div>
   )
-}
+})
 
 // ── Position card ────────────────────────────────────────────────────────
 
-function FireIcon() {
+const FireIcon = memo(function FireIcon() {
   return (
     <span className="relative flex h-5 w-5 shrink-0 fire-icon">
       <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="#3B82F6" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -184,9 +165,9 @@ function FireIcon() {
       </svg>
     </span>
   )
-}
+})
 
-function PositionRow({ position, type, expanded, onToggle, hidden, isTopGainer }) {
+const PositionRow = memo(function PositionRow({ position, type, expanded, onToggle, hidden, isTopGainer }) {
   const isLong = type === 'long'
   const isShort = type === 'short'
   const isClosed = position.status === 'closed'
@@ -337,11 +318,11 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isTopGainer }
       )}
     </div>
   )
-}
+})
 
 // ── Portfolio Overview Charts ──────────────────────────────────────────
 
-function ActivityHeatmap({ allTrades }) {
+const ActivityHeatmap = memo(function ActivityHeatmap({ allTrades }) {
   // Count activity per day: each open or close event counts as 1
   const activityMap = {}
   for (const p of allTrades) {
@@ -448,10 +429,10 @@ function ActivityHeatmap({ allTrades }) {
       </div>
     </div>
   )
-}
+})
 
 
-function CumulativePnLChart({ closedPositions, width = 500, height = 120 }) {
+const CumulativePnLChart = memo(function CumulativePnLChart({ closedPositions, width = 500, height = 120 }) {
   if (!closedPositions || closedPositions.length < 2) {
     return (
       <div>
@@ -521,9 +502,9 @@ function CumulativePnLChart({ closedPositions, width = 500, height = 120 }) {
       </svg>
     </div>
   )
-}
+})
 
-function QuickStats({ allTrades, closedPositions }) {
+const QuickStats = memo(function QuickStats({ allTrades, closedPositions }) {
   const closed = closedPositions.filter(p => p.profitDollar != null)
   const wins = closed.filter(p => (p.profitDollar - (p.fees || 0)) > 0)
   const losses = closed.filter(p => (p.profitDollar - (p.fees || 0)) <= 0)
@@ -590,9 +571,9 @@ function QuickStats({ allTrades, closedPositions }) {
       </div>
     </div>
   )
-}
+})
 
-function PortfolioOverview({ allTrades, closedPositions }) {
+const PortfolioOverview = memo(function PortfolioOverview({ allTrades, closedPositions }) {
   return (
     <div className="flex flex-col gap-7 px-2 sm:px-4">
       <QuickStats allTrades={allTrades} closedPositions={closedPositions} />
@@ -600,9 +581,9 @@ function PortfolioOverview({ allTrades, closedPositions }) {
       <ActivityHeatmap allTrades={allTrades} />
     </div>
   )
-}
+})
 
-function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, newPositionKeys }) {
+const PositionList = memo(function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, newPositionKeys }) {
   const [showOthers, setShowOthers] = useState(false)
   // Auto-collapse the expanded list when switching tabs
   useEffect(() => {
@@ -686,7 +667,7 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, n
       )}
     </div>
   )
-}
+})
 
 
 const Positions = memo(function Positions({ ibkrData }) {
@@ -724,7 +705,9 @@ const Positions = memo(function Positions({ ibkrData }) {
   }, [ibkrData])
 
   // Keep the calculation helpers in sync (use raw positions for accuracy)
-  setPositionData({ longPositions, shortPositions, closedLongPositions, closedShortPositions })
+  useEffect(() => {
+    setPositionData({ longPositions, shortPositions, closedLongPositions, closedShortPositions })
+  }, [longPositions, shortPositions, closedLongPositions, closedShortPositions])
 
   // Group into individual trades for display
   const tradeLongs = useMemo(
@@ -776,6 +759,7 @@ const Positions = memo(function Positions({ ibkrData }) {
   const handleToggleTicker = useCallback((ticker) => {
     setExpandedTicker((prev) => (prev === ticker ? null : ticker))
   }, [])
+
 
   const allTrades = useMemo(() => [
     ...tradeLongs.map(p => ({ ...p, _type: 'long' })),
