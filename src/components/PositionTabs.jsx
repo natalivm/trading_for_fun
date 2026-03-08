@@ -395,9 +395,242 @@ const defaultClosedLongPositions = [
     openDate: '2026-03-04',
     closeDate: '2026-03-04',
   },
+  {
+    ticker: 'CRML',
+    status: 'closed',
+    entryPrice: (260 * 11.8 + 220 * 13.65) / 480,
+    quantity: 480,
+    exitPrice: (240 * 14.455 + 240 * 13.64) / 480,
+    profitDollar: ((240 * 14.455 + 240 * 13.64) - (260 * 11.8 + 220 * 13.65)),
+    fees: 4 * FEE_PER_TRANSACTION, // 2 buys + 2 sells
+    openDate: '2026-01-06',
+    closeDate: '2026-01-13',
+  },
+  {
+    ticker: 'CRML',
+    status: 'closed',
+    entryPrice: (10 * 18.5 + 10 * 18.3 + 10 * 17.93 + 50 * 18.555 + 20 * 19.05 + 20 * 17.55 + 65 * 16.04) / 185,
+    quantity: 185,
+    exitPrice: (80 * 14.5 + 38 * 15 + 67 * 14.5) / 185,
+    profitDollar: ((80 * 14.5 + 38 * 15 + 67 * 14.5) - (10 * 18.5 + 10 * 18.3 + 10 * 17.93 + 50 * 18.555 + 20 * 19.05 + 20 * 17.55 + 65 * 16.04)),
+    fees: 10 * FEE_PER_TRANSACTION, // 7 buys + 3 sells
+    openDate: '2026-01-22',
+    closeDate: '2026-02-03',
+  },
+  {
+    ticker: 'COLL',
+    status: 'closed',
+    entryPrice: 47.7,
+    quantity: 100,
+    exitPrice: 44.4,
+    profitDollar: (44.4 - 47.7) * 100,
+    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
+    openDate: '2026-01-20',
+    closeDate: '2026-01-27',
+  },
+  {
+    ticker: 'DUOL',
+    status: 'closed',
+    entryPrice: (2 * 148.9 + 5 * 153.55) / 7,
+    quantity: 7,
+    exitPrice: 135.23,
+    profitDollar: (135.23 - (2 * 148.9 + 5 * 153.55) / 7) * 7,
+    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
+    openDate: '2026-01-20',
+    closeDate: '2026-01-30',
+  },
+  {
+    ticker: 'BWXT',
+    status: 'closed',
+    entryPrice: 212,
+    quantity: 5,
+    exitPrice: 199.78,
+    profitDollar: (199.78 - 212) * 5,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-01-29',
+    closeDate: '2026-02-10',
+  },
+  {
+    ticker: 'CLS',
+    status: 'closed',
+    entryPrice: (308.85 + 293 + 283.35 + 284 + 276.15 + 268.82 + 298.17 + 297.64 + 276.06 + 2 * 275.88) / 11,
+    quantity: 11,
+    exitPrice: (3 * 311.45 + 6 * 292.77 + 2 * 278.7) / 11,
+    profitDollar: ((3 * 311.45 + 6 * 292.77 + 2 * 278.7) - (308.85 + 293 + 283.35 + 284 + 276.15 + 268.82 + 298.17 + 297.64 + 276.06 + 2 * 275.88)),
+    fees: 11 * FEE_PER_TRANSACTION, // 8 buys + 3 sells
+    openDate: '2026-01-26',
+    closeDate: '2026-02-26',
+  },
+  {
+    ticker: 'CPRX',
+    status: 'closed',
+    entryPrice: 24.88,
+    quantity: 30,
+    exitPrice: 23.67,
+    profitDollar: (23.67 - 24.88) * 30,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-02-03',
+    closeDate: '2026-02-11',
+  },
+  {
+    ticker: 'ASTS',
+    status: 'closed',
+    entryPrice: 80.89,
+    quantity: 5,
+    exitPrice: 86.69,
+    profitDollar: (86.69 - 80.89) * 5,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-02-17',
+    closeDate: '2026-02-26',
+  },
+  {
+    ticker: 'CRM',
+    status: 'closed',
+    entryPrice: 186,
+    quantity: 4,
+    exitPrice: 192.88,
+    profitDollar: (192.88 - 186) * 4,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-02-25',
+    closeDate: '2026-03-02',
+  },
+  {
+    ticker: 'CSCO',
+    status: 'closed',
+    entryPrice: (3 * 85.48 + 1 * 78.9) / 4,
+    quantity: 4,
+    exitPrice: 78.85,
+    profitDollar: (78.85 - (3 * 85.48 + 1 * 78.9) / 4) * 4,
+    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
+    openDate: '2026-02-11',
+    closeDate: '2026-03-03',
+  },
+  {
+    ticker: 'DUOL',
+    status: 'closed',
+    entryPrice: (5 * 86 + 5 * 89.27) / 10,
+    quantity: 10,
+    exitPrice: 100,
+    profitDollar: (100 - (5 * 86 + 5 * 89.27) / 10) * 10,
+    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
+    openDate: '2026-02-27',
+    closeDate: '2026-02-27',
+  },
+  {
+    ticker: 'ZETA',
+    status: 'closed',
+    entryPrice: 23.66,
+    quantity: 50,
+    exitPrice: 22.853,
+    profitDollar: (22.853 - 23.66) * 50,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-01-13',
+    closeDate: '2026-01-14',
+  },
+  {
+    ticker: 'ZETA',
+    status: 'closed',
+    entryPrice: 21.4,
+    quantity: 10,
+    exitPrice: 20,
+    profitDollar: (20 - 21.4) * 10,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-01-22',
+    closeDate: '2026-01-27',
+  },
+  {
+    ticker: 'WDC',
+    status: 'closed',
+    entryPrice: 265,
+    quantity: 1,
+    exitPrice: 283.5,
+    profitDollar: (283.5 - 265) * 1,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-01-29',
+    closeDate: '2026-01-29',
+  },
+  {
+    ticker: 'WDC',
+    status: 'closed',
+    entryPrice: (265 + 259.34 + 283.67 + 267) / 4,
+    quantity: 4,
+    exitPrice: 272,
+    profitDollar: (272 - (265 + 259.34 + 283.67 + 267) / 4) * 4,
+    fees: 5 * FEE_PER_TRANSACTION, // 4 buys + 1 sell
+    openDate: '2026-01-30',
+    closeDate: '2026-02-06',
+  },
+  {
+    ticker: 'W',
+    status: 'closed',
+    entryPrice: (10 * 94.4 + 2 * 89.8) / 12,
+    quantity: 12,
+    exitPrice: 92.3,
+    profitDollar: (92.3 - (10 * 94.4 + 2 * 89.8) / 12) * 12,
+    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
+    openDate: '2026-02-04',
+    closeDate: '2026-02-09',
+  },
+  {
+    ticker: 'WWD',
+    status: 'closed',
+    entryPrice: 388.5,
+    quantity: 2,
+    exitPrice: 392.86,
+    profitDollar: (392.86 - 388.5) * 2,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-02-11',
+    closeDate: '2026-02-18',
+  },
+  {
+    ticker: 'WDAY',
+    status: 'closed',
+    entryPrice: (4 * 126 + 4 * 122.15 + 4 * 116) / 12,
+    quantity: 12,
+    exitPrice: 131.07,
+    profitDollar: (131.07 - (4 * 126 + 4 * 122.15 + 4 * 116) / 12) * 12,
+    fees: 4 * FEE_PER_TRANSACTION, // 3 buys + 1 sell
+    openDate: '2026-02-24',
+    closeDate: '2026-02-27',
+  },
+  {
+    ticker: 'WGR',
+    status: 'closed',
+    entryPrice: (6000 * 0.16 + 930 * 0.155 + 8000 * 0.17) / 14930,
+    quantity: 14930,
+    exitPrice: 0.17,
+    profitDollar: (0.17 * 14930 - (6000 * 0.16 + 930 * 0.155 + 8000 * 0.17)),
+    fees: 4 * FEE_PER_TRANSACTION, // 3 buys + 1 sell
+    openDate: '2025-10-13',
+    closeDate: '2025-10-27',
+    currency: 'AUD',
+  },
+  {
+    ticker: 'WGR',
+    status: 'closed',
+    entryPrice: 0.16,
+    quantity: 12000,
+    exitPrice: 0.215,
+    profitDollar: (0.215 - 0.16) * 12000,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2025-11-07',
+    closeDate: '2026-01-06',
+    currency: 'AUD',
+  },
 ]
 
 const defaultClosedShortPositions = [
+  {
+    ticker: 'DELL',
+    status: 'closed',
+    entryPrice: (4 * 142 + 4 * 145.06) / 8,
+    quantity: 8,
+    exitPrice: 147.28,
+    profitDollar: ((4 * 142 + 4 * 145.06) / 8 - 147.28) * 8,
+    fees: 3 * FEE_PER_TRANSACTION, // 2 sells(open) + 1 buy(close)
+    openDate: '2026-02-27',
+    closeDate: '2026-02-27',
+  },
   {
     ticker: 'COHR',
     status: 'closed',
@@ -1090,6 +1323,7 @@ function PortfolioOverview({ allTrades, closedPositions }) {
 }
 
 function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, newPositionKeys }) {
+  const [showOthers, setShowOthers] = React.useState(false)
   const allPositions = [
     ...longs.map(p => ({ ...p, _type: 'long' })),
     ...shorts.map(p => ({ ...p, _type: 'short' })),
@@ -1112,9 +1346,27 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, n
     return best
   }, { key: null, pct: 0 }).key
 
+  // For closed tab, split into significant (top 15 by abs PnL%) and others
+  const MAX_VISIBLE_CLOSED = 15
+  const isClosed = filter === 'closed'
+  const visiblePositions = isClosed && !showOthers && allPositions.length > MAX_VISIBLE_CLOSED
+    ? (() => {
+        // Sort by absolute PnL% descending to pick the most significant trades
+        const sorted = [...allPositions].sort((a, b) => {
+          const absA = Math.abs(calcPnlPercent(a, a._type === 'short') ?? 0)
+          const absB = Math.abs(calcPnlPercent(b, b._type === 'short') ?? 0)
+          return absB - absA
+        })
+        const topSet = new Set(sorted.slice(0, MAX_VISIBLE_CLOSED))
+        // Return in original sort order (biggest gainer first)
+        return allPositions.filter(p => topSet.has(p))
+      })()
+    : allPositions
+  const hiddenCount = allPositions.length - visiblePositions.length
+
   return (
     <div className="flex flex-col gap-2 px-2 sm:px-4 sm:max-w-3xl sm:mx-auto w-full">
-      {allPositions.map((position, i) => {
+      {visiblePositions.map((position, i) => {
         const tradeKey = `${position._type}-${position.ticker}-${position.openDate || i}`
         const closedPrefix = position.status === 'closed' ? `closed-${position._type}` : position._type
         const newKey = `${closedPrefix}|${position.ticker}|${position.openDate}`
@@ -1131,6 +1383,22 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, n
           />
         )
       })}
+      {isClosed && hiddenCount > 0 && !showOthers && (
+        <button
+          onClick={() => setShowOthers(true)}
+          className="w-full py-3 rounded-xl border border-zinc-700/50 bg-zinc-800/40 hover:bg-zinc-700/40 text-zinc-400 hover:text-zinc-200 text-sm font-medium transition-colors"
+        >
+          OTHERS ({hiddenCount} more)
+        </button>
+      )}
+      {isClosed && showOthers && hiddenCount > 0 && (
+        <button
+          onClick={() => setShowOthers(false)}
+          className="w-full py-2 rounded-xl border border-zinc-700/50 bg-zinc-800/40 hover:bg-zinc-700/40 text-zinc-500 hover:text-zinc-300 text-xs font-medium transition-colors"
+        >
+          Hide others
+        </button>
+      )}
     </div>
   )
 }
