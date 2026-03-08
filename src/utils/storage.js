@@ -13,22 +13,6 @@ export function saveCachedPrices(prices) {
 }
 
 /**
- * Load the full price history map ({ [ticker]: { date, price }[] }).
- * Delegates to PriceHistoryManager for consistency.
- */
-export function loadPriceHistory() {
-  try {
-    return JSON.parse(localStorage.getItem('priceHistory')) || {}
-  } catch { return {} }
-}
-
-// Backward-compatible helper: load history for a single ticker synchronously.
-// Returns [] if not yet available.
-export function loadPriceHistoryForTicker(ticker) {
-  return priceHistoryManager.getAllEntries(ticker)
-}
-
-/**
  * Record a price snapshot for today.
  * Delegates to PriceHistoryManager which handles batching, compression,
  * and IndexedDB fallback.

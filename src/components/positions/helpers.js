@@ -1,4 +1,3 @@
-import { FEE_PER_TRANSACTION, toUSD } from '../../utils/constants'
 import { loadCachedPrices, saveCachedPrices, recordPriceSnapshot } from '../../utils/storage'
 import { IGNORED_TICKERS } from '../../data/defaultPositions'
 
@@ -165,5 +164,3 @@ export function mergePositions(defaults, livePositions) {
   return merged
 }
 
-// Keep FEE_PER_TRANSACTION and toUSD available for sub-components
-export { FEE_PER_TRANSACTION, toUSD }

@@ -5,26 +5,6 @@ let _longPositions = []
 let _shortPositions = []
 let _closedPositions = []
 
-// ── Calculate % gain/loss for a position ────────────────────────────────
-export function calcPnlPercent(position, isShort = false) {
-  if (position.profitPercent != null && position.profitPercent !== 0) {
-    return position.profitPercent
-  }
-  if (position.status === 'closed' && position.exitPrice && position.entryPrice) {
-    const raw = ((position.exitPrice - position.entryPrice) / position.entryPrice) * 100
-    return isShort ? -raw : raw
-  }
-  const totalCost = (position.entryPrice || 0) * (position.quantity || 0)
-  if (totalCost > 0) {
-    // Use unrealizedPnL, realizedPnL, or profitDollar
-    const pnl = position.unrealizedPnL || position.realizedPnL || position.profitDollar
-    if (pnl != null) return (pnl / totalCost) * 100
-    // Derive from marketValue if available
-    if (position.marketValue) return ((position.marketValue - totalCost) / totalCost) * 100
-  }
-  return null
-}
-
 export function setPositionData({ longPositions, shortPositions, closedLongPositions, closedShortPositions }) {
   _longPositions = longPositions
   _shortPositions = shortPositions

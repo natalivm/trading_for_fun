@@ -18,7 +18,8 @@ function CumulativePnLChart({ closedPositions, width = 500, height = 120 }) {
   const points = sorted.reduce((acc, p) => {
     const prev = acc.length > 0 ? acc[acc.length - 1].value : 0
     const value = prev + toUSD((p.profitDollar || 0) - (p.fees || 0), p.currency)
-    return [...acc, { date: p.closeDate, value, ticker: p.ticker }]
+    acc.push({ date: p.closeDate, value, ticker: p.ticker })
+    return acc
   }, [])
 
   const values = points.map(p => p.value)
