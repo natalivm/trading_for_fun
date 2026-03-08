@@ -14,6 +14,9 @@ function daysBetween(a, b) {
   return Math.floor((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000)
 }
 
+// ── Fee rule: deduct $0.35 per transaction (each buy fill or sell fill counts as one transaction)
+const FEE_PER_TRANSACTION = 0.35
+
 // ── Hardcoded fallback data ─────────────────────────────────────────────
 
 const CCY_SYMBOLS = { USD: '$', EUR: '€', CAD: 'C$', GBP: '£', CHF: 'CHF ' }
@@ -200,6 +203,7 @@ const defaultClosedLongPositions = [
     quantity: 6,
     exitPrice: 105.70,
     profitDollar: (105.70 - (2 * 113.54 + 4 * 99.53) / 6) * 6,
+    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
     openDate: '2026-03-02',
     closeDate: '2026-03-04',
   },
@@ -210,6 +214,7 @@ const defaultClosedLongPositions = [
     quantity: 6,
     exitPrice: 130.35,
     profitDollar: (130.35 - (2 * 132.66 + 1 * 121.55 + 3 * 130.90) / 6) * 6,
+    fees: 4 * FEE_PER_TRANSACTION, // 3 buys + 1 sell
     openDate: '2026-02-10',
     closeDate: '2026-02-18',
   },
@@ -220,6 +225,7 @@ const defaultClosedLongPositions = [
     quantity: 1,
     exitPrice: 182.63,
     profitDollar: (182.63 - 173.39) * 1,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
     openDate: '2026-03-02',
     closeDate: '2026-03-04',
   },
@@ -230,6 +236,7 @@ const defaultClosedLongPositions = [
     quantity: 10,
     exitPrice: 47.51,
     profitDollar: (47.51 - 50.10) * 10,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
     openDate: '2026-01-23',
     closeDate: '2026-01-26',
   },
