@@ -680,6 +680,50 @@ export const defaultClosedLongPositions = [
     openDate: '2025-12-20',
     closeDate: '2026-01-09',
   },
+  {
+    ticker: 'FICO',
+    status: 'closed',
+    entryPrice: 1200,
+    quantity: 1,
+    exitPrice: 1198.96,
+    profitDollar: (1198.96 - 1200) * 1,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-02-24',
+    closeDate: '2026-02-24',
+  },
+  {
+    ticker: 'FIGR',
+    status: 'closed',
+    entryPrice: (10 * 63.5 + 10 * 63.53 + 10 * 63.25 + 15 * 64.8) / 45,
+    quantity: 45,
+    exitPrice: 63.6,
+    profitDollar: (63.6 - (10 * 63.5 + 10 * 63.53 + 10 * 63.25 + 15 * 64.8) / 45) * 45,
+    fees: 1.85, // 4 buys ($0.34+$0.34+$0.34+$0.33) + 1 sell ($0.50 stop)
+    openDate: '2026-01-27',
+    closeDate: '2026-01-29',
+  },
+  {
+    ticker: 'FSLR',
+    status: 'closed',
+    entryPrice: 257.93,
+    quantity: 4,
+    exitPrice: 252.81,
+    profitDollar: (252.81 - 257.93) * 4,
+    fees: 0.71, // 1 buy ($0.36) + 1 sell ($0.35 stop)
+    openDate: '2026-01-07',
+    closeDate: '2026-01-07',
+  },
+  {
+    ticker: 'FSLR',
+    status: 'closed',
+    entryPrice: 245.56,
+    quantity: 1,
+    exitPrice: 247,
+    profitDollar: (247 - 245.56) * 1,
+    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
+    openDate: '2026-01-26',
+    closeDate: '2026-01-28',
+  },
 ]
 
 export const defaultClosedShortPositions = [
