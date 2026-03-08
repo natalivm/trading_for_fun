@@ -35,3 +35,27 @@ html, body, #root {
     transform: scale(1.6);
   }
 }
+
+/* Fire icon flicker animation */
+.fire-icon {
+  animation: fire-flicker 1.5s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.6));
+}
+
+@keyframes fire-flicker {
+  0%, 100% { transform: scale(1) rotate(-2deg); }
+  25% { transform: scale(1.08) rotate(1deg); }
+  50% { transform: scale(0.96) rotate(-1deg); }
+  75% { transform: scale(1.05) rotate(2deg); }
+}
+
+/* Top gainer card glow */
+.top-gainer-card {
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.15), inset 0 0 12px rgba(251, 191, 36, 0.03);
+  animation: gainer-glow 3s ease-in-out infinite alternate;
+}
+
+@keyframes gainer-glow {
+  0% { box-shadow: 0 0 8px rgba(251, 191, 36, 0.1), inset 0 0 8px rgba(251, 191, 36, 0.02); }
+  100% { box-shadow: 0 0 16px rgba(251, 191, 36, 0.2), inset 0 0 16px rgba(251, 191, 36, 0.05); }
+}

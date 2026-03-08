@@ -460,7 +460,24 @@ function ExpandedDetail({ ticker, history }) {
 
 // ── Position card ────────────────────────────────────────────────────────
 
-function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
+function FireIcon() {
+  return (
+    <span className="relative flex h-4 w-4 shrink-0 fire-icon">
+      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+        <path d="M12 2c0 4-4 6-4 10a4 4 0 0 0 8 0c0-4-4-6-4-10z" fill="url(#fire-grad)" />
+        <path d="M12 9c0 2-1.5 3-1.5 5a1.5 1.5 0 0 0 3 0c0-2-1.5-3-1.5-5z" fill="#FDE68A" />
+        <defs>
+          <linearGradient id="fire-grad" x1="12" y1="2" x2="12" y2="22" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#FBBF24" />
+            <stop offset="1" stopColor="#EF4444" />
+          </linearGradient>
+        </defs>
+      </svg>
+    </span>
+  )
+}
+
+function PositionRow({ position, type, expanded, onToggle, hidden, isNew, isTopGainer }) {
   const isLong = type === 'long'
   const isShort = type === 'short'
   const isClosed = position.status === 'closed'
@@ -515,44 +532,72 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
       <div>
         {/* 3-section card */}
         <div
-          className={`group cursor-pointer rounded-2xl border transition-all duration-300 ease-in-out ${borderColor} ${expanded ? 'ring-1 ring-slate-700/50' : ''}`}
+          className={`group cursor-pointer rounded-2xl border transition-all duration-300 ease-in-out ${borderColor} ${expanded ? 'ring-1 ring-slate-700/50' : ''} ${isTopGainer ? 'top-gainer-card ring-1 ring-amber-500/30 border-amber-500/40 hover:border-amber-500/60' : ''}`}
           onClick={onToggle}
         >
           <div className="grid grid-cols-2 sm:grid-cols-[1fr_1fr_auto] gap-[1px] bg-slate-700/30 rounded-2xl overflow-hidden">
-            {/* Section 1: Status + Ticker + Quantity */}
-            <div className={`${sectionBase} flex items-center gap-2`}>
-              {isClosed ? (
-                <svg className={`h-3 w-3 shrink-0 ${isShort ? 'text-pink-400' : 'text-blue-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              ) : (
-                <GlowDot color={isLong ? 'blue' : 'pink'} />
-              )}
-              <span className="text-base sm:text-lg font-extrabold tracking-tight text-slate-100 whitespace-nowrap">
-                {position.ticker}
-              </span>
-              <span className={`text-xs font-normal ${isShort ? 'text-pink-400/70' : 'text-blue-400/70'}`}>
-                x{position.quantity}
-              </span>
-            </div>
-
-            {/* Section 2: Entry Price → Current/Exit Price */}
-            <div className={`${sectionBase} flex items-center gap-1.5 whitespace-nowrap`}>
-              <span className={`text-sm font-bold ${isShort ? 'text-pink-400' : 'text-blue-400'}`}>
-                {sym}{position.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-              {displayPrice != null && (
-                <>
-                  <span className="text-xs text-slate-500">→</span>
-                  <span className={`text-sm font-bold ${(pct ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {sym}{displayPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {/* Section 1: Status + Ticker + Quantity + Date (mobile) */}
+            <div className={`${sectionBase} flex flex-col gap-1`}>
+              <div className="flex items-center gap-2">
+                {isClosed ? (
+                  <svg className={`h-3 w-3 shrink-0 ${isShort ? 'text-pink-400' : 'text-blue-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : isTopGainer ? (
+                  <FireIcon />
+                ) : (
+                  <GlowDot color={isLong ? 'blue' : 'pink'} />
+                )}
+                <span className="text-base sm:text-lg font-extrabold tracking-tight text-slate-100 whitespace-nowrap">
+                  {position.ticker}
+                </span>
+                <span className={`text-xs font-normal ${isShort ? 'text-pink-400/70' : 'text-blue-400/70'}`}>
+                  x{position.quantity}
+                </span>
+              </div>
+              {/* Date badge - visible on mobile only */}
+              <div className="sm:hidden">
+                {!isClosed && days !== null && days <= 1 ? (
+                  <span className="rounded-md bg-pink-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-pink-400">
+                    NEW
                   </span>
-                </>
-              )}
+                ) : (
+                  <span className="rounded-md bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-400">
+                    {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
+                  </span>
+                )}
+              </div>
             </div>
 
-            {/* Section 3: PnL + Date */}
-            <div className={`${sectionBase} col-span-2 sm:col-span-1 flex items-center justify-end gap-2 whitespace-nowrap`}>
+            {/* Section 2: Entry Price → Current/Exit Price + PnL (mobile) */}
+            <div className={`${sectionBase} flex flex-col gap-1 whitespace-nowrap`}>
+              <div className="flex items-center gap-1.5">
+                <span className={`text-sm font-bold ${isShort ? 'text-pink-400' : 'text-blue-400'}`}>
+                  {sym}{position.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+                {displayPrice != null && (
+                  <>
+                    <span className="text-xs text-slate-500">→</span>
+                    <span className={`text-sm font-bold ${(pct ?? 0) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {sym}{displayPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </>
+                )}
+              </div>
+              {/* PnL badge - visible on mobile only */}
+              {(pct || pnlDollar) ? (
+                <div className="sm:hidden">
+                  <span className={`rounded-md px-1.5 py-0.5 text-sm font-bold ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+                    {pct !== null && <>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</>}
+                    {pct !== null && pnlDollar !== null && ' '}
+                    {pnlDollar !== null && <>{pnlDollar >= 0 ? '+' : '-'}{sym}{Math.abs(pnlDollar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
+                  </span>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Section 3: PnL + Date - desktop only */}
+            <div className={`${sectionBase} hidden sm:flex items-center justify-end gap-2 whitespace-nowrap`}>
               {!isClosed && days !== null && days <= 1 ? (
                 <span className="rounded-md bg-pink-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-pink-400">
                   NEW
@@ -863,6 +908,14 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, n
     return pctB - pctA // biggest gainer first, biggest loser last
   })
 
+  // Find the open position with the highest profit
+  const topGainerTicker = allPositions.reduce((best, p) => {
+    if (p.status === 'closed') return best
+    const pct = calcPnlPercent(p, p._type === 'short') ?? 0
+    if (pct > 0 && pct > (best.pct ?? 0)) return { key: `${p._type}-${p.ticker}-${p.openDate}`, pct }
+    return best
+  }, { key: null, pct: 0 }).key
+
   return (
     <div className="flex flex-col gap-2 px-2 sm:px-4 sm:max-w-3xl sm:mx-auto w-full">
       {allPositions.map((position, i) => {
@@ -878,6 +931,7 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, n
             hidden={false}
             onToggle={() => onToggleTicker(tradeKey)}
             isNew={newPositionKeys?.has(newKey)}
+            isTopGainer={tradeKey === topGainerTicker}
           />
         )
       })}
