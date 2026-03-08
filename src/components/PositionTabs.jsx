@@ -457,88 +457,115 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
   }, [expanded, position.ticker])
 
   return (
-    <div
-      className={`group cursor-pointer rounded-2xl border bg-slate-900/60 transition-all duration-300 ease-in-out ${borderColor} ${
-        hidden ? 'scale-95 opacity-0 max-h-0 overflow-hidden !p-0 !m-0' : 'scale-100 opacity-100'
-      } ${expanded ? 'bg-slate-800/60 ring-1 ring-slate-700/50' : ''}`}
-    >
+    <div className={`flex items-center gap-3 ${hidden ? 'scale-95 opacity-0 max-h-0 overflow-hidden !p-0 !m-0' : 'scale-100 opacity-100'} transition-all duration-300 ease-in-out`}>
+      {/* Card – 70% width on desktop */}
       <div
-        className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 px-4 py-3 sm:px-5 sm:py-4"
-        onClick={onToggle}
+        className={`group cursor-pointer rounded-2xl border bg-slate-900/60 transition-all duration-300 ease-in-out w-full sm:w-[70%] shrink-0 ${borderColor} ${expanded ? 'bg-slate-800/60 ring-1 ring-slate-700/50' : ''}`}
       >
-        {/* Status indicator */}
-        {isClosed ? (
-          <svg className={`h-3 w-3 shrink-0 ${isShort ? 'text-pink-400' : 'text-blue-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-        ) : (
-          <GlowDot color={isLong ? 'blue' : 'pink'} />
-        )}
+        <div
+          className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-2 px-3 py-2 sm:px-4 sm:py-2.5"
+          onClick={onToggle}
+        >
+          {/* Status indicator */}
+          {isClosed ? (
+            <svg className={`h-3 w-3 shrink-0 ${isShort ? 'text-pink-400' : 'text-blue-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            <GlowDot color={isLong ? 'blue' : 'pink'} />
+          )}
 
-        {/* Trade label */}
-        <span className={`text-xs font-bold uppercase tracking-wide shrink-0 w-10 ${
-          isShort ? 'text-pink-400' : 'text-blue-400'
-        }`}>
-          {isClosed ? (isShort ? 'Short' : 'Long') : isLong ? 'Long' : 'Short'}
-        </span>
-
-        {/* Ticker + Shares */}
-        <span className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-100 shrink-0 w-28 sm:w-32">
-          {position.ticker}
-          <span className={`text-xs sm:text-sm font-normal ml-1.5 ${
-            isShort ? 'text-pink-400/70' : 'text-blue-400/70'
+          {/* Trade label */}
+          <span className={`text-xs font-bold uppercase tracking-wide shrink-0 w-10 ${
+            isShort ? 'text-pink-400' : 'text-blue-400'
           }`}>
-            x{position.quantity}
+            {isClosed ? (isShort ? 'Short' : 'Long') : isLong ? 'Long' : 'Short'}
           </span>
-        </span>
 
-        {/* NEW badge */}
+          {/* Ticker + Shares */}
+          <span className="text-base sm:text-lg font-extrabold tracking-tight text-slate-100 shrink-0 w-24 sm:w-28">
+            {position.ticker}
+            <span className={`text-xs font-normal ml-1 ${
+              isShort ? 'text-pink-400/70' : 'text-blue-400/70'
+            }`}>
+              x{position.quantity}
+            </span>
+          </span>
+
+          {/* NEW badge – only shown inline on mobile, external on desktop */}
+          {isNew && (
+            <span className="rounded-md bg-pink-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-pink-400 shrink-0 sm:hidden">
+              NEW
+            </span>
+          )}
+
+          {/* Avg Price + Current/Exit Price */}
+          <span className={`text-sm font-bold shrink-0 w-18 sm:w-20 text-right ${
+            isShort ? 'text-pink-400/40' : 'text-blue-400/40'
+          }`}>
+            {sym}{position.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+          {isClosed && position.exitPrice != null ? (
+            <>
+              <span className={`text-xs shrink-0 ${isShort ? 'text-pink-400/40' : 'text-blue-400/40'}`}>→</span>
+              <span className={`text-sm font-bold shrink-0 ${isShort ? 'text-pink-400' : 'text-blue-400'}`}>
+                {sym}{position.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </>
+          ) : currentPrice != null ? (
+            <>
+              <span className={`text-xs shrink-0 ${isShort ? 'text-pink-400/30' : 'text-blue-400/30'}`}>→</span>
+              <span className={`text-sm font-bold shrink-0 ${isShort ? 'text-pink-300' : 'text-blue-300'}`}>
+                {sym}{currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </>
+          ) : null}
+
+          {/* PnL */}
+          <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto shrink-0">
+            {(pct || pnlDollar) ? (
+              <span className={`rounded-md px-1.5 py-0.5 text-sm font-bold text-left ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+                {pct !== null && <>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</>}
+                {pct !== null && pnlDollar !== null && ' '}
+                {pnlDollar !== null && <>{pnlDollar >= 0 ? '+' : '-'}{sym}{Math.abs(pnlDollar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
+              </span>
+            ) : null}
+            {/* Days holding – inline on mobile only */}
+            <div className="flex-1 min-w-0 sm:hidden" />
+            <span className="text-[11px] text-slate-500 shrink-0 text-right sm:hidden">
+              {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
+            </span>
+          </div>
+        </div>
+
+        {/* Expanded detail */}
+        {expanded && (
+          <ExpandedDetail ticker={position.ticker} history={history} />
+        )}
+      </div>
+
+      {/* External tags – right side, desktop only */}
+      <div className="hidden sm:flex flex-col items-start gap-1.5 min-w-[5rem]">
         {isNew && (
-          <span className="rounded-md bg-pink-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-pink-400 shrink-0">
+          <span className="rounded-md bg-pink-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-pink-400">
             NEW
           </span>
         )}
-
-        {/* Avg Price + Current/Exit Price */}
-        <span className={`text-sm sm:text-base font-bold shrink-0 w-20 sm:w-24 text-right ${
-          isShort ? 'text-pink-400/70' : 'text-blue-400/70'
-        }`}>
-          {sym}{position.entryPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </span>
-        {isClosed && position.exitPrice != null ? (
-          <>
-            <span className={`text-xs shrink-0 ${isShort ? 'text-pink-400/40' : 'text-blue-400/40'}`}>→</span>
-            <span className={`text-sm sm:text-base font-bold shrink-0 ${isShort ? 'text-pink-400' : 'text-blue-400'}`}>
-              {sym}{position.exitPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
-          </>
-        ) : currentPrice != null ? (
-          <span className={`text-sm sm:text-base font-bold shrink-0 ${isShort ? 'text-pink-400' : 'text-blue-400'}`}>
-            {sym}{currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </span>
-        ) : null}
-
-        {/* PnL + Days row */}
-        <div className="flex items-center gap-2 w-full sm:w-auto sm:min-w-[10rem] shrink-0">
-          {(pct || pnlDollar) ? (
-            <span className={`rounded-md px-2 py-0.5 text-sm sm:text-base font-bold text-left ${(pct ?? 0) >= 0 ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
-              {pct !== null && <>{pct >= 0 ? '+' : ''}{pct.toFixed(1)}%</>}
-              {pct !== null && pnlDollar !== null && ' '}
-              {pnlDollar !== null && <>{pnlDollar >= 0 ? '+' : '-'}{sym}{Math.abs(pnlDollar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
-            </span>
-          ) : null}
-          <div className="flex-1 min-w-0" />
-          {/* Days holding */}
-          <span className="text-[11px] text-slate-500 shrink-0 text-right">
+        {(pct ?? 0) >= 0 ? (
+          <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
             {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
           </span>
-        </div>
+        ) : (
+          <span className="rounded-md bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-400">
+            {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
+          </span>
+        )}
+        {isClosed && (
+          <span className="rounded-md bg-slate-500/10 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
+            CLOSED
+          </span>
+        )}
       </div>
-
-      {/* Expanded detail */}
-      {expanded && (
-        <ExpandedDetail ticker={position.ticker} history={history} />
-      )}
     </div>
   )
 }
