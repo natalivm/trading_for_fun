@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { API_BASE } from '../utils/apiClient'
+import { FEE_PER_TRANSACTION, ccySym, toUSD } from '../utils/constants'
+import { loadCachedPrices, saveCachedPrices, recordPriceSnapshot } from '../utils/storage'
+import { setPositionData } from '../utils/positionCalcs'
 
 const TODAY = new Date().toISOString().slice(0, 10)
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 
 function formatDate(dateStr) {
   if (!dateStr) return ''
@@ -14,65 +17,11 @@ function daysBetween(a, b) {
   return Math.floor((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000)
 }
 
-// ── Fee rule: deduct $0.35 per transaction (each buy fill or sell fill counts as one transaction)
-const FEE_PER_TRANSACTION = 0.35
-
 // ── Hardcoded fallback data ─────────────────────────────────────────────
 
-const CCY_SYMBOLS = { USD: '$', EUR: '€', CAD: 'C$', GBP: '£', CHF: 'CHF ' }
-function ccySym(currency) {
-  return CCY_SYMBOLS[currency] || (currency ? currency + ' ' : '$')
-}
-
-const FX_TO_USD = { USD: 1, EUR: 1.08, CAD: 0.73, GBP: 1.27, CHF: 1.13 }
-function toUSD(amount, currency) {
-  return amount * (FX_TO_USD[currency] || 1)
-}
-
+// ── Tickers to ignore during sync ────────────────────────────────────────
 // Tickers to ignore during sync (leftovers, corporate actions, etc.)
 const IGNORED_TICKERS = new Set(['EUGM'])
-
-// ── Price persistence ─────────────────────────────────────────────────
-// Save last known market prices to localStorage so we can show current price
-// even when IBKR returns null/zero. Also keep a rolling price history.
-
-const PRICE_CACHE_KEY = 'cachedPrices'
-const PRICE_HISTORY_KEY = 'priceHistory'
-const MAX_HISTORY_PER_TICKER = 90 // keep ~90 entries per ticker
-
-function loadCachedPrices() {
-  try {
-    return JSON.parse(localStorage.getItem(PRICE_CACHE_KEY)) || {}
-  } catch { return {} }
-}
-
-function saveCachedPrices(prices) {
-  localStorage.setItem(PRICE_CACHE_KEY, JSON.stringify(prices))
-}
-
-function loadPriceHistory() {
-  try {
-    return JSON.parse(localStorage.getItem(PRICE_HISTORY_KEY)) || {}
-  } catch { return {} }
-}
-
-function recordPriceSnapshot(ticker, price) {
-  const history = loadPriceHistory()
-  if (!history[ticker]) history[ticker] = []
-  const today = TODAY
-  const last = history[ticker][history[ticker].length - 1]
-  // Only add one entry per day
-  if (last && last.date === today) {
-    last.price = price
-  } else {
-    history[ticker].push({ date: today, price })
-  }
-  // Trim old entries
-  if (history[ticker].length > MAX_HISTORY_PER_TICKER) {
-    history[ticker] = history[ticker].slice(-MAX_HISTORY_PER_TICKER)
-  }
-  localStorage.setItem(PRICE_HISTORY_KEY, JSON.stringify(history))
-}
 
 const defaultLongPositions = [
   { ticker: 'FTNT', status: 'open', entryPrice: 84.46, quantity: 10, openDate: '2026-01-12', unrealizedPnL: (83.50 - 84.46) * 10, profitPercent: ((83.50 - 84.46) / 84.46) * 100 },
@@ -814,45 +763,9 @@ const defaultClosedShortPositions = [
 ]
 
 // ── Calculation helpers (used by Header) ────────────────────────────────
-
-let _longPositions = defaultLongPositions
-let _shortPositions = defaultShortPositions
-let _closedPositions = [...defaultClosedLongPositions, ...defaultClosedShortPositions]
-
-export function setPositionData({ longPositions, shortPositions, closedLongPositions, closedShortPositions }) {
-  _longPositions = longPositions
-  _shortPositions = shortPositions || defaultShortPositions
-  _closedPositions = [...closedLongPositions, ...closedShortPositions]
-}
-
-export function calcMyCapital() {
-  // Sum of open long positions only (your own money)
-  const closedKeys = new Set(_closedPositions.map(c => `${c.ticker}|${c.openDate}`))
-  return _longPositions
-    .filter(p => !closedKeys.has(`${p.ticker}|${p.openDate}`))
-    .reduce((sum, p) => sum + toUSD(p.entryPrice * p.quantity, p.currency), 0)
-}
-
-export function calcCurrentlyInvested() {
-  // Sum of all open positions — longs + shorts (total capital deployed)
-  const closedKeys = new Set(_closedPositions.map(c => `${c.ticker}|${c.openDate}`))
-  const allOpen = [..._longPositions, ..._shortPositions]
-  return allOpen
-    .filter(p => !closedKeys.has(`${p.ticker}|${p.openDate}`))
-    .reduce((sum, p) => sum + toUSD(p.entryPrice * p.quantity, p.currency), 0)
-}
-
-export function calcProfit() {
-  return _closedPositions.reduce((sum, p) => {
-    const pnl = (p.profitDollar || 0) - (p.fees || 0)
-    return sum + toUSD(pnl, p.currency)
-  }, 0)
-}
-
-export function calcDailyPnL() {
-  const allOpen = [..._longPositions, ..._shortPositions].filter(p => p.status === 'open')
-  return allOpen.reduce((sum, p) => sum + (p.dailyPnL || 0), 0)
-}
+// setPositionData, calcMyCapital, calcCurrentlyInvested, calcProfit, calcDailyPnL
+// live in ../utils/positionCalcs. setPositionData is imported here to keep
+// module-level state in sync; the calc functions are consumed by Header.jsx.
 
 // ── Helper: calculate % gain/loss ───────────────────────────────────────
 
@@ -983,7 +896,7 @@ function Sparkline({ data, width = 200, height = 32 }) {
 
 // ── Expanded detail panel ────────────────────────────────────────────────
 
-function ExpandedDetail({ ticker, history }) {
+function ExpandedDetail({ history }) {
   if (!history) {
     return (
       <div className="px-4 pb-3 sm:px-5 sm:pb-4">
@@ -1040,7 +953,7 @@ function FireIcon() {
   )
 }
 
-function PositionRow({ position, type, expanded, onToggle, hidden, isNew, isTopGainer }) {
+function PositionRow({ position, type, expanded, onToggle, hidden, isTopGainer }) {
   const isLong = type === 'long'
   const isShort = type === 'short'
   const isClosed = position.status === 'closed'
@@ -1319,11 +1232,11 @@ function CumulativePnLChart({ closedPositions, width = 500, height = 120 }) {
   const sorted = [...closedPositions]
     .filter(p => p.closeDate)
     .sort((a, b) => (a.closeDate || '').localeCompare(b.closeDate || ''))
-  let cumulative = 0
-  const points = sorted.map(p => {
-    cumulative += toUSD((p.profitDollar || 0) - (p.fees || 0), p.currency)
-    return { date: p.closeDate, value: cumulative, ticker: p.ticker }
-  })
+  const points = sorted.reduce((acc, p) => {
+    const prev = acc.length > 0 ? acc[acc.length - 1].value : 0
+    const value = prev + toUSD((p.profitDollar || 0) - (p.fees || 0), p.currency)
+    return [...acc, { date: p.closeDate, value, ticker: p.ticker }]
+  }, [])
 
   const values = points.map(p => p.value)
   const min = Math.min(0, ...values)
@@ -1457,7 +1370,7 @@ function PortfolioOverview({ allTrades, closedPositions }) {
 }
 
 function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, newPositionKeys }) {
-  const [showOthers, setShowOthers] = React.useState(false)
+  const [showOthers, setShowOthers] = useState(false)
   const allPositions = [
     ...longs.map(p => ({ ...p, _type: 'long' })),
     ...shorts.map(p => ({ ...p, _type: 'short' })),

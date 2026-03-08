@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+import { fetchJson } from '../utils/apiClient'
 
 // Static JSON path — works on both dev (Vite serves public/) and GitHub Pages
 const STATIC_DATA_URL = `${import.meta.env.BASE_URL}data/portfolio.json`
@@ -12,15 +11,6 @@ export function useIBKR() {
   const [error, setError] = useState(null)
   const [connected, setConnected] = useState(false)
 
-  const fetchJson = useCallback(async (path) => {
-    const res = await fetch(`${API_BASE}${path}`)
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({ error: res.statusText }))
-      throw new Error(body.error || body.hint || `API error ${res.status}`)
-    }
-    return res.json()
-  }, [])
-
   const checkAuth = useCallback(async () => {
     try {
       const status = await fetchJson('/api/status')
@@ -31,7 +21,7 @@ export function useIBKR() {
       setConnected(false)
       return false
     }
-  }, [fetchJson])
+  }, [])
 
   const fetchPortfolio = useCallback(async () => {
     setLoading(true)
@@ -46,7 +36,7 @@ export function useIBKR() {
     } finally {
       setLoading(false)
     }
-  }, [fetchJson])
+  }, [])
 
   // Fallback: load from static JSON file (for GitHub Pages / offline)
   const loadStaticData = useCallback(async () => {
@@ -67,7 +57,7 @@ export function useIBKR() {
       await fetchJson('/api/tickle')
     } catch { /* ignore */ }
     await fetchPortfolio()
-  }, [fetchJson, fetchPortfolio])
+  }, [fetchPortfolio])
 
   // Initial load
   useEffect(() => {
@@ -75,15 +65,13 @@ export function useIBKR() {
 
     async function init() {
       const authed = await checkAuth()
-      if (!cancelled && authed) {
-        await fetchPortfolio()
-      } else if (!cancelled) {
-        // Server offline or not authenticated — try static JSON
-        const loaded = await loadStaticData()
-        if (!loaded) {
-          setLoading(false)
+      if (!cancelled) {
+        if (authed) {
+          await fetchPortfolio()
         } else {
-          setLoading(false)
+          // Server offline or not authenticated — try static JSON
+          const loaded = await loadStaticData()
+          if (!loaded) setLoading(false)
         }
       }
     }
@@ -99,7 +87,7 @@ export function useIBKR() {
       try { await fetchJson('/api/tickle') } catch { /* ignore */ }
     }, 55_000)
     return () => clearInterval(interval)
-  }, [connected, fetchJson])
+  }, [connected])
 
   return {
     portfolio,
