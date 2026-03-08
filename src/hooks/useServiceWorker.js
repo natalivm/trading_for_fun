@@ -22,13 +22,14 @@ export function useServiceWorker() {
     navigator.serviceWorker.addEventListener('message', handleMessage);
 
     // Register the service worker
+    let intervalId = null;
     navigator.serviceWorker
       .register(BASE_PATH + 'sw.js', { scope: BASE_PATH })
       .then((reg) => {
         setRegistration(reg);
 
         // Check for updates periodically (every 30 minutes)
-        setInterval(() => reg.update(), 30 * 60 * 1000);
+        intervalId = setInterval(() => reg.update(), 30 * 60 * 1000);
       })
       .catch(() => {
         // Service worker registration failed - non-critical
@@ -36,6 +37,7 @@ export function useServiceWorker() {
 
     return () => {
       navigator.serviceWorker.removeEventListener('message', handleMessage);
+      if (intervalId !== null) clearInterval(intervalId);
     };
   }, []);
 

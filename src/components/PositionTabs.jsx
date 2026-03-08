@@ -1,8 +1,15 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react'
 import { API_BASE } from '../utils/apiClient'
-import { FEE_PER_TRANSACTION, ccySym, toUSD } from '../utils/constants'
-import { loadCachedPrices, saveCachedPrices, recordPriceSnapshot } from '../utils/storage'
-import { setPositionData } from '../utils/positionCalcs'
+import { ccySym, toUSD } from '../utils/constants'
+import { setPositionData, calcPnlPercent } from '../utils/positionCalcs'
+import { filterClosed2026, groupIntoTrades } from '../utils/positionFilters'
+import { IGNORED_TICKERS, mergePositions } from '../utils/positionMerge'
+import {
+  defaultLongPositions,
+  defaultShortPositions,
+  defaultClosedLongPositions,
+  defaultClosedShortPositions,
+} from '../data/defaultPositions'
 
 const TODAY = new Date().toISOString().slice(0, 10)
 
@@ -17,837 +24,9 @@ function daysBetween(a, b) {
   return Math.floor((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000)
 }
 
-// ── Hardcoded fallback data ─────────────────────────────────────────────
-
-// ── Tickers to ignore during sync ────────────────────────────────────────
-// Tickers to ignore during sync (leftovers, corporate actions, etc.)
-const IGNORED_TICKERS = new Set(['EUGM'])
-
-const defaultLongPositions = [
-  { ticker: 'FTNT', status: 'open', entryPrice: 84.46, quantity: 10, openDate: '2026-01-12', unrealizedPnL: (83.50 - 84.46) * 10, profitPercent: ((83.50 - 84.46) / 84.46) * 100 },
-  { ticker: 'ANET', status: 'open', entryPrice: 148.83, quantity: 20, openDate: '2026-01-29', profitPercent: -10.5, unrealizedPnL: -318.67 },
-  { ticker: 'SOFI', status: 'open', entryPrice: 23.17, quantity: 100, openDate: '2026-01-30', profitPercent: -19.9, unrealizedPnL: -461.31 },
-  { ticker: 'RDDT', status: 'open', entryPrice: 181.30, quantity: 3, openDate: '2026-02-03', unrealizedPnL: (138.40 - 181.30) * 3, profitPercent: ((138.40 - 181.30) / 181.30) * 100 },
-  { ticker: 'ENVA', status: 'open', entryPrice: 156, quantity: 5, openDate: '2026-02-10', unrealizedPnL: (137.58 - 156) * 5, profitPercent: ((137.58 - 156) / 156) * 100 },
-  { ticker: 'CEG', status: 'open', entryPrice: 280.17, quantity: 2, openDate: '2026-02-12', unrealizedPnL: (318.67 - 280.17) * 2, profitPercent: ((318.67 - 280.17) / 280.17) * 100 },
-  { ticker: 'CEG', status: 'open', entryPrice: 310.77, quantity: 2, openDate: '2026-02-12', unrealizedPnL: (318.67 - 310.77) * 2, profitPercent: ((318.67 - 310.77) / 310.77) * 100 },
-  { ticker: 'THM', status: 'open', entryPrice: 2.29, quantity: 100, openDate: '2026-02-17', unrealizedPnL: (3.06 - 2.29) * 100, profitPercent: ((3.06 - 2.29) / 2.29) * 100 },
-  { ticker: 'RIG', status: 'open', entryPrice: 6.15, quantity: 100, openDate: '2026-02-17', unrealizedPnL: (5.94 - 6.15) * 100, profitPercent: ((5.94 - 6.15) / 6.15) * 100 },
-  { ticker: 'ZBIO', status: 'open', entryPrice: 27.41, quantity: 15, openDate: '2026-02-17', unrealizedPnL: (25.28 - 27.41) * 15, profitPercent: ((25.28 - 27.41) / 27.41) * 100 },
-  { ticker: 'ALAB', status: 'open', entryPrice: 148.73, quantity: 8, openDate: '2026-02-17', unrealizedPnL: (118.51 - 148.73) * 8, profitPercent: ((118.51 - 148.73) / 148.73) * 100 },
-  { ticker: 'RIG', status: 'open', entryPrice: 6.14, quantity: 100, openDate: '2026-02-20', unrealizedPnL: (5.94 - 6.14) * 100, profitPercent: ((5.94 - 6.14) / 6.14) * 100 },
-  { ticker: 'ZBIO', status: 'open', entryPrice: 27.52, quantity: 15, openDate: '2026-02-20', unrealizedPnL: (25.28 - 27.52) * 15, profitPercent: ((25.28 - 27.52) / 27.52) * 100 },
-  { ticker: 'ENVA', status: 'open', entryPrice: 138, quantity: 5, openDate: '2026-02-23', unrealizedPnL: (137.58 - 138) * 5, profitPercent: ((137.58 - 138) / 138) * 100 },
-  { ticker: 'DASH', status: 'open', entryPrice: 164.14, quantity: 2, openDate: '2026-02-24', unrealizedPnL: (179.75 - 164.14) * 2, profitPercent: ((179.75 - 164.14) / 164.14) * 100 },
-  { ticker: 'NU', status: 'open', entryPrice: 16.53, quantity: 20, openDate: '2026-02-24', unrealizedPnL: (14.45 - 16.53) * 20, profitPercent: ((14.45 - 16.53) / 16.53) * 100 },
-  { ticker: 'TLN', status: 'open', entryPrice: 373.26, quantity: 2, openDate: '2026-02-24', unrealizedPnL: (324.61 - 373.26) * 2, profitPercent: ((324.61 - 373.26) / 373.26) * 100 },
-  { ticker: 'DASH', status: 'open', entryPrice: 174.35, quantity: 2, openDate: '2026-02-25', unrealizedPnL: (179.75 - 174.35) * 2, profitPercent: ((179.75 - 174.35) / 174.35) * 100 },
-  { ticker: 'THM', status: 'open', entryPrice: 2.93, quantity: 100, openDate: '2026-02-25', unrealizedPnL: (3.06 - 2.93) * 100, profitPercent: ((3.06 - 2.93) / 2.93) * 100 },
-  { ticker: 'BLCO', status: 'open', entryPrice: 18.59, quantity: 40, openDate: '2026-02-25', unrealizedPnL: (17.06 - 18.59) * 40, profitPercent: ((17.06 - 18.59) / 18.59) * 100 },
-  { ticker: 'NU', status: 'open', entryPrice: 15.88, quantity: 20, openDate: '2026-02-26', unrealizedPnL: (14.45 - 15.88) * 20, profitPercent: ((14.45 - 15.88) / 15.88) * 100 },
-  { ticker: 'LRCX', status: 'open', entryPrice: 238.63, quantity: 2, openDate: '2026-02-26', unrealizedPnL: (199.69 - 238.63) * 2, profitPercent: ((199.69 - 238.63) / 238.63) * 100 },
-  { ticker: 'SITM', status: 'open', entryPrice: 408.60, quantity: 1, openDate: '2026-03-02', unrealizedPnL: (328 - 408.60) * 1, profitPercent: ((328 - 408.60) / 408.60) * 100 },
-  { ticker: 'CEG', status: 'open', entryPrice: 319.18, quantity: 2, openDate: '2026-03-03', unrealizedPnL: (318.67 - 319.18) * 2, profitPercent: ((318.67 - 319.18) / 319.18) * 100 },
-  { ticker: 'NOW', status: 'open', entryPrice: 108.53, quantity: 10, openDate: '2026-03-03', profitPercent: 14.5, unrealizedPnL: 157.03 },
-  { ticker: 'MELI', status: 'open', entryPrice: 1652, quantity: 1, openDate: '2026-03-03', profitPercent: 7.94, unrealizedPnL: 131.25 },
-  { ticker: 'THM', status: 'open', entryPrice: 3.32, quantity: 100, openDate: '2026-03-03', unrealizedPnL: (3.06 - 3.32) * 100, profitPercent: ((3.06 - 3.32) / 3.32) * 100 },
-  { ticker: 'PINS', status: 'open', entryPrice: 19.10, quantity: 30, openDate: '2026-03-03', unrealizedPnL: (19.94 - 19.10) * 30, profitPercent: ((19.94 - 19.10) / 19.10) * 100 },
-  { ticker: 'LRMR', status: 'open', entryPrice: 5.30, quantity: 100, openDate: '2026-03-03', unrealizedPnL: (5.35 - 5.30) * 100, profitPercent: ((5.35 - 5.30) / 5.30) * 100 },
-  { ticker: 'ARRY', status: 'open', entryPrice: 7.29, quantity: 100, openDate: '2026-03-03', unrealizedPnL: (6.80 - 7.29) * 100, profitPercent: ((6.80 - 7.29) / 7.29) * 100 },
-  { ticker: 'AU', status: 'open', entryPrice: 115, quantity: 5, openDate: '2026-03-03', unrealizedPnL: (106.40 - 115) * 5, profitPercent: ((106.40 - 115) / 115) * 100 },
-  { ticker: 'AU', status: 'open', entryPrice: 115.55, quantity: 5, openDate: '2026-03-03', unrealizedPnL: (106.40 - 115.55) * 5, profitPercent: ((106.40 - 115.55) / 115.55) * 100 },
-  { ticker: 'SITM', status: 'open', entryPrice: 410, quantity: 1, openDate: '2026-03-03', unrealizedPnL: (328 - 410) * 1, profitPercent: ((328 - 410) / 410) * 100 },
-  { ticker: 'OKTA', status: 'open', entryPrice: 71.73, quantity: 10, openDate: '2026-03-04', profitPercent: 12.6, unrealizedPnL: 90.65 },
-  { ticker: 'COHR', status: 'open', entryPrice: 248.19, quantity: 3, openDate: '2026-03-07', unrealizedPnL: (237 - 248.19) * 3, profitPercent: ((237 - 248.19) / 248.19) * 100 },
-  { ticker: 'OKLO', status: 'open', entryPrice: 63.03, quantity: 10, openDate: '2026-03-05', unrealizedPnL: (58.22 - 63.03) * 10, profitPercent: ((58.22 - 63.03) / 63.03) * 100 },
-  { ticker: 'OKLO', status: 'open', entryPrice: 59.04, quantity: 10, openDate: '2026-03-07', unrealizedPnL: (58.22 - 59.04) * 10, profitPercent: ((58.22 - 59.04) / 59.04) * 100 },
-  { ticker: 'ONDS', status: 'open', entryPrice: 10.86, quantity: 100, openDate: '2026-01-29', profitPercent: -9.3, unrealizedPnL: -101.00 },
-  { ticker: 'COGT', status: 'open', entryPrice: 38.58, quantity: 35, openDate: '2026-01-28', unrealizedPnL: (37.80 - 38.58) * 35, profitPercent: ((37.80 - 38.58) / 38.58) * 100 },
-  { ticker: 'SNDK', status: 'open', entryPrice: 542.17, quantity: 2, openDate: '2026-03-06', unrealizedPnL: (522 - 542.17) * 2, profitPercent: ((522 - 542.17) / 542.17) * 100 },
-  { ticker: 'ORCL', status: 'open', entryPrice: 153.06, quantity: 4, openDate: '2026-03-06', unrealizedPnL: (152.56 - 153.06) * 4, profitPercent: ((152.56 - 153.06) / 153.06) * 100 },
-  { ticker: 'STRL', status: 'open', entryPrice: 413.19, quantity: 3, openDate: '2026-03-04', unrealizedPnL: (391.25 - 413.19) * 3, profitPercent: ((391.25 - 413.19) / 413.19) * 100 },
-  { ticker: 'BTCWEUR', status: 'open', entryPrice: 15.04, quantity: 100, openDate: '2026-03-07', currency: 'EUR', unrealizedPnL: (14.06 - 15.04) * 100, profitPercent: ((14.06 - 15.04) / 15.04) * 100 },
-  { ticker: 'BTCE', status: 'open', entryPrice: 55.98, quantity: 100, openDate: '2026-03-04', unrealizedPnL: (52.39 - 55.98) * 100, profitPercent: ((52.39 - 55.98) / 55.98) * 100 },
-  { ticker: 'WHR', status: 'open', entryPrice: 59.12, quantity: 2, openDate: '2026-03-06', unrealizedPnL: (58.90 - 59.12) * 2, profitPercent: ((58.90 - 59.12) / 59.12) * 100 },
-  { ticker: 'CIEN', status: 'open', entryPrice: 284.28, quantity: 6, openDate: '2026-03-05', unrealizedPnL: (292.5 - 284.28) * 6, profitPercent: ((292.5 - 284.28) / 284.28) * 100 },
-  { ticker: 'MU', status: 'open', entryPrice: 413.40, quantity: 2, openDate: '2026-02-25', unrealizedPnL: (369.17 - 413.40) * 2, profitPercent: ((369.17 - 413.40) / 413.40) * 100 },
-  { ticker: 'GE', status: 'open', entryPrice: 325.78, quantity: 1, openDate: '2026-03-05', unrealizedPnL: (322.12 - 325.78) * 1, profitPercent: ((322.12 - 325.78) / 325.78) * 100 },
-  { ticker: 'AMAT', status: 'open', entryPrice: 328.17, quantity: 2, openDate: '2026-03-06', unrealizedPnL: (324.74 - 328.17) * 2, profitPercent: ((324.74 - 328.17) / 328.17) * 100 },
-  { ticker: 'HYMC', status: 'open', entryPrice: 40.20, quantity: 10, openDate: '2026-03-06', unrealizedPnL: (39.30 - 40.20) * 10, profitPercent: ((39.30 - 40.20) / 40.20) * 100 },
-  { ticker: 'COHR', status: 'open', entryPrice: 255.17, quantity: 2, openDate: '2026-03-04', unrealizedPnL: (237.00 - 255.17) * 2, profitPercent: ((237.00 - 255.17) / 255.17) * 100 },
-  { ticker: 'IREN', status: 'open', entryPrice: 38.87, quantity: 15, openDate: '2026-03-05', unrealizedPnL: (36.71 - 38.87) * 15, profitPercent: ((36.71 - 38.87) / 38.87) * 100 },
-]
-
-const defaultShortPositions = [
-  { ticker: 'LITE', status: 'open', entryPrice: 716.95, quantity: 3, exitPrice: 500, openDate: '2026-02-26', profitPercent: 20.8, unrealizedPnL: 446.85 },
-  { ticker: 'APP', status: 'open', entryPrice: 447.75, quantity: 6, openDate: '2026-02-26', unrealizedPnL: (447.75 - 499.17) * 6, profitPercent: ((447.75 - 499.17) / 447.75) * 100 },
-  { ticker: 'CAT', status: 'open', entryPrice: 742, quantity: 1, openDate: '2026-03-02', profitPercent: 8.54, unrealizedPnL: 63.43 },
-  { ticker: 'MDB', status: 'open', entryPrice: 244.11, quantity: 6, openDate: '2026-03-03', unrealizedPnL: (244.11 - 269.95) * 6, profitPercent: ((244.11 - 269.95) / 244.11) * 100 },
-  { ticker: 'POWL', status: 'open', entryPrice: 521, quantity: 2, openDate: '2026-03-04', unrealizedPnL: (521 - 489) * 2, profitPercent: ((521 - 489) / 521) * 100 },
-  { ticker: 'POWL', status: 'open', entryPrice: 487.26, quantity: 1, openDate: '2026-03-07', unrealizedPnL: (487.26 - 489) * 1, profitPercent: ((487.26 - 489) / 487.26) * 100 },
-  { ticker: 'CRDO', status: 'open', entryPrice: 113.93, quantity: 5, openDate: '2026-03-05', unrealizedPnL: (113.93 - 109.11) * 5, profitPercent: ((113.93 - 109.11) / 113.93) * 100 },
-  { ticker: 'CRWD', status: 'open', entryPrice: 398.61, quantity: 10, openDate: '2026-03-05', unrealizedPnL: (398.61 - 428.70) * 10, profitPercent: ((398.61 - 428.70) / 398.61) * 100 },
-]
-
-const defaultClosedLongPositions = [
-  {
-    ticker: 'ANET',
-    status: 'closed',
-    entryPrice: 132.68,
-    quantity: 30,
-    exitPrice: 128.86,
-    profitDollar: -114.50,
-    openDate: '2026-01-06',
-    closeDate: '2026-01-07',
-  },
-  {
-    ticker: 'ANET',
-    status: 'closed',
-    entryPrice: 130.93,
-    quantity: 35,
-    exitPrice: 130.01,
-    profitDollar: -32.15,
-    openDate: '2026-01-07',
-    closeDate: '2026-01-20',
-  },
-  {
-    ticker: 'HY9H',
-    status: 'closed',
-    entryPrice: 510,
-    quantity: 1,
-    exitPrice: 560,
-    profitDollar: 50,
-    openDate: '2026-03-04',
-    closeDate: '2026-03-04',
-    currency: 'EUR',
-  },
-  {
-    ticker: 'SAM',
-    status: 'closed',
-    entryPrice: 1.2136,
-    quantity: 2500,
-    exitPrice: 1.0144,
-    profitDollar: -466.64,
-    fees: 0,
-    openDate: '2026-01-30',
-    closeDate: '2026-03-07',
-    currency: 'CAD',
-  },
-  {
-    ticker: 'FCX',
-    status: 'closed',
-    entryPrice: 64.41,
-    quantity: 13,
-    exitPrice: 64.60,
-    profitPercent: 0.29,
-    profitDollar: 2.46,
-    fees: 1.05,
-    openDate: '2026-01-26',
-    closeDate: '2026-02-04',
-  },
-  {
-    ticker: 'CRDO',
-    status: 'closed',
-    entryPrice: (2 * 113.54 + 4 * 99.53) / 6,
-    quantity: 6,
-    exitPrice: 105.70,
-    profitDollar: (105.70 - (2 * 113.54 + 4 * 99.53) / 6) * 6,
-    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
-    openDate: '2026-03-02',
-    closeDate: '2026-03-04',
-  },
-  {
-    ticker: 'CRDO',
-    status: 'closed',
-    entryPrice: (2 * 132.66 + 1 * 121.55 + 3 * 130.90) / 6,
-    quantity: 6,
-    exitPrice: 130.35,
-    profitDollar: (130.35 - (2 * 132.66 + 1 * 121.55 + 3 * 130.90) / 6) * 6,
-    fees: 4 * FEE_PER_TRANSACTION, // 3 buys + 1 sell
-    openDate: '2026-02-10',
-    closeDate: '2026-02-18',
-  },
-  {
-    ticker: 'NVDA',
-    status: 'closed',
-    entryPrice: 173.39,
-    quantity: 1,
-    exitPrice: 182.63,
-    profitDollar: (182.63 - 173.39) * 1,
-    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
-    openDate: '2026-03-02',
-    closeDate: '2026-03-04',
-  },
-  {
-    ticker: 'AD',
-    status: 'closed',
-    entryPrice: 50.10,
-    quantity: 10,
-    exitPrice: 47.51,
-    profitDollar: (47.51 - 50.10) * 10,
-    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
-    openDate: '2026-01-23',
-    closeDate: '2026-01-26',
-  },
-  {
-    ticker: 'GOOG',
-    status: 'closed',
-    entryPrice: (1 * 301.64 + 1 * 299) / 2,
-    quantity: 2,
-    exitPrice: 304.75,
-    profitDollar: (304.75 - (1 * 301.64 + 1 * 299) / 2) * 2,
-    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
-    openDate: '2026-02-17',
-    closeDate: '2026-03-04',
-  },
-  {
-    ticker: 'APP',
-    status: 'closed',
-    entryPrice: (1 * 556 + 1 * 526.54 + 1 * 499 + 1 * 470.77 + 1 * 383.85) / 5,
-    quantity: 5,
-    exitPrice: (1 * 450 + 2 * 436.47 + 2 * 435.42) / 5,
-    profitDollar: ((1 * 450 + 2 * 436.47 + 2 * 435.42) / 5 - (1 * 556 + 1 * 526.54 + 1 * 499 + 1 * 470.77 + 1 * 383.85) / 5) * 5,
-    fees: 9 * FEE_PER_TRANSACTION, // 4 buys + 1 buy + 1 sell + 2 sells + 1 sell (hint: not grouped, just 9 fills)
-    openDate: '2026-01-30',
-    closeDate: '2026-02-26',
-  },
-  {
-    ticker: 'AMZN',
-    status: 'closed',
-    entryPrice: 208.20,
-    quantity: 3,
-    exitPrice: 207.40,
-    profitDollar: (207.40 - 208.20) * 3,
-    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
-    openDate: '2026-02-20',
-    closeDate: '2026-02-27',
-  },
-  {
-    ticker: 'ADSK',
-    status: 'closed',
-    entryPrice: (4 * 235.4 + 2 * 246.82) / 6,
-    quantity: 6,
-    exitPrice: 252.92,
-    profitDollar: (252.92 - (4 * 235.4 + 2 * 246.82) / 6) * 6,
-    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
-    openDate: '2026-02-27',
-    closeDate: '2026-03-03',
-  },
-  {
-    ticker: 'ALSTI',
-    status: 'closed',
-    entryPrice: (15 * 65.51333 + 8 * 64.1) / 23,
-    quantity: 23,
-    exitPrice: (4 * 55 + 2 * 55.9 + 2 * 57 + 2 * 58 + 2 * 59 + 11 * 55.6) / 23,
-    profitDollar: ((4 * 55 + 2 * 55.9 + 2 * 57 + 2 * 58 + 2 * 59 + 11 * 55.6) / 23 - (15 * 65.51333 + 8 * 64.1) / 23) * 23,
-    fees: 8 * FEE_PER_TRANSACTION, // 2 buys + 6 sells
-    openDate: '2025-10-13',
-    closeDate: '2026-01-14',
-    currency: 'EUR',
-  },
-  {
-    ticker: 'AUGO',
-    status: 'closed',
-    entryPrice: (3 * 73.945 + 1 * 73.64) / 4,
-    quantity: 4,
-    exitPrice: 74,
-    profitDollar: (74 - (3 * 73.945 + 1 * 73.64) / 4) * 4,
-    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
-    openDate: '2026-01-29',
-    closeDate: '2026-01-29',
-  },
-  {
-    ticker: 'AU',
-    status: 'closed',
-    entryPrice: 88.82,
-    quantity: 10,
-    exitPrice: 104.02,
-    profitDollar: (104.02 - 88.82) * 10,
-    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
-    openDate: '2026-02-02',
-    closeDate: '2026-02-06',
-  },
-  {
-    ticker: 'BE',
-    status: 'closed',
-    entryPrice: (2 * 146.7 + 2 * 140 + 2 * 136.5 + 2 * 150.73 + 6 * 145 + 2 * 157 + 3 * 174.32 + 2 * 165.13) / 21,
-    quantity: 21,
-    exitPrice: (7 * 159.61 + 14 * 165.36) / 21,
-    profitDollar: ((7 * 159.61 + 14 * 165.36) / 21 - (2 * 146.7 + 2 * 140 + 2 * 136.5 + 2 * 150.73 + 6 * 145 + 2 * 157 + 3 * 174.32 + 2 * 165.13) / 21) * 21,
-    fees: 10 * FEE_PER_TRANSACTION, // 8 buys + 2 sells
-    openDate: '2026-02-12',
-    closeDate: '2026-02-26',
-  },
-  {
-    ticker: 'APH',
-    status: 'closed',
-    entryPrice: (2 * 149 + 33 * 145.3) / 35,
-    quantity: 35,
-    exitPrice: (15 * 148.02 + 20 * 146.001) / 35,
-    profitDollar: ((15 * 148.02 + 20 * 146.001) / 35 - (2 * 149 + 33 * 145.3) / 35) * 35,
-    fees: 5 * FEE_PER_TRANSACTION, // 3 buys + 2 sells
-    openDate: '2026-01-14',
-    closeDate: '2026-01-28',
-  },
-  {
-    ticker: 'APH',
-    status: 'closed',
-    entryPrice: (2 * 145 + 4 * 141.5) / 6,
-    quantity: 6,
-    exitPrice: 143.78,
-    profitDollar: (143.78 - (2 * 145 + 4 * 141.5) / 6) * 6,
-    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
-    openDate: '2026-01-28',
-    closeDate: '2026-01-28',
-  },
-  {
-    ticker: 'APH',
-    status: 'closed',
-    entryPrice: (1 * 144.24 + 2 * 145.1) / 3,
-    quantity: 3,
-    exitPrice: 146.4,
-    profitDollar: (146.4 - (1 * 144.24 + 2 * 145.1) / 3) * 3,
-    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
-    openDate: '2026-01-30',
-    closeDate: '2026-02-03',
-  },
-  {
-    ticker: 'APH',
-    status: 'closed',
-    entryPrice: (10 * 141.75 + 5 * 130.1 + 2 * 135.6 + 2 * 130) / 19,
-    quantity: 19,
-    exitPrice: (9 * 130.37 + 10 * 136.56) / 19,
-    profitDollar: ((9 * 130.37 + 10 * 136.56) / 19 - (10 * 141.75 + 5 * 130.1 + 2 * 135.6 + 2 * 130) / 19) * 19,
-    fees: 6 * FEE_PER_TRANSACTION, // 4 buys + 2 sells
-    openDate: '2026-02-04',
-    closeDate: '2026-03-05',
-  },
-  {
-    ticker: 'ASML',
-    status: 'closed',
-    entryPrice: 1455.42,
-    quantity: 1,
-    exitPrice: 1489.38,
-    profitDollar: (1489.38 - 1455.42) * 1,
-    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
-    openDate: '2026-02-20',
-    closeDate: '2026-02-24',
-  },
-  {
-    ticker: 'ASML',
-    status: 'closed',
-    entryPrice: 1405.5,
-    quantity: 2,
-    exitPrice: 1403,
-    profitDollar: (1403 - 1405.5) * 2,
-    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
-    openDate: '2026-03-04',
-    closeDate: '2026-03-04',
-  },
-  {
-    ticker: 'CRML',
-    status: 'closed',
-    entryPrice: (260 * 11.8 + 220 * 13.65) / 480,
-    quantity: 480,
-    exitPrice: (240 * 14.455 + 240 * 13.64) / 480,
-    profitDollar: ((240 * 14.455 + 240 * 13.64) - (260 * 11.8 + 220 * 13.65)),
-    fees: 4 * FEE_PER_TRANSACTION, // 2 buys + 2 sells
-    openDate: '2026-01-06',
-    closeDate: '2026-01-13',
-  },
-  {
-    ticker: 'CRML',
-    status: 'closed',
-    entryPrice: (10 * 18.5 + 10 * 18.3 + 10 * 17.93 + 50 * 18.555 + 20 * 19.05 + 20 * 17.55 + 65 * 16.04) / 185,
-    quantity: 185,
-    exitPrice: (80 * 14.5 + 38 * 15 + 67 * 14.5) / 185,
-    profitDollar: ((80 * 14.5 + 38 * 15 + 67 * 14.5) - (10 * 18.5 + 10 * 18.3 + 10 * 17.93 + 50 * 18.555 + 20 * 19.05 + 20 * 17.55 + 65 * 16.04)),
-    fees: 10 * FEE_PER_TRANSACTION, // 7 buys + 3 sells
-    openDate: '2026-01-22',
-    closeDate: '2026-02-03',
-  },
-  {
-    ticker: 'COLL',
-    status: 'closed',
-    entryPrice: 47.7,
-    quantity: 100,
-    exitPrice: 44.4,
-    profitDollar: (44.4 - 47.7) * 100,
-    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
-    openDate: '2026-01-20',
-    closeDate: '2026-01-27',
-  },
-  {
-    ticker: 'DUOL',
-    status: 'closed',
-    entryPrice: (2 * 148.9 + 5 * 153.55) / 7,
-    quantity: 7,
-    exitPrice: 135.23,
-    profitDollar: (135.23 - (2 * 148.9 + 5 * 153.55) / 7) * 7,
-    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
-    openDate: '2026-01-20',
-    closeDate: '2026-01-30',
-  },
-  {
-    ticker: 'BWXT',
-    status: 'closed',
-    entryPrice: 212,
-    quantity: 5,
-    exitPrice: 199.78,
-    profitDollar: (199.78 - 212) * 5,
-    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
-    openDate: '2026-01-29',
-    closeDate: '2026-02-10',
-  },
-  {
-    ticker: 'CLS',
-    status: 'closed',
-    entryPrice: (308.85 + 293 + 283.35 + 284 + 276.15 + 268.82 + 298.17 + 297.64 + 276.06 + 2 * 275.88) / 11,
-    quantity: 11,
-    exitPrice: (3 * 311.45 + 6 * 292.77 + 2 * 278.7) / 11,
-    profitDollar: ((3 * 311.45 + 6 * 292.77 + 2 * 278.7) - (308.85 + 293 + 283.35 + 284 + 276.15 + 268.82 + 298.17 + 297.64 + 276.06 + 2 * 275.88)),
-    fees: 11 * FEE_PER_TRANSACTION, // 8 buys + 3 sells
-    openDate: '2026-01-26',
-    closeDate: '2026-02-26',
-  },
-  {
-    ticker: 'CPRX',
-    status: 'closed',
-    entryPrice: 24.88,
-    quantity: 30,
-    exitPrice: 23.67,
-    profitDollar: (23.67 - 24.88) * 30,
-    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
-    openDate: '2026-02-03',
-    closeDate: '2026-02-11',
-  },
-  {
-    ticker: 'ASTS',
-    status: 'closed',
-    entryPrice: 80.89,
-    quantity: 5,
-    exitPrice: 86.69,
-    profitDollar: (86.69 - 80.89) * 5,
-    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
-    openDate: '2026-02-17',
-    closeDate: '2026-02-26',
-  },
-  {
-    ticker: 'CRM',
-    status: 'closed',
-    entryPrice: 186,
-    quantity: 4,
-    exitPrice: 192.88,
-    profitDollar: (192.88 - 186) * 4,
-    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
-    openDate: '2026-02-25',
-    closeDate: '2026-03-02',
-  },
-  {
-    ticker: 'CSCO',
-    status: 'closed',
-    entryPrice: (3 * 85.48 + 1 * 78.9) / 4,
-    quantity: 4,
-    exitPrice: 78.85,
-    profitDollar: (78.85 - (3 * 85.48 + 1 * 78.9) / 4) * 4,
-    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
-    openDate: '2026-02-11',
-    closeDate: '2026-03-03',
-  },
-  {
-    ticker: 'DUOL',
-    status: 'closed',
-    entryPrice: (5 * 86 + 5 * 89.27) / 10,
-    quantity: 10,
-    exitPrice: 100,
-    profitDollar: (100 - (5 * 86 + 5 * 89.27) / 10) * 10,
-    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
-    openDate: '2026-02-27',
-    closeDate: '2026-02-27',
-  },
-  {
-    ticker: 'ZETA',
-    status: 'closed',
-    entryPrice: 23.66,
-    quantity: 50,
-    exitPrice: 22.853,
-    profitDollar: (22.853 - 23.66) * 50,
-    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
-    openDate: '2026-01-13',
-    closeDate: '2026-01-14',
-  },
-  {
-    ticker: 'ZETA',
-    status: 'closed',
-    entryPrice: 21.4,
-    quantity: 10,
-    exitPrice: 20,
-    profitDollar: (20 - 21.4) * 10,
-    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
-    openDate: '2026-01-22',
-    closeDate: '2026-01-27',
-  },
-  {
-    ticker: 'WDC',
-    status: 'closed',
-    entryPrice: 265,
-    quantity: 1,
-    exitPrice: 283.5,
-    profitDollar: (283.5 - 265) * 1,
-    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
-    openDate: '2026-01-29',
-    closeDate: '2026-01-29',
-  },
-  {
-    ticker: 'WDC',
-    status: 'closed',
-    entryPrice: (265 + 259.34 + 283.67 + 267) / 4,
-    quantity: 4,
-    exitPrice: 272,
-    profitDollar: (272 - (265 + 259.34 + 283.67 + 267) / 4) * 4,
-    fees: 5 * FEE_PER_TRANSACTION, // 4 buys + 1 sell
-    openDate: '2026-01-30',
-    closeDate: '2026-02-06',
-  },
-  {
-    ticker: 'W',
-    status: 'closed',
-    entryPrice: (10 * 94.4 + 2 * 89.8) / 12,
-    quantity: 12,
-    exitPrice: 92.3,
-    profitDollar: (92.3 - (10 * 94.4 + 2 * 89.8) / 12) * 12,
-    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
-    openDate: '2026-02-04',
-    closeDate: '2026-02-09',
-  },
-  {
-    ticker: 'WWD',
-    status: 'closed',
-    entryPrice: 388.5,
-    quantity: 2,
-    exitPrice: 392.86,
-    profitDollar: (392.86 - 388.5) * 2,
-    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
-    openDate: '2026-02-11',
-    closeDate: '2026-02-18',
-  },
-  {
-    ticker: 'WDAY',
-    status: 'closed',
-    entryPrice: (4 * 126 + 4 * 122.15 + 4 * 116) / 12,
-    quantity: 12,
-    exitPrice: 131.07,
-    profitDollar: (131.07 - (4 * 126 + 4 * 122.15 + 4 * 116) / 12) * 12,
-    fees: 4 * FEE_PER_TRANSACTION, // 3 buys + 1 sell
-    openDate: '2026-02-24',
-    closeDate: '2026-02-27',
-  },
-  {
-    ticker: 'WGR',
-    status: 'closed',
-    entryPrice: (6000 * 0.16 + 930 * 0.155 + 8000 * 0.17) / 14930,
-    quantity: 14930,
-    exitPrice: 0.17,
-    profitDollar: (0.17 * 14930 - (6000 * 0.16 + 930 * 0.155 + 8000 * 0.17)),
-    fees: 4 * FEE_PER_TRANSACTION, // 3 buys + 1 sell
-    openDate: '2025-10-13',
-    closeDate: '2025-10-27',
-    currency: 'AUD',
-  },
-  {
-    ticker: 'WGR',
-    status: 'closed',
-    entryPrice: 0.16,
-    quantity: 12000,
-    exitPrice: 0.215,
-    profitDollar: (0.215 - 0.16) * 12000,
-    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
-    openDate: '2025-11-07',
-    closeDate: '2026-01-06',
-    currency: 'AUD',
-  },
-  {
-    ticker: 'VRT',
-    status: 'closed',
-    entryPrice: 244.22,
-    quantity: 2,
-    exitPrice: 257.2,
-    profitDollar: (257.2 - 244.22) * 2,
-    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
-    openDate: '2026-02-26',
-    closeDate: '2026-03-02',
-  },
-  {
-    ticker: 'VIK',
-    status: 'closed',
-    entryPrice: (10 * 77.17 + 10 * 76.04) / 20,
-    quantity: 20,
-    exitPrice: 77.5,
-    profitDollar: (77.5 - (10 * 77.17 + 10 * 76.04) / 20) * 20,
-    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
-    openDate: '2026-02-10',
-    closeDate: '2026-02-17',
-  },
-  {
-    ticker: 'SPY PS',
-    status: 'closed',
-    entryPrice: 4.20,   // net debit: bought 680P @ 7.58, sold 660P @ 3.38
-    quantity: 100,       // 1 options contract = 100 units
-    exitPrice: 5.62,     // net credit: sold 680P @ 7.39, bought 660P @ 1.77
-    profitDollar: (5.62 - 4.20) * 100,
-    fees: 3.50, // 4 option fills
-    openDate: '2026-02-04',
-    closeDate: '2026-02-17',
-  },
-  {
-    ticker: 'TMUS',
-    status: 'closed',
-    entryPrice: (1 * 197.7 + 2 * 200.53) / 3,
-    quantity: 3,
-    exitPrice: 218.28,
-    profitDollar: (218.28 - (1 * 197.7 + 2 * 200.53) / 3) * 3,
-    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
-    openDate: '2026-02-02',
-    closeDate: '2026-02-13',
-  },
-  {
-    ticker: 'SPXC',
-    status: 'closed',
-    entryPrice: 235.5,
-    quantity: 2,
-    exitPrice: 230.51,
-    profitDollar: (230.51 - 235.5) * 2,
-    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
-    openDate: '2026-02-12',
-    closeDate: '2026-02-12',
-  },
-  {
-    ticker: 'TOI',
-    status: 'closed',
-    entryPrice: 135.22,
-    quantity: 30,
-    exitPrice: 85.78,
-    profitDollar: -1483.13,
-    fees: 0.93,
-    openDate: '2025-11-15',
-    closeDate: '2026-02-11',
-    currency: 'CAD',
-  },
-  {
-    ticker: 'TOI',
-    status: 'closed',
-    entryPrice: 153.81,
-    quantity: 30,
-    exitPrice: 111.52,
-    profitDollar: -1268.63,
-    fees: 1,
-    openDate: '2025-10-15',
-    closeDate: '2026-01-16',
-    currency: 'CAD',
-  },
-  {
-    ticker: 'VAL',
-    status: 'closed',
-    entryPrice: 59,
-    quantity: 10,
-    exitPrice: 62.06,
-    profitDollar: (62.06 - 59) * 10,
-    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
-    openDate: '2026-02-05',
-    closeDate: '2026-02-06',
-  },
-  {
-    ticker: 'USAR',
-    status: 'closed',
-    entryPrice: 22.45,
-    quantity: 30,
-    exitPrice: 24.85,
-    profitDollar: (24.85 - 22.45) * 30,
-    fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
-    openDate: '2026-01-29',
-    closeDate: '2026-02-03',
-  },
-  {
-    ticker: 'TRMD',
-    status: 'closed',
-    entryPrice: (20 * 24.4 + 40 * 24.46) / 60,
-    quantity: 60,
-    exitPrice: 24.8,
-    profitDollar: (24.8 - (20 * 24.4 + 40 * 24.46) / 60) * 60,
-    fees: 3 * FEE_PER_TRANSACTION, // 2 buys + 1 sell
-    openDate: '2026-01-28',
-    closeDate: '2026-02-03',
-  },
-  {
-    ticker: 'TBPH',
-    status: 'closed',
-    entryPrice: 20.41,
-    quantity: 100,
-    exitPrice: 19.34,
-    profitDollar: (19.34 - 20.41) * 100,
-    fees: 0.55, // $0.16 buy + $0.39 sell
-    openDate: '2026-01-20',
-    closeDate: '2026-01-28',
-  },
-  {
-    ticker: 'TWLO',
-    status: 'closed',
-    entryPrice: 140.68,
-    quantity: 3,
-    exitPrice: 138.25,
-    profitDollar: -7.29,
-    fees: 0.35,
-    openDate: '2025-12-20',
-    closeDate: '2026-01-09',
-  },
-]
-
-const defaultClosedShortPositions = [
-  {
-    ticker: 'DELL',
-    status: 'closed',
-    entryPrice: (4 * 142 + 4 * 145.06) / 8,
-    quantity: 8,
-    exitPrice: 147.28,
-    profitDollar: ((4 * 142 + 4 * 145.06) / 8 - 147.28) * 8,
-    fees: 3 * FEE_PER_TRANSACTION, // 2 sells(open) + 1 buy(close)
-    openDate: '2026-02-27',
-    closeDate: '2026-02-27',
-  },
-  {
-    ticker: 'COHR',
-    status: 'closed',
-    entryPrice: 298.71,
-    quantity: 1,
-    exitPrice: 264.85,
-    profitDollar: 33.86,
-    openDate: '2026-03-02',
-    closeDate: '2026-03-04',
-  },
-  {
-    ticker: 'FCX',
-    status: 'closed',
-    entryPrice: 67.57,
-    quantity: 4,
-    exitPrice: 66.47,
-    profitPercent: 1.63,
-    profitDollar: 4.40,
-    fees: 0.70,
-    openDate: '2026-02-26',
-    closeDate: '2026-03-04',
-  },
-  {
-    ticker: 'HYMC',
-    status: 'closed',
-    entryPrice: 51.28,
-    quantity: 10,
-    exitPrice: 47.87,
-    profitPercent: 6.65,
-    profitDollar: 34.08,
-    fees: 1.40,
-    openDate: '2026-03-02',
-    closeDate: '2026-03-05',
-  },
-  {
-    ticker: 'CCJ',
-    status: 'closed',
-    entryPrice: 121.49,
-    quantity: 4,
-    exitPrice: 112.94,
-    profitPercent: 7.04,
-    profitDollar: 34.20,
-    fees: 0.70,
-    openDate: '2026-03-02',
-    closeDate: '2026-03-05',
-  },
-]
-
-// ── Calculation helpers (used by Header) ────────────────────────────────
-// setPositionData, calcMyCapital, calcCurrentlyInvested, calcProfit, calcDailyPnL
-// live in ../utils/positionCalcs. setPositionData is imported here to keep
-// module-level state in sync; the calc functions are consumed by Header.jsx.
-
-// ── Helper: calculate % gain/loss ───────────────────────────────────────
-
-function calcPnlPercent(position, isShort = false) {
-  if (position.profitPercent != null && position.profitPercent !== 0) {
-    return position.profitPercent
-  }
-  if (position.status === 'closed' && position.exitPrice && position.entryPrice) {
-    const raw = ((position.exitPrice - position.entryPrice) / position.entryPrice) * 100
-    return isShort ? -raw : raw
-  }
-  const totalCost = (position.entryPrice || 0) * (position.quantity || 0)
-  if (totalCost > 0) {
-    // Use unrealizedPnL, realizedPnL, or profitDollar
-    const pnl = position.unrealizedPnL || position.realizedPnL || position.profitDollar
-    if (pnl != null) return (pnl / totalCost) * 100
-    // Derive from marketValue if available
-    if (position.marketValue) return ((position.marketValue - totalCost) / totalCost) * 100
-  }
-  return null
-}
-
-// ── Group into trades ────────────────────────────────────────────────
-// A "trade" = positions with same ticker opened on the same date.
-// Closed positions are already complete trades — keep as individual cards.
-
-function groupFills(positions) {
-  const grouped = {}
-  for (const p of positions) {
-    const key = `${p.ticker}|${p.openDate || ''}`
-    if (!grouped[key]) {
-      grouped[key] = {
-        ...p,
-        _totalCost: p.entryPrice * p.quantity,
-        _totalExitCost: (p.exitPrice || 0) * p.quantity,
-        _totalQty: p.quantity,
-        _totalDailyPnL: p.dailyPnL || 0,
-        _totalUnrealizedPnL: p.unrealizedPnL || 0,
-        _totalRealizedPnL: p.realizedPnL || 0,
-        _totalProfitDollar: p.profitDollar || 0,
-        _totalFees: p.fees || 0,
-        _totalMarketValue: p.marketValue || 0,
-        _hasExit: p.exitPrice != null,
-        _hasProfitDollar: p.profitDollar != null,
-      }
-    } else {
-      const g = grouped[key]
-      g._totalCost += p.entryPrice * p.quantity
-      g._totalExitCost += (p.exitPrice || 0) * p.quantity
-      g._totalQty += p.quantity
-      g._totalDailyPnL += p.dailyPnL || 0
-      g._totalUnrealizedPnL += p.unrealizedPnL || 0
-      g._totalRealizedPnL += p.realizedPnL || 0
-      g._totalProfitDollar += p.profitDollar || 0
-      g._totalFees += p.fees || 0
-      g._totalMarketValue += p.marketValue || 0
-      if (p.exitPrice != null) g._hasExit = true
-      if (p.profitDollar != null) g._hasProfitDollar = true
-    }
-  }
-  return Object.values(grouped).map(g => ({
-    ...g,
-    entryPrice: g._totalCost / g._totalQty,
-    exitPrice: g._hasExit ? g._totalExitCost / g._totalQty : undefined,
-    quantity: g._totalQty,
-    dailyPnL: g._totalDailyPnL || undefined,
-    unrealizedPnL: g._totalUnrealizedPnL || undefined,
-    realizedPnL: g._totalRealizedPnL || undefined,
-    profitDollar: g._hasProfitDollar ? g._totalProfitDollar : undefined,
-    profitPercent: undefined, // recalculated from aggregated values
-    fees: g._totalFees || undefined,
-    marketValue: g._totalMarketValue || undefined,
-  }))
-}
-
-function groupIntoTrades(openPositions, closedPositions) {
-  return [...groupFills(closedPositions), ...groupFills(openPositions)]
-}
-
 // ── Components ──────────────────────────────────────────────────────────
 
-function GlowDot({ color }) {
+const GlowDot = memo(function GlowDot({ color }) {
   const colors = {
     green: 'bg-emerald-400 shadow-emerald-400/60',
     red: 'bg-red-400 shadow-red-400/60',
@@ -860,11 +39,11 @@ function GlowDot({ color }) {
       <span className={`relative inline-flex h-3 w-3 rounded-full ${colors[color]}`} />
     </span>
   )
-}
+})
 
 // ── Sparkline SVG ────────────────────────────────────────────────────────
 
-function Sparkline({ data, width = 200, height = 32 }) {
+const Sparkline = memo(function Sparkline({ data, width = 200, height = 32 }) {
   if (!data || data.length < 2) return null
   const values = data.map(d => d.avg_cost)
   const min = Math.min(...values)
@@ -892,11 +71,11 @@ function Sparkline({ data, width = 200, height = 32 }) {
       />
     </svg>
   )
-}
+})
 
 // ── Expanded detail panel ────────────────────────────────────────────────
 
-function ExpandedDetail({ history }) {
+const ExpandedDetail = memo(function ExpandedDetail({ history }) {
   if (!history) {
     return (
       <div className="px-4 pb-3 sm:px-5 sm:pb-4">
@@ -938,11 +117,11 @@ function ExpandedDetail({ history }) {
       </span>
     </div>
   )
-}
+})
 
 // ── Position card ────────────────────────────────────────────────────────
 
-function FireIcon() {
+const FireIcon = memo(function FireIcon() {
   return (
     <span className="relative flex h-5 w-5 shrink-0 fire-icon">
       <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" stroke="#3B82F6" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -951,9 +130,9 @@ function FireIcon() {
       </svg>
     </span>
   )
-}
+})
 
-function PositionRow({ position, type, expanded, onToggle, hidden, isTopGainer }) {
+const PositionRow = memo(function PositionRow({ position, type, expanded, onToggle, hidden, isTopGainer }) {
   const isLong = type === 'long'
   const isShort = type === 'short'
   const isClosed = position.status === 'closed'
@@ -1104,11 +283,11 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isTopGainer }
       )}
     </div>
   )
-}
+})
 
 // ── Portfolio Overview Charts ──────────────────────────────────────────
 
-function ActivityHeatmap({ allTrades }) {
+const ActivityHeatmap = memo(function ActivityHeatmap({ allTrades }) {
   // Count activity per day: each open or close event counts as 1
   const activityMap = {}
   for (const p of allTrades) {
@@ -1215,10 +394,10 @@ function ActivityHeatmap({ allTrades }) {
       </div>
     </div>
   )
-}
+})
 
 
-function CumulativePnLChart({ closedPositions, width = 500, height = 120 }) {
+const CumulativePnLChart = memo(function CumulativePnLChart({ closedPositions, width = 500, height = 120 }) {
   if (!closedPositions || closedPositions.length < 2) {
     return (
       <div>
@@ -1288,9 +467,9 @@ function CumulativePnLChart({ closedPositions, width = 500, height = 120 }) {
       </svg>
     </div>
   )
-}
+})
 
-function QuickStats({ allTrades, closedPositions }) {
+const QuickStats = memo(function QuickStats({ allTrades, closedPositions }) {
   const closed = closedPositions.filter(p => p.profitDollar != null)
   const wins = closed.filter(p => (p.profitDollar - (p.fees || 0)) > 0)
   const losses = closed.filter(p => (p.profitDollar - (p.fees || 0)) <= 0)
@@ -1357,9 +536,9 @@ function QuickStats({ allTrades, closedPositions }) {
       </div>
     </div>
   )
-}
+})
 
-function PortfolioOverview({ allTrades, closedPositions }) {
+const PortfolioOverview = memo(function PortfolioOverview({ allTrades, closedPositions }) {
   return (
     <div className="flex flex-col gap-7 px-2 sm:px-4">
       <QuickStats allTrades={allTrades} closedPositions={closedPositions} />
@@ -1367,9 +546,9 @@ function PortfolioOverview({ allTrades, closedPositions }) {
       <ActivityHeatmap allTrades={allTrades} />
     </div>
   )
-}
+})
 
-function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, newPositionKeys }) {
+const PositionList = memo(function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, newPositionKeys }) {
   const [showOthers, setShowOthers] = useState(false)
   const allPositions = [
     ...longs.map(p => ({ ...p, _type: 'long' })),
@@ -1449,119 +628,71 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, n
       )}
     </div>
   )
-}
-
-// Filter to only include 2026 closed positions
-function filterClosed2026(positions) {
-  return positions.filter((p) => {
-    const date = p.closeDate || p.openDate || ''
-    return date.startsWith('2026')
-  })
-}
-
-function mergePositions(defaults, livePositions) {
-  if (!livePositions || livePositions.length === 0) return defaults.filter(p => !IGNORED_TICKERS.has(p.ticker))
-
-  const cachedPrices = loadCachedPrices()
-  const liveByTicker = {}
-  for (const pos of livePositions) {
-    if (IGNORED_TICKERS.has(pos.ticker)) continue
-    if (!liveByTicker[pos.ticker]) liveByTicker[pos.ticker] = []
-    liveByTicker[pos.ticker].push(pos)
-  }
-
-  const merged = []
-  const usedLiveTickers = new Set()
-
-  for (const def of defaults) {
-    const liveEntries = liveByTicker[def.ticker]
-    if (liveEntries && liveEntries.length > 0) {
-      if (!usedLiveTickers.has(def.ticker)) {
-        for (const live of liveEntries) {
-          const entry = {
-            ...def,
-            ...live,
-            openDate: def.openDate || live.openDate || '',
-          }
-          const liveQty = live.quantity || def.quantity || 0
-          const liveEntry = live.entryPrice || def.entryPrice || 0
-
-          if (live.marketValue && liveQty && liveEntry) {
-            // IBKR delivered fresh data — use it and cache the price
-            const currentPrice = live.marketValue / liveQty
-            cachedPrices[live.ticker] = { price: currentPrice, marketValue: live.marketValue, qty: liveQty, updatedAt: TODAY }
-            recordPriceSnapshot(live.ticker, currentPrice)
-            if (!live.unrealizedPnL) {
-              entry.unrealizedPnL = (currentPrice - liveEntry) * liveQty
-            }
-            if (!live.profitPercent) {
-              entry.profitPercent = ((currentPrice - liveEntry) / liveEntry) * 100
-            }
-          } else if (cachedPrices[live.ticker || def.ticker] && liveQty && liveEntry) {
-            // IBKR returned null/zero — restore last known price
-            const cached = cachedPrices[live.ticker || def.ticker]
-            const restoredPrice = cached.price
-            entry.marketValue = restoredPrice * liveQty
-            if (!entry.unrealizedPnL) {
-              entry.unrealizedPnL = (restoredPrice - liveEntry) * liveQty
-            }
-            if (!entry.profitPercent) {
-              entry.profitPercent = ((restoredPrice - liveEntry) / liveEntry) * 100
-            }
-          }
-          // Still fall back to manual defaults if nothing else available
-          if (!entry.profitPercent && def.profitPercent) entry.profitPercent = def.profitPercent
-          if (!entry.unrealizedPnL && def.unrealizedPnL) entry.unrealizedPnL = def.unrealizedPnL
-          merged.push(entry)
-        }
-        usedLiveTickers.add(def.ticker)
-      }
-    } else {
-      merged.push(def)
-    }
-  }
-
-  for (const [ticker, entries] of Object.entries(liveByTicker)) {
-    if (!usedLiveTickers.has(ticker)) {
-      merged.push(...entries)
-    }
-  }
-
-  // Persist updated price cache
-  saveCachedPrices(cachedPrices)
-
-  return merged
-}
+})
 
 function Positions({ ibkrData }) {
-  const hasLive = ibkrData && (ibkrData.longPositions || ibkrData.shortPositions)
+  const longPositions = useMemo(() => {
+    const hasLive = ibkrData?.longPositions
+    return hasLive
+      ? mergePositions(defaultLongPositions, ibkrData.longPositions)
+      : defaultLongPositions.filter(p => !IGNORED_TICKERS.has(p.ticker))
+  }, [ibkrData])
 
-  const longPositions = hasLive
-    ? mergePositions(defaultLongPositions, ibkrData.longPositions)
-    : defaultLongPositions.filter(p => !IGNORED_TICKERS.has(p.ticker))
-  const shortPositions = hasLive
-    ? mergePositions(defaultShortPositions, ibkrData.shortPositions)
-    : defaultShortPositions.filter(p => !IGNORED_TICKERS.has(p.ticker))
+  const shortPositions = useMemo(() => {
+    const hasLive = ibkrData?.shortPositions
+    return hasLive
+      ? mergePositions(defaultShortPositions, ibkrData.shortPositions)
+      : defaultShortPositions.filter(p => !IGNORED_TICKERS.has(p.ticker))
+  }, [ibkrData])
 
-  const liveClosedLong = filterClosed2026(ibkrData?.closedLongPositions || [])
-  const liveClosedShort = filterClosed2026(ibkrData?.closedShortPositions || [])
-  const closedLongKeys = new Set(liveClosedLong.map(p => `${p.ticker}|${p.openDate}`))
-  const closedShortKeys = new Set(liveClosedShort.map(p => `${p.ticker}|${p.openDate}`))
-  const closedLongPositions = [
-    ...liveClosedLong,
-    ...filterClosed2026(defaultClosedLongPositions).filter(p => !closedLongKeys.has(`${p.ticker}|${p.openDate}`)),
-  ]
-  const closedShortPositions = [
-    ...liveClosedShort,
-    ...filterClosed2026(defaultClosedShortPositions).filter(p => !closedShortKeys.has(`${p.ticker}|${p.openDate}`)),
-  ]
+  const closedLongPositions = useMemo(() => {
+    const liveClosedLong = filterClosed2026(ibkrData?.closedLongPositions || [])
+    const closedLongKeys = new Set(liveClosedLong.map(p => `${p.ticker}|${p.openDate}`))
+    return [
+      ...liveClosedLong,
+      ...filterClosed2026(defaultClosedLongPositions).filter(p => !closedLongKeys.has(`${p.ticker}|${p.openDate}`)),
+    ]
+  }, [ibkrData])
+
+  const closedShortPositions = useMemo(() => {
+    const liveClosedShort = filterClosed2026(ibkrData?.closedShortPositions || [])
+    const closedShortKeys = new Set(liveClosedShort.map(p => `${p.ticker}|${p.openDate}`))
+    return [
+      ...liveClosedShort,
+      ...filterClosed2026(defaultClosedShortPositions).filter(p => !closedShortKeys.has(`${p.ticker}|${p.openDate}`)),
+    ]
+  }, [ibkrData])
 
   // Keep the calculation helpers in sync (use raw positions for accuracy)
-  setPositionData({ longPositions, shortPositions, closedLongPositions, closedShortPositions })
+  useEffect(() => {
+    setPositionData({ longPositions, shortPositions, closedLongPositions, closedShortPositions })
+  }, [longPositions, shortPositions, closedLongPositions, closedShortPositions])
 
   // Group into individual trades for display
-  const tradeLongs = groupIntoTrades(longPositions, closedLongPositions)
-  const tradeShorts = groupIntoTrades(shortPositions, closedShortPositions)
+  const tradeLongs = useMemo(
+    () => groupIntoTrades(longPositions, closedLongPositions),
+    [longPositions, closedLongPositions]
+  )
+  const tradeShorts = useMemo(
+    () => groupIntoTrades(shortPositions, closedShortPositions),
+    [shortPositions, closedShortPositions]
+  )
+
+  const allTrades = useMemo(() => [
+    ...tradeLongs.map(p => ({ ...p, _type: 'long' })),
+    ...tradeShorts.map(p => ({ ...p, _type: 'short' })),
+  ], [tradeLongs, tradeShorts])
+
+  const longCount = allTrades.filter(p => p._type === 'long' && p.status !== 'closed').length
+  const shortCount = allTrades.filter(p => p._type === 'short' && p.status !== 'closed').length
+  const closedCount = allTrades.filter(p => p.status === 'closed').length
+
+  const tabs = useMemo(() => [
+    { key: 'overview', label: 'Overview' },
+    { key: 'long', label: 'Long', count: longCount },
+    { key: 'short', label: 'Short', count: shortCount },
+    { key: 'closed', label: 'Closed', count: closedCount },
+  ], [longCount, shortCount, closedCount])
 
   // ── NEW tag tracking ──────────────────────────────────────────────────
   // Compare current position keys against what was stored from the previous
@@ -1601,24 +732,9 @@ function Positions({ ibkrData }) {
     }
   }, [filter])
 
-  function handleToggleTicker(ticker) {
+  const handleToggleTicker = useCallback((ticker) => {
     setExpandedTicker((prev) => (prev === ticker ? null : ticker))
-  }
-
-  const allTrades = [
-    ...tradeLongs.map(p => ({ ...p, _type: 'long' })),
-    ...tradeShorts.map(p => ({ ...p, _type: 'short' })),
-  ]
-  const longCount = allTrades.filter(p => p._type === 'long' && p.status !== 'closed').length
-  const shortCount = allTrades.filter(p => p._type === 'short' && p.status !== 'closed').length
-  const closedCount = allTrades.filter(p => p.status === 'closed').length
-
-  const tabs = [
-    { key: 'overview', label: 'Overview' },
-    { key: 'long', label: 'Long', count: longCount },
-    { key: 'short', label: 'Short', count: shortCount },
-    { key: 'closed', label: 'Closed', count: closedCount },
-  ]
+  }, [])
 
   // ── Swipe navigation between tabs ──────────────────────────────────────
   const touchStart = useRef(null)
