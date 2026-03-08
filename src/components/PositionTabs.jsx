@@ -533,11 +533,6 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
             <span className={`text-xs font-normal ${isShort ? 'text-pink-400/70' : 'text-blue-400/70'}`}>
               x{position.quantity}
             </span>
-            {!isClosed && days !== null && days <= 1 && (
-              <span className="rounded-md bg-pink-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-pink-400">
-                NEW
-              </span>
-            )}
           </div>
 
           {/* Section 2: Entry Price → Current/Exit Price */}
@@ -564,11 +559,15 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
                 {pnlDollar !== null && <>{pnlDollar >= 0 ? '+' : '-'}{sym}{Math.abs(pnlDollar).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
               </span>
             ) : null}
-            {days !== null && days > 1 && (
+            {!isClosed && days !== null && days <= 1 ? (
+              <span className="rounded-md bg-pink-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-pink-400">
+                NEW
+              </span>
+            ) : days !== null && days > 1 ? (
               <span className="text-[11px] text-slate-500">
                 {days}d
               </span>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
