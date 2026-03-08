@@ -39,7 +39,7 @@ html, body, #root {
 /* Fire icon flicker animation */
 .fire-icon {
   animation: fire-flicker 1.2s ease-in-out infinite alternate;
-  filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.7));
+  filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.7));
 }
 
 @keyframes fire-flicker {
@@ -51,10 +51,10 @@ html, body, #root {
 /* Top gainer card — bright orange border glow with shimmer */
 .top-gainer-card {
   box-shadow:
-    0 0 10px rgba(249, 115, 22, 0.3),
-    0 0 30px rgba(249, 115, 22, 0.15),
-    0 0 60px rgba(249, 115, 22, 0.05),
-    inset 0 0 20px rgba(249, 115, 22, 0.04);
+    0 0 10px rgba(59, 130, 246, 0.3),
+    0 0 30px rgba(59, 130, 246, 0.15),
+    0 0 60px rgba(59, 130, 246, 0.05),
+    inset 0 0 20px rgba(59, 130, 246, 0.04);
   animation: gainer-glow 2s ease-in-out infinite alternate;
   position: relative;
   overflow: visible;
@@ -68,7 +68,7 @@ html, body, #root {
   background: linear-gradient(
     135deg,
     transparent 30%,
-    rgba(249, 115, 22, 0.15) 50%,
+    rgba(59, 130, 246, 0.15) 50%,
     transparent 70%
   );
   background-size: 200% 200%;
@@ -80,16 +80,16 @@ html, body, #root {
 @keyframes gainer-glow {
   0% {
     box-shadow:
-      0 0 8px rgba(249, 115, 22, 0.25),
-      0 0 24px rgba(249, 115, 22, 0.1),
-      inset 0 0 16px rgba(249, 115, 22, 0.03);
+      0 0 8px rgba(59, 130, 246, 0.25),
+      0 0 24px rgba(59, 130, 246, 0.1),
+      inset 0 0 16px rgba(59, 130, 246, 0.03);
   }
   100% {
     box-shadow:
-      0 0 14px rgba(249, 115, 22, 0.4),
-      0 0 40px rgba(249, 115, 22, 0.2),
-      0 0 80px rgba(249, 115, 22, 0.07),
-      inset 0 0 24px rgba(249, 115, 22, 0.06);
+      0 0 14px rgba(59, 130, 246, 0.4),
+      0 0 40px rgba(59, 130, 246, 0.2),
+      0 0 80px rgba(59, 130, 246, 0.07),
+      inset 0 0 24px rgba(59, 130, 246, 0.06);
   }
 }
 
