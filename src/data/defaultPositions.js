@@ -724,6 +724,17 @@ export const defaultClosedLongPositions = [
     openDate: '2026-01-26',
     closeDate: '2026-01-28',
   },
+  {
+    ticker: 'EXAS',
+    status: 'closed',
+    entryPrice: 70.65,
+    quantity: 20,
+    exitPrice: 103.46,
+    profitDollar: (103.46 - 70.65) * 20,
+    fees: 0.58, // estimated: 1 buy ($0.29) + 1 sell ($0.29)
+    openDate: '2026-01-01', // buy date unknown
+    closeDate: '2026-02-12',
+  },
 ]
 
 export const defaultClosedShortPositions = [
