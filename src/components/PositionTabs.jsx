@@ -591,11 +591,6 @@ function PositionRow({ position, type, expanded, onToggle, hidden, isNew }) {
         <span className="rounded-md bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-400">
           {days !== null ? `${days}d` : position.openDate ? formatDate(position.openDate) : ''}
         </span>
-        {isClosed && (
-          <span className="rounded-md bg-slate-500/10 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
-            CLOSED
-          </span>
-        )}
       </div>
     </div>
   )
