@@ -525,18 +525,6 @@ export const defaultClosedLongPositions = [
   {
     ticker: 'WGR',
     status: 'closed',
-    entryPrice: (6000 * 0.16 + 930 * 0.155 + 8000 * 0.17) / 14930,
-    quantity: 14930,
-    exitPrice: 0.17,
-    profitDollar: (0.17 * 14930 - (6000 * 0.16 + 930 * 0.155 + 8000 * 0.17)),
-    fees: 4 * FEE_PER_TRANSACTION, // 3 buys + 1 sell
-    openDate: '2025-10-13',
-    closeDate: '2025-10-27',
-    currency: 'AUD',
-  },
-  {
-    ticker: 'WGR',
-    status: 'closed',
     entryPrice: 0.16,
     quantity: 12000,
     exitPrice: 0.215,
@@ -778,6 +766,105 @@ export const defaultClosedLongPositions = [
     fees: 2 * FEE_PER_TRANSACTION, // 1 buy + 1 sell
     openDate: '2026-02-10',
     closeDate: '2026-02-10',
+  },
+  {
+    ticker: 'HYMC',
+    status: 'closed',
+    entryPrice: 23.26,
+    quantity: 30,
+    exitPrice: 27.7,
+    profitDollar: (27.7 - 23.26) * 30,
+    fees: 0.62, // estimated: buy ($0.30) + sell ($0.32)
+    openDate: '2025-12-01', // buy date unknown
+    closeDate: '2026-01-05',
+  },
+  {
+    ticker: 'FSLR',
+    status: 'closed',
+    entryPrice: 259.15,
+    quantity: 8,
+    exitPrice: 263.97,
+    profitDollar: (263.97 - 259.15) * 8,
+    fees: 0.70, // estimated: 1 buy ($0.35) + 1 sell ($0.35)
+    openDate: '2025-12-01', // buy date unknown
+    closeDate: '2026-01-05',
+  },
+  {
+    ticker: 'IREN',
+    status: 'closed',
+    entryPrice: 52.5,
+    quantity: 10,
+    exitPrice: 56.44,
+    profitDollar: (56.44 - 52.5) * 10,
+    fees: 0.69, // 1 buy ($0.35) + 1 sell ($0.34)
+    openDate: '2026-01-23',
+    closeDate: '2026-01-23',
+  },
+  {
+    ticker: 'IREN',
+    status: 'closed',
+    entryPrice: (2 * 56.5 + 2 * 55.5 + 4 * 53.32 + 8 * 53.75 + 16 * 53.05 + 20 * 60.8 + 30 * 60.1) / 82,
+    quantity: 82,
+    exitPrice: 55.80337,
+    profitDollar: (55.80337 - (2 * 56.5 + 2 * 55.5 + 4 * 53.32 + 8 * 53.75 + 16 * 53.05 + 20 * 60.8 + 30 * 60.1) / 82) * 82,
+    fees: 2.62, // 7 buys ($0.35+$0.35+$0.35+$0.34+$0.33+$0.33+$0.31) + 1 sell ($0.38 stop)
+    openDate: '2026-01-23',
+    closeDate: '2026-01-30',
+  },
+  {
+    ticker: 'IREN',
+    status: 'closed',
+    entryPrice: (10 * 51.25 + 10 * 52.37) / 20,
+    quantity: 20,
+    exitPrice: 53.62,
+    profitDollar: (53.62 - (10 * 51.25 + 10 * 52.37) / 20) * 20,
+    fees: 1.00, // 2 buys ($0.32+$0.35) + 1 sell ($0.33)
+    openDate: '2026-02-02',
+    closeDate: '2026-02-03',
+  },
+  {
+    ticker: 'IREN',
+    status: 'closed',
+    entryPrice: 44.1,
+    quantity: 10,
+    exitPrice: 43.625,
+    profitDollar: (43.625 - 44.1) * 10,
+    fees: 0.69, // 1 buy ($0.34) + 1 sell ($0.35 stop)
+    openDate: '2026-02-04',
+    closeDate: '2026-02-05',
+  },
+  {
+    ticker: 'LPTH',
+    status: 'closed',
+    entryPrice: (20 * 12.39 + 50 * 14.1 + 100 * 13.9 + 50 * 13.6 + 80 * 12.85) / 300,
+    quantity: 300,
+    exitPrice: 13.645,
+    profitDollar: (13.645 - (20 * 12.39 + 50 * 14.1 + 100 * 13.9 + 50 * 13.6 + 80 * 12.85) / 300) * 300,
+    fees: 2.56, // 5 buys ($0.33+$0.30+$0.24+$0.26+$0.26) + 1 sell ($1.17)
+    openDate: '2026-01-09',
+    closeDate: '2026-01-20',
+  },
+  {
+    ticker: 'LPTH',
+    status: 'closed',
+    entryPrice: (100 * 12.9 + 100 * 13.1) / 200,
+    quantity: 200,
+    exitPrice: 12.9917,
+    profitDollar: (12.9917 - (100 * 12.9 + 100 * 13.1) / 200) * 200,
+    fees: 1.26, // 2 buys ($0.24+$0.24) + 1 sell ($0.78 stop)
+    openDate: '2026-01-21',
+    closeDate: '2026-01-23',
+  },
+  {
+    ticker: 'LQDA',
+    status: 'closed',
+    entryPrice: 31.87,
+    quantity: 60,
+    exitPrice: 42.5,
+    profitDollar: (42.5 - 31.87) * 60,
+    fees: 1.08, // estimated from net P&L +$636.72
+    openDate: '2026-01-09', // earliest visible buy
+    closeDate: '2026-01-28',
   },
 ]
 
