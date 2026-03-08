@@ -11,7 +11,7 @@ function InstallPrompt({ canInstall, onInstall, notificationPermission, onEnable
   if (!showInstall && !showNotifications) return null;
 
   return (
-    <div className="mx-auto mt-3 max-w-sm rounded-xl border border-slate-700/50 bg-slate-900/80 p-4">
+    <div className="mx-auto mt-3 max-w-sm rounded-xl border border-emerald-500/50 bg-emerald-950/80 p-4 shadow-lg shadow-emerald-500/10">
       {showInstall && (
         <div className="flex items-center justify-between gap-3">
           <div className="flex-1">
