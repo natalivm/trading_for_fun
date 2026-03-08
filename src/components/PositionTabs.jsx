@@ -1323,6 +1323,7 @@ function PortfolioOverview({ allTrades, closedPositions }) {
 }
 
 function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, newPositionKeys }) {
+  const [showOthers, setShowOthers] = React.useState(false)
   const allPositions = [
     ...longs.map(p => ({ ...p, _type: 'long' })),
     ...shorts.map(p => ({ ...p, _type: 'short' })),
@@ -1345,9 +1346,27 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, n
     return best
   }, { key: null, pct: 0 }).key
 
+  // For closed tab, split into significant (top 15 by abs PnL%) and others
+  const MAX_VISIBLE_CLOSED = 15
+  const isClosed = filter === 'closed'
+  const visiblePositions = isClosed && !showOthers && allPositions.length > MAX_VISIBLE_CLOSED
+    ? (() => {
+        // Sort by absolute PnL% descending to pick the most significant trades
+        const sorted = [...allPositions].sort((a, b) => {
+          const absA = Math.abs(calcPnlPercent(a, a._type === 'short') ?? 0)
+          const absB = Math.abs(calcPnlPercent(b, b._type === 'short') ?? 0)
+          return absB - absA
+        })
+        const topSet = new Set(sorted.slice(0, MAX_VISIBLE_CLOSED))
+        // Return in original sort order (biggest gainer first)
+        return allPositions.filter(p => topSet.has(p))
+      })()
+    : allPositions
+  const hiddenCount = allPositions.length - visiblePositions.length
+
   return (
     <div className="flex flex-col gap-2 px-2 sm:px-4 sm:max-w-3xl sm:mx-auto w-full">
-      {allPositions.map((position, i) => {
+      {visiblePositions.map((position, i) => {
         const tradeKey = `${position._type}-${position.ticker}-${position.openDate || i}`
         const closedPrefix = position.status === 'closed' ? `closed-${position._type}` : position._type
         const newKey = `${closedPrefix}|${position.ticker}|${position.openDate}`
@@ -1364,6 +1383,22 @@ function PositionList({ longs, shorts, expandedTicker, onToggleTicker, filter, n
           />
         )
       })}
+      {isClosed && hiddenCount > 0 && !showOthers && (
+        <button
+          onClick={() => setShowOthers(true)}
+          className="w-full py-3 rounded-xl border border-zinc-700/50 bg-zinc-800/40 hover:bg-zinc-700/40 text-zinc-400 hover:text-zinc-200 text-sm font-medium transition-colors"
+        >
+          OTHERS ({hiddenCount} more)
+        </button>
+      )}
+      {isClosed && showOthers && hiddenCount > 0 && (
+        <button
+          onClick={() => setShowOthers(false)}
+          className="w-full py-2 rounded-xl border border-zinc-700/50 bg-zinc-800/40 hover:bg-zinc-700/40 text-zinc-500 hover:text-zinc-300 text-xs font-medium transition-colors"
+        >
+          Hide others
+        </button>
+      )}
     </div>
   )
 }
